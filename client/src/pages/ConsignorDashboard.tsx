@@ -6,19 +6,18 @@ import ItemDetailModal from "@/components/ItemDetailModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ConsignorDashboard() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   
-  // Fetch user data
-  const { data: userData, isLoading: userLoading } = useQuery<any>({
-    queryKey: ["/api/auth/user"],
-  });
+  // Get user from auth context
+  const { user, isLoading: userLoading } = useAuth();
   
   // Fetch consignor's data
   const { data: consignorData, isLoading: consignorLoading } = useQuery<any>({
     queryKey: ["/api/consignor/dashboard"],
-    enabled: !!userData?.customerId,
+    enabled: !!user?.id,
   });
   
   const handleItemClick = (referenceId: string) => {
@@ -34,7 +33,7 @@ export default function ConsignorDashboard() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Welcome, {userData?.name || "Consignor"}</h1>
+        <h1 className="text-2xl font-bold mb-2">Welcome, {user?.name || "Consignor"}</h1>
         <p className="text-neutral-600">
           Here's an overview of your consigned items and their current status.
         </p>

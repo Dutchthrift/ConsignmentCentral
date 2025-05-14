@@ -30,6 +30,7 @@ type RegisterData = {
   email: string;
   password: string;
   role: string;
+  provider?: string;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);

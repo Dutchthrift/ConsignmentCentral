@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useRoute } from "wouter";
+import { useRoute } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import { UserRole } from "@shared/schema";
 
 // Import logo
@@ -30,11 +30,10 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function ConsignorLogin() {
-  const [, setLocation] = useLocation();
-  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("login");
   const [match, params] = useRoute("/consignor/login");
   const { toast } = useToast();
+  const { loginMutation, registerMutation } = useAuth();
   
   // Get the error from URL query param
   const urlParams = new URLSearchParams(window.location.search);
@@ -66,71 +65,19 @@ export default function ConsignorLogin() {
     });
   }
   
-  const onLoginSubmit = async (data: LoginFormValues) => {
-    try {
-      setIsLoading(true);
-      
-      const response = await apiRequest("POST", "/api/auth/login", {
-        username: data.email,
-        password: data.password,
-      });
-      
-      if (response.ok) {
-        const userData = await response.json();
-        
-        // Redirect different depending on role
-        if (userData.role === UserRole.CONSIGNOR) {
-          // Redirect to consignor dashboard
-          setLocation("/consignor/dashboard");
-        } else {
-          // If they're an admin, redirect to admin dashboard
-          setLocation("/");
-        }
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Invalid credentials");
-      }
-    } catch (error) {
-      toast({
-        title: "Login Failed",
-        description: error instanceof Error ? error.message : "An error occurred during login",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const onLoginSubmit = (data: LoginFormValues) => {
+    loginMutation.mutate({
+      username: data.email,
+      password: data.password,
+    });
   };
   
-  const onRegisterSubmit = async (data: RegisterFormValues) => {
-    try {
-      setIsLoading(true);
-      
-      const response = await apiRequest("POST", "/api/auth/register", {
-        ...data,
-        role: UserRole.CONSIGNOR,  // Force consignor role
-        provider: "local",
-      });
-      
-      if (response.ok) {
-        // Registration successful, now log the user in
-        setLocation("/consignor/dashboard");
-        toast({
-          title: "Registration Successful",
-          description: "Your account has been created.",
-        });
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Registration failed");
-      }
-    } catch (error) {
-      toast({
-        title: "Registration Failed",
-        description: error instanceof Error ? error.message : "An error occurred during registration",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const onRegisterSubmit = (data: RegisterFormValues) => {
+    registerMutation.mutate({
+      ...data,
+      role: UserRole.CONSIGNOR,  // Force consignor role
+      provider: "local",
+    });
   };
   
   return (
@@ -195,8 +142,8 @@ export default function ConsignorLogin() {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full" disabled={isLoading}>
-                        {isLoading ? "Logging in..." : "Login"}
+                      <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+                        {loginMutation.isPending ? "Logging in..." : "Login"}
                       </Button>
                     </form>
                   </Form>
@@ -285,8 +232,8 @@ export default function ConsignorLogin() {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full" disabled={isLoading}>
-                        {isLoading ? "Creating account..." : "Create account"}
+                      <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+                        {registerMutation.isPending ? "Creating account..." : "Create account"}
                       </Button>
                     </form>
                   </Form>
