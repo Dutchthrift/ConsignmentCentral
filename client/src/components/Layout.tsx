@@ -16,7 +16,8 @@ import {
   Menu,
   X,
   HelpCircle,
-  Bell
+  Bell,
+  Brain
 } from "lucide-react";
 
 type MenuItem = {
@@ -31,6 +32,7 @@ const menuItems: MenuItem[] = [
   { icon: <Package className="mr-2 h-5 w-5" />, label: "Inventory", path: "/inventory" },
   { icon: <ReceiptText className="mr-2 h-5 w-5" />, label: "Orders", path: "/orders" },
   { icon: <Wallet className="mr-2 h-5 w-5" />, label: "Payouts", path: "/payouts" },
+  { icon: <Brain className="mr-2 h-5 w-5" />, label: "Model Training", path: "/model-training" },
   { icon: <Settings className="mr-2 h-5 w-5" />, label: "Settings", path: "/settings" },
 ];
 
@@ -161,6 +163,7 @@ export default function Layout({ children }: LayoutProps) {
             <h1 className="text-2xl font-medium">
               {location === "/" && "Dashboard"}
               {location === "/intake" && "New Intake"}
+              {location === "/model-training" && "Model Training"}
               {location.includes("/dashboard/") && "Customer Dashboard"}
             </h1>
             <div className="flex items-center">
