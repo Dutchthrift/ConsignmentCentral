@@ -83,7 +83,10 @@ export default function ConsignorLogin() {
   };
   
   return (
-    <div className="flex min-h-screen bg-neutral-50">
+    <div className="flex min-h-screen bg-neutral-50 flex-col md:flex-row">
+      <header className="flex items-center justify-center p-4 bg-white border-b border-neutral-200 md:hidden">
+        <img src={logoPath} alt="Dutch Thrift Logo" className="h-10" />
+      </header>
       {/* Left Side - Form */}
       <div className="flex flex-col w-full items-center justify-center px-6 lg:w-1/2">
         <div className="mx-auto w-full max-w-md space-y-6 py-12">

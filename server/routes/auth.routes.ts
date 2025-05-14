@@ -126,7 +126,7 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     // Log the incoming request for debugging
     console.log('Login attempt:', { email: req.body.email });
     
-    passport.authenticate('local', (err, user, info) => {
+    passport.authenticate('local', (err: Error | null, user: any, info: { message: string }) => {
       if (err) {
         console.error('Auth error:', err);
         return next(err);

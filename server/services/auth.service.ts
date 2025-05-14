@@ -71,7 +71,7 @@ export class AuthService {
     }));
     
     // Serialize user to session
-    passport.serializeUser((user: User, done) => {
+    passport.serializeUser((user: any, done) => {
       done(null, user.id);
     });
 
