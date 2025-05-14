@@ -14,32 +14,42 @@ import Storefront from "@/pages/Storefront";
 import ModelTraining from "@/pages/ModelTraining";
 import Consignors from "@/pages/Consignors";
 import Login from "@/pages/Login";
+import ConsignorLogin from "@/pages/ConsignorLogin";
+import ConsignorDashboard from "@/pages/ConsignorDashboard";
 import Layout from "@/components/Layout";
 import StorefrontLayout from "@/components/StorefrontLayout";
+import ConsignorLayout from "@/components/ConsignorLayout";
 
 function Router() {
   const [location] = useLocation();
   
-  // Check if the current path is a login path
+  // Check path types
   const isLoginPath = location === "/login";
-  
-  // Check if the current path is a storefront path
+  const isConsignorLoginPath = location === "/consignor/login";
   const isStorefrontPath = location.startsWith("/storefront");
+  const isConsignorPath = location.startsWith("/consignor") && !isConsignorLoginPath;
   
-  // If we're on the login page, don't use any layout
-  if (isLoginPath) {
+  // If we're on a login page, don't use any layout
+  if (isLoginPath || isConsignorLoginPath) {
     return (
       <>
         <Toaster />
         <Switch>
           <Route path="/login" component={Login} />
+          <Route path="/consignor/login" component={ConsignorLogin} />
         </Switch>
       </>
     );
   }
   
   // Use different layouts based on path
-  const AppLayout = isStorefrontPath ? StorefrontLayout : Layout;
+  let AppLayout = Layout; // Default admin layout
+  
+  if (isStorefrontPath) {
+    AppLayout = StorefrontLayout;
+  } else if (isConsignorPath) {
+    AppLayout = ConsignorLayout;
+  }
   
   return (
     <AppLayout>
@@ -56,6 +66,13 @@ function Router() {
         <Route path="/model-training" component={ModelTraining} />
         <Route path="/consignors" component={Consignors} />
         <Route path="/dashboard/:customerId" component={Dashboard} />
+        
+        {/* Consignor Dashboard Routes */}
+        <Route path="/consignor/dashboard" component={ConsignorDashboard} />
+        <Route path="/consignor/submit" component={() => <div>Submit New Item</div>} />
+        <Route path="/consignor/items" component={() => <div>My Items</div>} />
+        <Route path="/consignor/payouts" component={() => <div>My Payouts</div>} />
+        <Route path="/consignor/settings" component={() => <div>Account Settings</div>} />
         
         {/* Customer Storefront Routes */}
         <Route path="/storefront" component={Storefront} />

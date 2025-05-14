@@ -1,440 +1,529 @@
-import { useQuery } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, ExternalLink, Check, ChevronDown } from "lucide-react";
-import { format } from "date-fns";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toast } from "@/hooks/use-toast";
+import { formatDistanceToNow } from "date-fns";
 
-interface ItemDetailModalProps {
+type ItemDetailModalProps = {
   referenceId: string;
   onClose: () => void;
-}
+};
 
 export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModalProps) {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("details");
+  const [payoutType, setPayoutType] = useState<string | undefined>(undefined);
+  
   // Fetch item details
-  const { data, isLoading, error, refetch } = useQuery<any>({
-    queryKey: [`/api/items/${referenceId}`],
+  const { data: itemData, isLoading } = useQuery<any>({
+    queryKey: ["/api/items", referenceId],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/items/${referenceId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch item details");
+      }
+      return response.json();
+    },
   });
-
-  const item = data?.data;
   
-  // Define available status options for the item
-  const statusOptions = [
-    "pending",
-    "analyzed", 
-    "shipped", 
-    "received", 
-    "listed", 
-    "sold", 
-    "paid"
-  ];
-  
-  // Handle status update
-  const handleStatusUpdate = async (newStatus: string) => {
-    try {
-      const response = await fetch(`/api/items/${referenceId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+  // Update payout preference mutation
+  const updatePayoutMutation = useMutation({
+    mutationFn: async (payoutType: string) => {
+      const response = await apiRequest(
+        "POST", 
+        `/api/consignor/items/${itemData.data.id}/payout`, 
+        { payoutType }
+      );
       
       if (!response.ok) {
-        throw new Error('Failed to update status');
+        throw new Error("Failed to update payout preference");
       }
       
-      // Refetch the item data to get the updated status
-      await refetch();
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ["/api/items", referenceId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/consignor/dashboard"] });
       
       toast({
-        title: "Status updated",
-        description: `Item status changed to ${newStatus}`,
+        title: "Payout preference updated",
+        description: "Your payout preference has been successfully updated",
       });
-    } catch (error) {
+    },
+    onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to update item status",
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
-      console.error("Error updating status:", error);
+    },
+  });
+  
+  const handleUpdatePayoutType = () => {
+    if (payoutType && itemData?.data?.id) {
+      updatePayoutMutation.mutate(payoutType);
     }
   };
-
-  // Format status for display
+  
+  // Format item status for display
   const formatStatus = (status: string) => {
-    if (!status) return "Unknown";
-    return status.charAt(0).toUpperCase() + status.slice(1);
-  };
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return format(date, "PPP 'at' p");
-    } catch (error) {
-      return dateString;
+    switch (status) {
+      case "pending":
+        return "Pending Intake";
+      case "received":
+        return "Received";
+      case "analyzing":
+        return "Analyzing";
+      case "pricing":
+        return "Pricing";
+      case "approved":
+        return "Approved";
+      case "listed":
+        return "Listed";
+      case "sold":
+        return "Sold";
+      case "paid":
+        return "Paid Out";
+      case "returned":
+        return "Returned";
+      case "rejected":
+        return "Rejected";
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
-
-  // Get status badge
-  const getStatusBadge = (status: string) => {
-    if (!status) {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-gray-100 text-gray-800"
-        >
-          Unknown
-        </Badge>
-      );
+  
+  // Get status badge color based on the item status
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
+      case "received":
+        return "bg-blue-100 text-blue-800 hover:bg-blue-200";
+      case "analyzing":
+        return "bg-indigo-100 text-indigo-800 hover:bg-indigo-200";
+      case "pricing":
+        return "bg-purple-100 text-purple-800 hover:bg-purple-200";
+      case "approved":
+        return "bg-teal-100 text-teal-800 hover:bg-teal-200";
+      case "listed":
+        return "bg-green-100 text-green-800 hover:bg-green-200";
+      case "sold":
+        return "bg-orange-100 text-orange-800 hover:bg-orange-200";
+      case "paid":
+        return "bg-green-100 text-green-800 hover:bg-green-200";
+      case "returned":
+        return "bg-gray-100 text-gray-800 hover:bg-gray-200";
+      case "rejected":
+        return "bg-red-100 text-red-800 hover:bg-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 hover:bg-gray-200";
     }
-    
-    const statusColors: Record<string, string> = {
-      pending: "bg-amber-100 text-amber-800",
-      analyzed: "bg-green-100 text-green-800",
-      shipped: "bg-blue-100 text-blue-800",
-      received: "bg-cyan-100 text-cyan-800",
-      listed: "bg-blue-100 text-blue-800",
-      sold: "bg-purple-100 text-purple-800",
-      paid: "bg-emerald-100 text-emerald-800",
-    };
-
-    return (
-      <Badge
-        variant="outline"
-        className={`${statusColors[status] || "bg-gray-100 text-gray-800"}`}
-      >
-        {formatStatus(status)}
-      </Badge>
-    );
   };
-
+  
+  const item = itemData?.data;
+  
   return (
-    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={!!referenceId} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-medium">Item Details</DialogTitle>
-        </DialogHeader>
-
-        {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-6 w-1/2" />
-            <Skeleton className="h-4 w-1/4" />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-1">
-                <Skeleton className="h-64 w-full rounded-lg" />
-              </div>
-              <div className="md:col-span-2 space-y-4">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="text-center py-8">
-            <p className="text-red-500">Error loading item details</p>
-            <Button variant="outline" onClick={onClose} className="mt-4">
-              Close
-            </Button>
-          </div>
-        ) : item ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1">
-              {item.item && item.item.imageUrl ? (
-                <img
-                  src={item.item.imageUrl}
-                  alt={item.item.title}
-                  className="w-full h-auto rounded-lg object-cover"
-                />
-              ) : (
-                <div className="w-full h-64 bg-neutral-200 rounded-lg flex items-center justify-center text-neutral-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-sm ml-2">No image available</p>
-                </div>
-              )}
-
-              <div className="mt-4 space-y-2">
-                <div className="rounded-lg border border-neutral-200 p-4">
-                  <h3 className="text-sm font-medium mb-2">Customer Information</h3>
-                  <div className="space-y-1 text-sm">
-                    <p>
-                      <span className="text-neutral-500">Name:</span> {item.customer.name}
-                    </p>
-                    <p>
-                      <span className="text-neutral-500">Email:</span> {item.customer.email}
-                    </p>
-                    {item.customer.phone && (
-                      <p>
-                        <span className="text-neutral-500">Phone:</span> {item.customer.phone}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {item.shipping && (
-                  <div className="rounded-lg border border-neutral-200 p-4">
-                    <h3 className="text-sm font-medium mb-2">Shipping Label</h3>
-                    <p className="text-sm text-neutral-600 mb-2">
-                      Label generated on {formatDate(item.shipping.createdAt)}
-                    </p>
-                    <Button
-                      className="flex items-center justify-center w-full"
-                      size="sm"
-                      onClick={() => window.open(item.shipping.labelUrl, '_blank')}
-                    >
-                      <Download className="h-4 w-4 mr-1" /> Download Label
-                    </Button>
-                  </div>
+          <DialogTitle>
+            {isLoading ? (
+              <Skeleton className="h-6 w-64" />
+            ) : (
+              <div className="flex items-center justify-between">
+                <span>{item?.title || "Item Details"}</span>
+                {item?.status && (
+                  <Badge variant="outline" className={getStatusColor(item.status)}>
+                    {formatStatus(item.status)}
+                  </Badge>
                 )}
               </div>
-            </div>
-
-            <div className="md:col-span-2 space-y-4">
-              <div>
-                <div className="flex justify-between">
-                  <h3 className="text-lg font-medium">{item.title}</h3>
-                  {getStatusBadge(item.status)}
-                </div>
-                <div className="flex items-center mt-1">
-                  <span className="text-sm font-medium mr-2">ID:</span>
-                  <Badge variant="outline" className="bg-neutral-100 font-mono text-black">
-                    {item.referenceId || "Unknown"}
-                  </Badge>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h3 className="text-sm font-medium mb-2">Product Description</h3>
-                <p className="text-sm text-neutral-600">{item.description || "No description provided"}</p>
-              </div>
-
-              {item.analysis && (
-                <div>
-                  <Separator />
-                  <h3 className="text-sm font-medium mb-2">AI Analysis Results</h3>
-                  <div className="grid grid-cols-2 gap-4 mb-2">
-                    <div>
-                      <p className="text-xs text-neutral-500">Product Type</p>
-                      <p className="text-sm font-medium">{item.analysis.productType}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-neutral-500">Brand</p>
-                      <p className="text-sm font-medium">{item.analysis.brand}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-neutral-500">Model</p>
-                      <p className="text-sm font-medium">{item.analysis.model}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-neutral-500">Condition</p>
-                      <p className="text-sm font-medium">{item.analysis.condition}</p>
-                    </div>
-                  </div>
-
-                  {item.analysis.accessories && item.analysis.accessories.length > 0 && (
-                    <>
-                      <h4 className="text-xs font-medium mt-3 mb-2">Included Accessories</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {item.analysis.accessories.map((accessory: string, index: number) => (
-                          <Badge key={index} variant="outline" className="bg-neutral-100 text-neutral-800">
-                            {accessory}
-                          </Badge>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {item.analysis.additionalNotes && (
-                    <div className="mt-2">
-                      <h4 className="text-xs font-medium mb-1">Additional Notes</h4>
-                      <p className="text-xs text-neutral-600">{item.analysis.additionalNotes}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {item.pricing && (
-                <div>
-                  <Separator />
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-medium">Market Pricing</h3>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                      eBay Market Data
-                    </Badge>
-                  </div>
-                  
-                  <div className="bg-blue-50/40 rounded-lg p-3 mb-3">
-                    <div className="flex justify-between">
-                      <span className="text-xs font-medium">Average Market Price:</span>
-                      <span className="text-sm font-bold">
-                        €{(item.pricing.estimatedSalePrice || 0).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-primary/10 rounded-lg p-3">
-                      <p className="text-xs font-medium text-primary-700 mb-1">Our Listing Price</p>
-                      <p className="text-lg font-bold text-primary">
-                        €{(item.pricing.estimatedSalePrice || 0).toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="bg-yellow-50 rounded-lg p-3">
-                      <p className="text-xs font-medium text-yellow-800 mb-1">
-                        Consignor Payout <span className="text-yellow-600">({100 - (item.pricing.commissionRate || 35)}%)</span>
-                      </p>
-                      <p className="text-lg font-bold text-yellow-700">
-                        €{(item.pricing.yourPayout || 0).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <Separator />
-                <h3 className="text-sm font-medium mb-2">Timeline</h3>
-                <ol className="relative border-l border-neutral-200 ml-3 space-y-2">
-                  <li className="mb-4 ml-6">
-                    <span className="absolute flex items-center justify-center w-6 h-6 bg-primary rounded-full -left-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white h-3 w-3">
-                        <path d="M5 8h14M5 8a2 2 0 100-4 2 2 0 000 4z" />
-                        <path d="M17 16H9a4 4 0 00-4 4" />
-                        <circle cx="9" cy="10" r="2" />
-                      </svg>
-                    </span>
-                    <h4 className="flex items-center text-sm font-medium">Intake Submitted</h4>
-                    <p className="text-xs text-neutral-500">{formatDate(item.createdAt)}</p>
-                  </li>
-
-                  {item.analysis && (
-                    <li className="mb-4 ml-6">
-                      <span className="absolute flex items-center justify-center w-6 h-6 bg-primary rounded-full -left-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white h-3 w-3">
-                          <circle cx="12" cy="12" r="10" />
-                          <path d="M12 16v-4M12 8h.01" />
-                        </svg>
-                      </span>
-                      <h4 className="flex items-center text-sm font-medium">AI Analysis Completed</h4>
-                      <p className="text-xs text-neutral-500">{formatDate(item.analysis.createdAt)}</p>
-                    </li>
-                  )}
-
-                  {item.shipping && (
-                    <li className="mb-4 ml-6">
-                      <span className="absolute flex items-center justify-center w-6 h-6 bg-primary rounded-full -left-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white h-3 w-3">
-                          <rect width="16" height="13" x="4" y="5" rx="2" />
-                          <path d="M16 2v4M8 2v4M3 10h19" />
-                        </svg>
-                      </span>
-                      <h4 className="flex items-center text-sm font-medium">Shipping Label Generated</h4>
-                      <p className="text-xs text-neutral-500">{formatDate(item.shipping.createdAt)}</p>
-                    </li>
-                  )}
-
-                  {item.status !== "sold" && item.status !== "paid" && (
-                    <li className="ml-6">
-                      <span className="absolute flex items-center justify-center w-6 h-6 bg-neutral-200 rounded-full -left-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-500 h-3 w-3">
-                          <circle cx="8" cy="21" r="1" />
-                          <circle cx="19" cy="21" r="1" />
-                          <path d="M2.05 2.05h2l2.66 12.42a2 2 0 002 1.58h9.78a2 2 0 001.95-1.57l1.65-7.43H5.12" />
-                        </svg>
-                      </span>
-                      <h4 className="flex items-center text-sm font-medium text-neutral-500">
-                        {item.status === "listed"
-                          ? "Awaiting Sale"
-                          : "Awaiting Next Step"}
-                      </h4>
-                      <p className="text-xs text-neutral-500">Pending</p>
-                    </li>
-                  )}
-
-                  {(item.status === "sold" || item.status === "paid") && (
-                    <li className="ml-6">
-                      <span className="absolute flex items-center justify-center w-6 h-6 bg-purple-500 rounded-full -left-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white h-3 w-3">
-                          <circle cx="8" cy="21" r="1" />
-                          <circle cx="19" cy="21" r="1" />
-                          <path d="M2.05 2.05h2l2.66 12.42a2 2 0 002 1.58h9.78a2 2 0 001.95-1.57l1.65-7.43H5.12" />
-                        </svg>
-                      </span>
-                      <h4 className="flex items-center text-sm font-medium">Item Sold</h4>
-                      <p className="text-xs text-neutral-500">
-                        {item.status === "paid"
-                          ? "Payment Complete"
-                          : "Awaiting Payout"}
-                      </p>
-                    </li>
-                  )}
-                </ol>
-              </div>
-
-              <div className="flex justify-between">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="border-amber-500 text-amber-600 hover:bg-amber-50 flex items-center gap-1"
-                    >
-                      Update Status <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    {statusOptions.map((status) => (
-                      <DropdownMenuItem 
-                        key={status}
-                        className="flex items-center gap-2 capitalize cursor-pointer"
-                        onClick={() => handleStatusUpdate(status)}
-                      >
-                        {item?.item?.status === status && (
-                          <Check className="h-4 w-4 text-green-500" />
-                        )}
-                        <span className={item?.item?.status === status ? "font-medium" : ""}>
-                          {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button 
-                  className="flex items-center bg-[#96bf48] hover:bg-[#7aa93c]" 
-                  size="sm"
-                  onClick={() => {
-                    // In a real implementation, this would link to the Shopify product
-                    window.open(`https://admin.shopify.com/store/dutchthrift/products`, '_blank');
-                  }}
-                >
-                  <ExternalLink className="h-4 w-4 mr-1" /> View in Shopify
-                </Button>
-              </div>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+        
+        {isLoading ? (
+          <div className="space-y-4 py-4">
+            <Skeleton className="h-40 w-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
             </div>
           </div>
         ) : (
-          <div className="text-center py-8">
-            <p>No item found with ID: {referenceId}</p>
-            <Button variant="outline" onClick={onClose} className="mt-4">
-              Close
-            </Button>
-          </div>
+          <>
+            <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid grid-cols-4 mb-4">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="pricing">Pricing</TabsTrigger>
+                <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                <TabsTrigger value="shipping">Shipping</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details" className="space-y-4">
+                {/* Image and basic details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="aspect-square rounded-md overflow-hidden border">
+                    {item?.imageUrl ? (
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.title} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-neutral-100 flex items-center justify-center">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="64"
+                          height="64"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="text-neutral-400"
+                        >
+                          <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
+                          <circle cx="9" cy="9" r="2"></circle>
+                          <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-medium">{item?.title}</h3>
+                      <p className="text-sm text-neutral-500">{item?.referenceId}</p>
+                      <p className="text-sm mt-2">{item?.description}</p>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-neutral-500">Brand</p>
+                        <p className="font-medium">{item?.brand || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-500">Category</p>
+                        <p className="font-medium">{item?.category || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-500">Condition</p>
+                        <p className="font-medium">{item?.condition || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-500">Size</p>
+                        <p className="font-medium">{item?.size || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-500">Color</p>
+                        <p className="font-medium">{item?.color || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-500">Material</p>
+                        <p className="font-medium">{item?.material || "—"}</p>
+                      </div>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="text-sm">
+                      <p className="text-neutral-500">Received on</p>
+                      <p className="font-medium">
+                        {item?.createdAt 
+                          ? new Date(item.createdAt).toLocaleDateString() + " (" + 
+                            formatDistanceToNow(new Date(item.createdAt), { addSuffix: true }) + ")"
+                          : "—"
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="pricing" className="space-y-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Pricing Information</CardTitle>
+                    <CardDescription>
+                      Details about pricing, commission, and payout
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Selling and payout information */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-neutral-500">Estimated Market Value</p>
+                          <p className="text-xl font-medium">
+                            {item?.pricing?.averageMarketPrice 
+                              ? `€${(item.pricing.averageMarketPrice / 100).toFixed(2)}`
+                              : "Pending Analysis"
+                            }
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm text-neutral-500">Suggested Listing Price</p>
+                          <p className="text-xl font-medium">
+                            {item?.pricing?.suggestedListingPrice 
+                              ? `€${(item.pricing.suggestedListingPrice / 100).toFixed(2)}`
+                              : "Pending"
+                            }
+                          </p>
+                        </div>
+                        
+                        {item?.status === "sold" && (
+                          <div>
+                            <p className="text-sm text-neutral-500">Final Sale Price</p>
+                            <p className="text-xl font-medium">
+                              {item?.pricing?.finalSalePrice 
+                                ? `€${(item.pricing.finalSalePrice / 100).toFixed(2)}`
+                                : "—"
+                              }
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-neutral-500">Commission Rate</p>
+                          <p className="text-xl font-medium">
+                            {item?.pricing?.commissionRate
+                              ? `${item.pricing.commissionRate}%`
+                              : "Pending"
+                            }
+                          </p>
+                          <p className="text-xs text-neutral-500 mt-1">
+                            Based on a sliding scale: 25-40% depending on item value
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm text-neutral-500">Estimated Payout</p>
+                          <p className="text-xl font-medium">
+                            {item?.pricing?.suggestedPayout
+                              ? `€${(item.pricing.suggestedPayout / 100).toFixed(2)}`
+                              : "Pending"
+                            }
+                          </p>
+                        </div>
+                        
+                        {(item?.status === "sold" || item?.status === "paid") && (
+                          <div>
+                            <p className="text-sm text-neutral-500">Final Payout</p>
+                            <p className="text-xl font-medium">
+                              {item?.pricing?.finalPayout
+                                ? `€${(item.pricing.finalPayout / 100).toFixed(2)}`
+                                : "—"
+                              }
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <Separator />
+                    
+                    {/* Payout preference selector - only enabled for sold items not yet paid out */}
+                    <div>
+                      <p className="text-sm font-medium mb-2">Payout Preference</p>
+                      
+                      <div className="flex gap-4 items-end">
+                        <div className="flex-1">
+                          <p className="text-sm text-neutral-500 mb-2">
+                            Choose how you'd like to receive your payment when this item sells
+                          </p>
+                          <Select
+                            disabled={
+                              item?.status !== "sold" ||
+                              item?.status === "paid" ||
+                              updatePayoutMutation.isPending
+                            }
+                            value={payoutType || item?.pricing?.payoutType || "cash"}
+                            onValueChange={setPayoutType}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select payout method" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="cash">Cash Payout</SelectItem>
+                              <SelectItem value="storeCredit">
+                                Store Credit (+10% bonus)
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <Button
+                          disabled={
+                            !payoutType ||
+                            item?.status !== "sold" ||
+                            item?.status === "paid" ||
+                            payoutType === item?.pricing?.payoutType ||
+                            updatePayoutMutation.isPending
+                          }
+                          onClick={handleUpdatePayoutType}
+                        >
+                          {updatePayoutMutation.isPending
+                            ? "Updating..."
+                            : "Update Preference"
+                          }
+                        </Button>
+                      </div>
+                      
+                      {payoutType === "storeCredit" && (
+                        <p className="text-sm text-green-600 mt-2">
+                          +10% bonus: You'll receive €
+                          {item?.pricing?.finalPayout
+                            ? ((item.pricing.finalPayout * 1.1) / 100).toFixed(2)
+                            : "0.00"
+                          } in store credit
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="timeline" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Status Timeline</CardTitle>
+                    <CardDescription>
+                      Track the progress of your item
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Status timeline - simplified version */}
+                    <div className="relative pl-6 space-y-6 py-2">
+                      <div className="absolute top-0 bottom-0 left-2 border-l-2 border-neutral-200"></div>
+                      
+                      {item?.statusHistory?.length ? (
+                        item.statusHistory
+                          .sort((a: any, b: any) => 
+                            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                          )
+                          .map((statusItem: any, index: number) => (
+                            <div key={index} className="relative">
+                              <div className="absolute -left-6 top-0 flex items-center justify-center">
+                                <div className={`w-4 h-4 rounded-full ${index === 0 ? 'bg-primary' : 'bg-neutral-300'}`}></div>
+                              </div>
+                              <div>
+                                <p className="font-medium">
+                                  {formatStatus(statusItem.status)}
+                                </p>
+                                <p className="text-sm text-neutral-500">
+                                  {new Date(statusItem.createdAt).toLocaleDateString()} at {new Date(statusItem.createdAt).toLocaleTimeString()}
+                                </p>
+                                {statusItem.note && (
+                                  <p className="text-sm mt-1 bg-neutral-50 p-2 rounded-md">
+                                    {statusItem.note}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                      ) : (
+                        <p className="text-neutral-500">No status updates available</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="shipping" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Shipping Information</CardTitle>
+                    <CardDescription>
+                      Details about shipping and handling
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {item?.shipping ? (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-neutral-500">Shipping Provider</p>
+                            <p className="font-medium">
+                              {item.shipping.provider || "Not assigned"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-neutral-500">Tracking Number</p>
+                            <p className="font-medium">
+                              {item.shipping.trackingNumber || "Not available"}
+                            </p>
+                          </div>
+                          {item.shipping.trackingUrl && (
+                            <div className="md:col-span-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(item.shipping.trackingUrl, "_blank")}
+                              >
+                                Track Package
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div>
+                          <p className="text-sm text-neutral-500 mb-2">Shipping Address</p>
+                          {item.shipping.shippingAddress ? (
+                            <div className="text-sm">
+                              <p>{item.shipping.shippingAddress.name}</p>
+                              <p>{item.shipping.shippingAddress.streetAddress}</p>
+                              <p>
+                                {item.shipping.shippingAddress.postalCode}{" "}
+                                {item.shipping.shippingAddress.city}
+                              </p>
+                              <p>{item.shipping.shippingAddress.country}</p>
+                            </div>
+                          ) : (
+                            <p className="text-neutral-500">
+                              No shipping address available yet
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="py-8 text-center">
+                        <p className="text-neutral-500">
+                          Shipping information will be available once the item is ready to ship.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </>
         )}
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
