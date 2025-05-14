@@ -378,4 +378,136 @@ export class DatabaseStorage implements IStorage {
       itemsPerStatus
     };
   }
+
+  // User methods
+  async getUserById(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getUserByExternalId(externalId: string, provider: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(
+      and(
+        eq(users.externalId, externalId),
+        eq(users.provider, provider)
+      )
+    );
+    return user;
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const [newUser] = await db.insert(users).values(user).returning();
+    return newUser;
+  }
+
+  async updateUserLastLogin(id: number): Promise<User | undefined> {
+    const [updatedUser] = await db.update(users)
+      .set({ lastLogin: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async getUsersByRole(role: string): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, role));
+  }
+
+  async getUserWithCustomer(userId: number): Promise<User & { customer?: Customer } | undefined> {
+    const user = await this.getUserById(userId);
+    if (!user) return undefined;
+
+    if (user.customerId) {
+      const customer = await this.getCustomer(user.customerId);
+      if (customer) {
+        return { ...user, customer };
+      }
+    }
+
+    return user;
+  }
+
+  async linkUserToCustomer(userId: number, customerId: number): Promise<User | undefined> {
+    const [updatedUser] = await db.update(users)
+      .set({ customerId })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser;
+  }
+
+  async getAdminStats(): Promise<{
+    totalUsers: number;
+    totalConsignors: number;
+    totalAdmins: number;
+  }> {
+    // Count total users
+    const [totalUsersResult] = await db.select({
+      count: count()
+    }).from(users);
+
+    // Count consignors
+    const [totalConsignorsResult] = await db.select({
+      count: count()
+    })
+    .from(users)
+    .where(eq(users.role, 'consignor'));
+
+    // Count admins
+    const [totalAdminsResult] = await db.select({
+      count: count()
+    })
+    .from(users)
+    .where(eq(users.role, 'admin'));
+
+    return {
+      totalUsers: Number(totalUsersResult.count),
+      totalConsignors: Number(totalConsignorsResult.count),
+      totalAdmins: Number(totalAdminsResult.count)
+    };
+  }
+
+  async getConsignorDetails(userId: number): Promise<{
+    user: User;
+    customer?: Customer;
+    stats: {
+      totalItems: number;
+      totalSales: number;
+      itemsPerStatus: Record<string, number>;
+    };
+    items: ItemWithDetails[];
+  } | undefined> {
+    const user = await this.getUserById(userId);
+    if (!user) return undefined;
+
+    let customer: Customer | undefined;
+    let stats = {
+      totalItems: 0,
+      totalSales: 0,
+      itemsPerStatus: {}
+    };
+    let itemsList: ItemWithDetails[] = [];
+
+    if (user.customerId) {
+      customer = await this.getCustomer(user.customerId);
+      if (customer) {
+        stats = await this.getConsignorStats(customer.id);
+        itemsList = await this.getItemsWithDetailsByCustomerId(customer.id);
+      }
+    }
+
+    return {
+      user,
+      customer,
+      stats,
+      items: itemsList
+    };
+  }
 }

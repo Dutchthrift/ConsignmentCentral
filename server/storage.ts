@@ -8,7 +8,8 @@ import {
   DashboardStats,
   MlTrainingExample, InsertMlTrainingExample,
   MlModelConfig, InsertMlModelConfig,
-  MlTrainingSession, InsertMlTrainingSession
+  MlTrainingSession, InsertMlTrainingSession,
+  User, InsertUser
 } from "@shared/schema";
 
 // Storage interface
@@ -77,6 +78,32 @@ export interface IStorage {
     totalSales: number;
     itemsPerStatus: Record<string, number>;
   }>;
+
+  // User methods
+  getUserById(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByExternalId(externalId: string, provider: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUserLastLogin(id: number): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
+  getUsersByRole(role: string): Promise<User[]>;
+  getUserWithCustomer(userId: number): Promise<User & { customer?: Customer } | undefined>;
+  linkUserToCustomer(userId: number, customerId: number): Promise<User | undefined>;
+  getAdminStats(): Promise<{
+    totalUsers: number;
+    totalConsignors: number;
+    totalAdmins: number;
+  }>;
+  getConsignorDetails(userId: number): Promise<{
+    user: User;
+    customer?: Customer;
+    stats: {
+      totalItems: number;
+      totalSales: number;
+      itemsPerStatus: Record<string, number>;
+    };
+    items: ItemWithDetails[];
+  } | undefined>;
 }
 
 // Memory Storage implementation
@@ -89,6 +116,7 @@ export class MemStorage implements IStorage {
   private mlTrainingExamples: Map<number, MlTrainingExample>;
   private mlModelConfigs: Map<number, MlModelConfig>;
   private mlTrainingSessions: Map<number, MlTrainingSession>;
+  private users: Map<number, User>;
   
   private customerIdCounter: number;
   private itemIdCounter: number;
@@ -98,6 +126,7 @@ export class MemStorage implements IStorage {
   private mlTrainingExampleIdCounter: number;
   private mlModelConfigIdCounter: number;
   private mlTrainingSessionIdCounter: number;
+  private userIdCounter: number;
   
   constructor() {
     this.customers = new Map();
@@ -108,6 +137,7 @@ export class MemStorage implements IStorage {
     this.mlTrainingExamples = new Map();
     this.mlModelConfigs = new Map();
     this.mlTrainingSessions = new Map();
+    this.users = new Map();
     
     this.customerIdCounter = 1;
     this.itemIdCounter = 1;
@@ -117,6 +147,7 @@ export class MemStorage implements IStorage {
     this.mlTrainingExampleIdCounter = 1;
     this.mlModelConfigIdCounter = 1;
     this.mlTrainingSessionIdCounter = 1;
+    this.userIdCounter = 1;
   }
   
   // Customer methods
@@ -434,6 +465,134 @@ export class MemStorage implements IStorage {
     };
     this.mlTrainingSessions.set(id, updatedSession);
     return updatedSession;
+  }
+
+  // User methods
+  async getUserById(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email === email
+    );
+  }
+
+  async getUserByExternalId(externalId: string, provider: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.externalId === externalId && user.provider === provider
+    );
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const id = this.userIdCounter++;
+    const newUser: User = {
+      ...user,
+      id,
+      createdAt: new Date(),
+      lastLogin: new Date()
+    };
+    this.users.set(id, newUser);
+    return newUser;
+  }
+
+  async updateUserLastLogin(id: number): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    const updatedUser: User = {
+      ...user,
+      lastLogin: new Date()
+    };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async getUsersByRole(role: string): Promise<User[]> {
+    return Array.from(this.users.values()).filter(
+      (user) => user.role === role
+    );
+  }
+
+  async getUserWithCustomer(userId: number): Promise<User & { customer?: Customer } | undefined> {
+    const user = await this.getUserById(userId);
+    if (!user) return undefined;
+
+    if (user.customerId) {
+      const customer = await this.getCustomer(user.customerId);
+      if (customer) {
+        return { ...user, customer };
+      }
+    }
+
+    return user;
+  }
+
+  async linkUserToCustomer(userId: number, customerId: number): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    
+    const updatedUser: User = {
+      ...user,
+      customerId
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async getAdminStats(): Promise<{
+    totalUsers: number;
+    totalConsignors: number;
+    totalAdmins: number;
+  }> {
+    const allUsers = Array.from(this.users.values());
+    
+    return {
+      totalUsers: allUsers.length,
+      totalConsignors: allUsers.filter(user => user.role === 'consignor').length,
+      totalAdmins: allUsers.filter(user => user.role === 'admin').length
+    };
+  }
+
+  async getConsignorDetails(userId: number): Promise<{
+    user: User;
+    customer?: Customer;
+    stats: {
+      totalItems: number;
+      totalSales: number;
+      itemsPerStatus: Record<string, number>;
+    };
+    items: ItemWithDetails[];
+  } | undefined> {
+    const user = await this.getUserById(userId);
+    if (!user) return undefined;
+
+    let customer: Customer | undefined;
+    let stats = {
+      totalItems: 0,
+      totalSales: 0,
+      itemsPerStatus: {}
+    };
+    let itemsList: ItemWithDetails[] = [];
+
+    if (user.customerId) {
+      customer = await this.getCustomer(user.customerId);
+      if (customer) {
+        stats = await this.getConsignorStats(customer.id);
+        itemsList = await this.getItemsWithDetailsByCustomerId(customer.id);
+      }
+    }
+
+    return {
+      user,
+      customer,
+      stats,
+      items: itemsList
+    };
   }
   
   // Composite methods
