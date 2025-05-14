@@ -27,18 +27,21 @@ export class SessionService {
       cookieSecure: isReplit || process.env.NODE_ENV === 'production'
     });
     
+    // Use safer settings for the session store
     this.sessionOptions = {
       store: this.pgSession,
       secret: process.env.SESSION_SECRET || 'dutch-thrift-consignment-secret',
       resave: false,
-      saveUninitialized: false,
+      saveUninitialized: true, // Changed to true to ensure session ID is always assigned
+      rolling: true, // Extend session lifetime on each request
       name: 'dutchthrift.sid', // Custom name to avoid conflicts
       proxy: isReplit, // Trust the proxy in Replit environment
       cookie: {
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         secure: false, // Set to false in development for simpler testing
         httpOnly: true,
-        sameSite: 'lax'
+        sameSite: 'lax',
+        path: '/'
       }
     };
   }

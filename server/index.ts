@@ -40,12 +40,31 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  // Improved global error handler
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    // If response is already sent, pass to next error handler
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    // Better error details with stack in development
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
+    
+    // Log the error for server-side debugging
+    console.error(`[ERROR] ${req.method} ${req.path}:`, {
+      status,
+      message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
 
-    res.status(status).json({ message });
-    throw err;
+    // Send appropriate response to client
+    res.status(status).json({
+      success: false,
+      message,
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    });
   });
 
   // importantly only setup vite in development and after
