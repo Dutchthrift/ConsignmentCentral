@@ -85,6 +85,7 @@ export interface IStorage {
   getUserByExternalId(externalId: string, provider: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserLastLogin(id: number): Promise<User | undefined>;
+  updateUserExternalId(id: number, externalId: string, provider: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
   getUsersByRole(role: string): Promise<User[]>;
   getUserWithCustomer(userId: number): Promise<User & { customer?: Customer } | undefined>;
@@ -503,6 +504,19 @@ export class MemStorage implements IStorage {
     const updatedUser: User = {
       ...user,
       lastLogin: new Date()
+    };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async updateUserExternalId(id: number, externalId: string, provider: string): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    const updatedUser: User = {
+      ...user,
+      externalId,
+      provider
     };
     this.users.set(id, updatedUser);
     return updatedUser;

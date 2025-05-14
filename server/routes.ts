@@ -15,6 +15,8 @@ import { ZodError } from "zod";
 import { generateShippingLabel } from "./services/sendcloud.service";
 import { analyzeProduct } from "./services/openai.service";
 import { getMarketPricing, calculatePricing } from "./services/ebay.service";
+import { configureSession } from "./services/session.service";
+import { registerAuthRoutes } from "./routes/auth.routes";
 
 // Import route handlers
 import adminRoutes from "./routes/admin";
@@ -46,6 +48,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       message: "Internal server error" 
     });
   };
+
+  // Configure session handling
+  configureSession(app);
+  
+  // Register authentication routes
+  const authService = registerAuthRoutes(app, storage);
 
   // ===== API Routes =====
   

@@ -413,6 +413,14 @@ export class DatabaseStorage implements IStorage {
     return updatedUser;
   }
 
+  async updateUserExternalId(id: number, externalId: string, provider: string): Promise<User | undefined> {
+    const [updatedUser] = await db.update(users)
+      .set({ externalId, provider })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
   }
