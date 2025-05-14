@@ -167,6 +167,12 @@ function Router() {
         {/* Customer Storefront Routes */}
         <Route path="/storefront" component={Storefront} />
         
+        {/* System Health Check - publicly accessible */}
+        <Route path="/system-health" component={() => {
+          const SystemHealth = require("./pages/SystemHealth").default;
+          return <SystemHealth />;
+        }} />
+        
         {/* 404 Page */}
         <Route component={NotFound} />
       </Switch>
