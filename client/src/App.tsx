@@ -12,6 +12,7 @@ import Payouts from "@/pages/Payouts";
 import Settings from "@/pages/Settings";
 import Storefront from "@/pages/Storefront";
 import ModelTraining from "@/pages/ModelTraining";
+import Consignors from "@/pages/Consignors";
 import Login from "@/pages/Login";
 import Layout from "@/components/Layout";
 import StorefrontLayout from "@/components/StorefrontLayout";
@@ -53,6 +54,7 @@ function Router() {
         <Route path="/payouts" component={Payouts} />
         <Route path="/settings" component={Settings} />
         <Route path="/model-training" component={ModelTraining} />
+        <Route path="/consignors" component={Consignors} />
         <Route path="/dashboard/:customerId" component={Dashboard} />
         
         {/* Customer Storefront Routes */}
