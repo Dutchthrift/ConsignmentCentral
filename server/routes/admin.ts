@@ -108,7 +108,7 @@ router.get("/commission-calculator", (req: Request, res: Response) => {
   }
 });
 
-import { Item } from "@shared/schema";
+
 
 // GET /api/admin/consignors - list all consignors
 router.get("/consignors", async (req: Request, res: Response) => {
@@ -198,6 +198,7 @@ router.get("/consignors/:id", async (req: Request, res: Response) => {
     
     // Format the data for the dashboard
     const formattedItems = items.map((item) => {
+      // Create a safe accessor with defaults for pricing properties
       const pricing = item.pricing || { suggestedListingPrice: 0, commissionRate: 0 };
       
       return {
@@ -209,15 +210,16 @@ router.get("/consignors/:id", async (req: Request, res: Response) => {
         createdAt: item.createdAt,
         estimatedPrice: pricing.suggestedListingPrice ? pricing.suggestedListingPrice / 100 : undefined,
         commissionRate: pricing.commissionRate,
-        payoutAmount: pricing.finalPayout ? pricing.finalPayout / 100 : undefined,
-        payoutType: pricing.payoutType,
-        finalSalePrice: pricing.finalSalePrice ? pricing.finalSalePrice / 100 : undefined,
+        // Optional properties that might not exist in basic pricing object
+        payoutAmount: 'finalPayout' in pricing && pricing.finalPayout ? pricing.finalPayout / 100 : undefined,
+        payoutType: 'payoutType' in pricing ? pricing.payoutType : undefined,
+        finalSalePrice: 'finalSalePrice' in pricing && pricing.finalSalePrice ? pricing.finalSalePrice / 100 : undefined,
       };
     });
     
     // Calculate total sales
     const totalSales = items.reduce((sum, item) => {
-      if (item.pricing && item.pricing.finalSalePrice) {
+      if (item.pricing && 'finalSalePrice' in item.pricing && item.pricing.finalSalePrice) {
         return sum + item.pricing.finalSalePrice / 100;
       }
       return sum;
@@ -227,11 +229,16 @@ router.get("/consignors/:id", async (req: Request, res: Response) => {
       success: true,
       data: {
         consignor: {
-          id: customer.id,
-          name: customer.name,
-          email: customer.email,
+          id: user.id,
+          name: user.name,
+          email: user.email,
           totalItems: items.length,
           totalSales,
+          // Include customer details if available
+          customerId: customer?.id,
+          customerName: customer?.name,
+          address: customer?.address,
+          phone: customer?.phone,
         },
         items: formattedItems,
       },

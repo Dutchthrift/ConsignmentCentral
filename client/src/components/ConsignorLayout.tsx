@@ -1,202 +1,282 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { Separator } from "@/components/ui/separator";
+import { UserRound, Package, BarChart3, Settings, LogOut, History, CreditCard } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
-// Import logo
-import logoPath from "../assets/logo.png";
-
-// Icons
-import {
-  LayoutDashboard,
-  PackagePlus,
-  ShoppingBag,
-  Wallet,
-  LogOut,
-  Menu,
-  X,
-  HelpCircle,
-  Bell,
-  User,
-  Settings,
-} from "lucide-react";
-
-type MenuItem = {
-  icon: React.ReactNode;
-  label: string;
-  path: string;
-};
-
-const menuItems: MenuItem[] = [
-  { icon: <LayoutDashboard className="mr-2 h-5 w-5" />, label: "Dashboard", path: "/consignor/dashboard" },
-  { icon: <PackagePlus className="mr-2 h-5 w-5" />, label: "Submit Item", path: "/consignor/submit" },
-  { icon: <ShoppingBag className="mr-2 h-5 w-5" />, label: "My Items", path: "/consignor/items" },
-  { icon: <Wallet className="mr-2 h-5 w-5" />, label: "Payouts", path: "/consignor/payouts" },
-  { icon: <Settings className="mr-2 h-5 w-5" />, label: "Settings", path: "/consignor/settings" },
-];
-
-type LayoutProps = {
+interface ConsignorLayoutProps {
   children: React.ReactNode;
-};
+}
 
-export default function ConsignorLayout({ children }: LayoutProps) {
+export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
   const [location] = useLocation();
-  const isMobile = useIsMobile();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // Get user data from the auth hook
   const { user, logoutMutation } = useAuth();
+  const { toast } = useToast();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
-  
-  const handleLogout = () => {
-    logoutMutation.mutate();
+  const handleLogout = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar - Desktop */}
-      <aside className="bg-primary text-white w-64 flex-shrink-0 hidden md:flex flex-col">
-        <div className="p-4 flex flex-col items-center justify-center border-b border-primary-dark/30">
-          <img src={logoPath} alt="Dutch Thrift Logo" className="h-16 mb-2" />
-          <h1 className="text-xl font-medium text-center">Consignor Portal</h1>
+    <div className="flex min-h-screen bg-neutral-50">
+      {/* Sidebar - hidden on mobile, visible on desktop */}
+      <aside className="hidden md:flex md:w-64 flex-col bg-white border-r border-neutral-200 p-4">
+        <div className="mb-8 flex items-center gap-3 px-2">
+          <img 
+            src="/assets/logo.svg" 
+            alt="Dutch Thrift" 
+            className="h-8 w-auto"
+          />
+          <h1 className="font-bold text-lg">Dutch Thrift</h1>
         </div>
         
-        <nav className="mt-4 flex-1">
-          <ul>
-            {menuItems.map((item, index) => (
-              <li key={index}>
-                <Link 
-                  href={item.path}
-                  className={`flex items-center px-4 py-3 ${
-                    location === item.path
-                      ? "bg-primary-dark hover:bg-primary-dark text-white"
-                      : "hover:bg-primary-dark/50"
-                  }`}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <div className="mb-6 px-2">
+          <div className="flex items-center gap-3 mb-3">
+            <Avatar>
+              <AvatarImage src={user?.profileImageUrl || ""} />
+              <AvatarFallback className="bg-primary text-white">
+                {user?.name?.charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-medium">{user?.name}</p>
+              <p className="text-sm text-neutral-500">{user?.email}</p>
+            </div>
+          </div>
+        </div>
+        
+        <nav className="space-y-1 flex-1">
+          <Button
+            variant={location === "/consignor" ? "default" : "ghost"}
+            size="sm"
+            className="w-full justify-start"
+            asChild
+          >
+            <Link to="/consignor">
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Dashboard
+            </Link>
+          </Button>
+          
+          <Button
+            variant={location === "/consignor/items" ? "default" : "ghost"}
+            size="sm"
+            className="w-full justify-start"
+            asChild
+          >
+            <Link to="/consignor/items">
+              <Package className="mr-2 h-4 w-4" />
+              My Items
+            </Link>
+          </Button>
+          
+          <Button
+            variant={location === "/consignor/history" ? "default" : "ghost"}
+            size="sm"
+            className="w-full justify-start"
+            asChild
+          >
+            <Link to="/consignor/history">
+              <History className="mr-2 h-4 w-4" />
+              Sales History
+            </Link>
+          </Button>
+          
+          <Button
+            variant={location === "/consignor/payouts" ? "default" : "ghost"}
+            size="sm"
+            className="w-full justify-start"
+            asChild
+          >
+            <Link to="/consignor/payouts">
+              <CreditCard className="mr-2 h-4 w-4" />
+              Payouts
+            </Link>
+          </Button>
+          
+          <Button
+            variant={location === "/consignor/profile" ? "default" : "ghost"}
+            size="sm"
+            className="w-full justify-start"
+            asChild
+          >
+            <Link to="/consignor/profile">
+              <UserRound className="mr-2 h-4 w-4" />
+              Profile
+            </Link>
+          </Button>
+          
+          <Button
+            variant={location === "/consignor/settings" ? "default" : "ghost"}
+            size="sm"
+            className="w-full justify-start"
+            asChild
+          >
+            <Link to="/consignor/settings">
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </Link>
+          </Button>
         </nav>
         
-        <div className="p-4 border-t border-primary-dark/30">
-          <button 
+        <div className="mt-auto pt-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-neutral-700"
             onClick={handleLogout}
-            className="flex items-center text-white hover:text-gray-200 w-full px-4 py-2 rounded-md hover:bg-primary-dark/50"
           >
-            <LogOut className="mr-2 h-5 w-5" />
-            <span>Logout</span>
-          </button>
-          
-          <Separator className="my-4 bg-primary-dark/30" />
-          
-          <div className="flex items-center">
-            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-              <User className="h-4 w-4 text-primary" />
-            </div>
-            <div className="ml-2">
-              <p className="text-sm font-medium">{user?.name || "Consignor"}</p>
-              <p className="text-xs text-white/70">{user?.email || ""}</p>
-            </div>
-          </div>
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
         </div>
       </aside>
-
-      {/* Mobile header */}
-      <div className="md:hidden bg-primary text-white w-full h-16 fixed top-0 left-0 z-10 flex items-center justify-between px-4">
-        <div className="flex items-center">
-          <button onClick={toggleMobileMenu} className="mr-2">
-            <Menu className="h-6 w-6" />
-          </button>
-          <h1 className="text-lg font-medium">Consignor Portal</h1>
+      
+      {/* Mobile nav */}
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-neutral-200 z-10">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-2">
+            <img src="/assets/logo.svg" alt="Dutch Thrift" className="h-6 w-auto" />
+            <span className="font-bold">Dutch Thrift</span>
+          </div>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              className="h-6 w-6"
+            >
+              {isMenuOpen ? (
+                <path d="M18 6 6 18M6 6l12 12"/>
+              ) : (
+                <path d="M4 12h16M4 6h16M4 18h16"/>
+              )}
+            </svg>
+          </Button>
         </div>
-        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-          <User className="h-4 w-4 text-primary" />
-        </div>
-      </div>
-
-      {/* Mobile sidebar */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-20 bg-black bg-opacity-50 md:hidden">
-          <div className="bg-primary text-white w-64 h-full overflow-y-auto">
-            <div className="p-4 flex items-center justify-between border-b border-primary-dark/30">
-              <div className="flex items-center">
-                <img src={logoPath} alt="Dutch Thrift Logo" className="h-8 mr-2" />
-                <h1 className="text-lg font-medium">Consignor Portal</h1>
-              </div>
-              <button onClick={toggleMobileMenu}>
-                <X className="h-6 w-6" />
-              </button>
-            </div>
+        
+        {isMenuOpen && (
+          <nav className="p-4 bg-white border-b border-neutral-200 space-y-2">
+            <Button
+              variant={location === "/consignor" ? "default" : "ghost"}
+              size="sm"
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/consignor" onClick={() => setIsMenuOpen(false)}>
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Dashboard
+              </Link>
+            </Button>
             
-            <nav className="mt-4">
-              <ul>
-                {menuItems.map((item, index) => (
-                  <li key={index}>
-                    <Link 
-                      href={item.path}
-                      className={`flex items-center px-4 py-3 ${
-                        location === item.path
-                          ? "bg-primary-dark hover:bg-primary-dark text-white"
-                          : "hover:bg-primary-dark/50"
-                      }`}
-                      onClick={toggleMobileMenu}
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              
-              <Separator className="my-4 bg-primary-dark/30" />
-              
-              <button 
-                onClick={handleLogout}
-                className="flex items-center text-white hover:text-gray-200 w-full px-4 py-3"
-              >
-                <LogOut className="mr-2 h-5 w-5" />
-                <span>Logout</span>
-              </button>
-            </nav>
-          </div>
-        </div>
-      )}
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white shadow-sm hidden md:block">
-          <div className="px-6 py-4 flex items-center justify-between">
-            <h1 className="text-2xl font-medium">
-              {location === "/consignor/dashboard" && "Dashboard"}
-              {location === "/consignor/submit" && "Submit New Item"}
-              {location === "/consignor/items" && "My Items"}
-              {location === "/consignor/payouts" && "Payouts"}
-              {location === "/consignor/settings" && "Settings"}
-            </h1>
-            <div className="flex items-center">
-              <div className="mr-4 relative">
-                <Bell className="h-5 w-5 text-neutral-600" />
-                <span className="absolute top-0 right-0 w-2 h-2 bg-secondary rounded-full"></span>
-              </div>
-              <div className="mr-4">
-                <HelpCircle className="h-5 w-5 text-neutral-600" />
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Main content container */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 pt-20 md:pt-6">
-          {children}
-        </main>
+            <Button
+              variant={location === "/consignor/items" ? "default" : "ghost"}
+              size="sm"
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/consignor/items" onClick={() => setIsMenuOpen(false)}>
+                <Package className="mr-2 h-4 w-4" />
+                My Items
+              </Link>
+            </Button>
+            
+            <Button
+              variant={location === "/consignor/history" ? "default" : "ghost"}
+              size="sm"
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/consignor/history" onClick={() => setIsMenuOpen(false)}>
+                <History className="mr-2 h-4 w-4" />
+                Sales History
+              </Link>
+            </Button>
+            
+            <Button
+              variant={location === "/consignor/payouts" ? "default" : "ghost"}
+              size="sm"
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/consignor/payouts" onClick={() => setIsMenuOpen(false)}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Payouts
+              </Link>
+            </Button>
+            
+            <Button
+              variant={location === "/consignor/profile" ? "default" : "ghost"}
+              size="sm"
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/consignor/profile" onClick={() => setIsMenuOpen(false)}>
+                <UserRound className="mr-2 h-4 w-4" />
+                Profile
+              </Link>
+            </Button>
+            
+            <Button
+              variant={location === "/consignor/settings" ? "default" : "ghost"}
+              size="sm"
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/consignor/settings" onClick={() => setIsMenuOpen(false)}>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </Link>
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-neutral-700"
+              onClick={() => {
+                handleLogout();
+                setIsMenuOpen(false);
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </nav>
+        )}
       </div>
+      
+      {/* Main content */}
+      <main className="flex-1 px-4 md:px-8 py-4 md:py-8 mt-16 md:mt-0">
+        <div className="max-w-5xl mx-auto">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }
