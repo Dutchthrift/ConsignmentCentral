@@ -59,7 +59,7 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     }),
     (req: Request, res: Response) => {
       // Successful authentication, redirect to dashboard
-      res.redirect('/dashboard');
+      res.redirect('/');
     }
   );
   
@@ -74,7 +74,7 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     }),
     (req: Request, res: Response) => {
       // Successful authentication, redirect to dashboard
-      res.redirect('/dashboard');
+      res.redirect('/');
     }
   );
   
