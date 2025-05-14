@@ -21,6 +21,7 @@ import { registerAuthRoutes } from "./routes/auth.routes";
 // Import route handlers
 import adminRoutes from "./routes/admin";
 import dashboardRoutes from "./routes/dashboard";
+import consignorRoutes from "./routes/consignor";
 import mlTrainingRoutes from "./routes/ml-training";
 import { calculateCommission, checkEligibility } from "./utils/commission.ts";
 
@@ -88,6 +89,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register dashboard routes
   app.use("/api/dashboard", dashboardRoutes);
+  
+  // Register consignor routes
+  app.use("/api/consignor", consignorRoutes);
   
   // Register ML training routes
   app.use("/api/ml", mlTrainingRoutes);
