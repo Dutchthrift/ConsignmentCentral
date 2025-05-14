@@ -5,6 +5,59 @@ import { PayoutType } from "@shared/schema";
 
 const router = Router();
 
+// GET /api/dashboard/stats - get overall dashboard statistics
+router.get("/stats", async (req: Request, res: Response) => {
+  try {
+    const stats = await storage.getDashboardStats();
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error("Error getting dashboard stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving dashboard statistics"
+    });
+  }
+});
+
+// GET /api/dashboard/items/recent - get recent items for dashboard
+router.get("/items/recent", async (req: Request, res: Response) => {
+  try {
+    // Get all items
+    const items = await storage.getAllItemsWithDetails();
+    
+    // Sort by creation date, newest first
+    items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    
+    // Take the 10 most recent items
+    const recentItems = items.slice(0, 10).map(item => ({
+      referenceId: item.referenceId,
+      title: item.title,
+      imageUrl: item.imageUrl,
+      status: item.status,
+      createdAt: item.createdAt,
+      pricing: item.pricing ? {
+        estimatedPrice: item.pricing.suggestedListingPrice ? item.pricing.suggestedListingPrice / 100 : null,
+        payout: item.pricing.suggestedPayout ? item.pricing.suggestedPayout / 100 : null
+      } : null
+    }));
+    
+    res.json({
+      success: true,
+      data: recentItems
+    });
+  } catch (error) {
+    console.error("Error getting recent items:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving recent items"
+    });
+  }
+});
+
 // GET /api/dashboard/:consignorId - get dashboard for a specific consignor
 router.get("/:consignorId", async (req: Request, res: Response) => {
   try {

@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -24,7 +24,7 @@ import { calculateCommission, checkEligibility } from "./utils/commission";
 // Generate unique reference ID for new items
 function generateReferenceId(): string {
   const date = new Date();
-  const year = date.getFullYear().toString().slice(2);
+  const year = date.getFullYear().toString().substring(2);
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const day = date.getDate().toString().padStart(2, '0');
   const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -67,104 +67,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Process new intake from Shopify form
   app.post("/api/intake", async (req, res) => {
     try {
-      // Validate intake form data
-      const formData = intakeFormSchema.parse(req.body);
+      const data = intakeFormSchema.parse(req.body);
       
-      // Check if customer already exists
-      let customer = await storage.getCustomerByEmail(formData.customer.email);
+      // Generate reference ID for the item
+      const referenceId = generateReferenceId();
       
-      // If not, create new customer
+      // Check if customer exists or create new
+      let customer = await storage.getCustomerByEmail(data.email);
+      
       if (!customer) {
-        const customerData = insertCustomerSchema.parse(formData.customer);
-        customer = await storage.createCustomer(customerData);
+        // Create new customer
+        const newCustomer = insertCustomerSchema.parse({
+          name: data.name,
+          email: data.email,
+          phone: data.phone || null,
+          address: data.address || null,
+          city: data.city || null,
+          state: data.state || null,
+          postalCode: data.postalCode || null,
+          country: data.country || null
+        });
+        
+        customer = await storage.createCustomer(newCustomer);
       }
       
-      // Create new item record
-      const referenceId = generateReferenceId();
-      const itemData = insertItemSchema.parse({
-        customerId: customer.id,
-        referenceId,
-        title: formData.item.title,
-        description: formData.item.description || "",
-        imageUrl: formData.item.imageUrl || "",
-        status: ItemStatus.PENDING
+      // Create new item
+      const newItem = insertItemSchema.parse({
+        customerId: customer.id, 
+        title: data.itemTitle,
+        description: data.itemDescription || null,
+        imageUrl: data.itemImageUrl || null,
+        status: ItemStatus.PENDING,
+        referenceId
       });
       
-      const item = await storage.createItem(itemData);
+      const item = await storage.createItem(newItem);
       
-      // Start the analysis process if we have image data
-      let analysisResult = null;
-      let pricingResult = null;
-      
-      if (formData.item.imageBase64) {
-        try {
-          // Analyze the image using OpenAI
-          const analysis = await analyzeProduct(
-            formData.item.title,
-            formData.item.description || "",
-            formData.item.imageBase64
-          );
-          
-          // Store analysis results
-          const analysisData = insertAnalysisSchema.parse({
-            itemId: item.id,
-            productType: analysis.productType,
-            brand: analysis.brand,
-            model: analysis.model,
-            condition: analysis.condition,
-            accessories: analysis.accessories,
-            additionalNotes: analysis.additionalNotes
-          });
-          
-          analysisResult = await storage.createAnalysis(analysisData);
-          
-          // Get market pricing from eBay
-          const marketData = await getMarketPricing(
-            analysis.productType,
-            analysis.brand,
-            analysis.model,
-            analysis.condition
-          );
-          
-          // Calculate suggested pricing
-          const { suggestedPrice, suggestedPayout } = calculatePricing(marketData);
-          
-          // Store pricing information
-          const pricingData = insertPricingSchema.parse({
-            itemId: item.id,
-            averageMarketPrice: marketData.averagePrice,
-            suggestedListingPrice: suggestedPrice,
-            suggestedPayout: suggestedPayout
-          });
-          
-          pricingResult = await storage.createPricing(pricingData);
-          
-          // Update item status to analyzed
-          await storage.updateItemStatus(item.id, ItemStatus.ANALYZED);
-        } catch (analysisError) {
-          console.error("Error during analysis:", analysisError);
-          // Continue processing even if analysis fails
-        }
-      }
-      
-      // Return the results
-      res.status(201).json({
+      res.json({
         success: true,
-        message: "Intake processed successfully",
+        message: "Item received successfully",
         data: {
-          referenceId: item.referenceId,
-          title: item.title,
-          status: item.status,
-          customer: {
-            id: customer.id,
-            name: customer.name,
-            email: customer.email
-          },
-          analysis: analysisResult,
-          pricing: pricingResult ? {
-            suggestedPrice: pricingResult.suggestedListingPrice / 100, // Convert cents to dollars
-            suggestedPayout: pricingResult.suggestedPayout / 100 // Convert cents to dollars
-          } : null
+          referenceId,
+          customerId: customer.id
         }
       });
     } catch (err) {
@@ -172,86 +116,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // ===== LABEL ROUTES =====
-  
-  // Generate shipping label for an item
-  app.post("/api/label", async (req, res) => {
+  // Process image analysis using OpenAI
+  app.post("/api/analyze/:referenceId", async (req, res) => {
     try {
-      // Validate request
-      const { referenceId } = req.body;
+      const { referenceId } = req.params;
+      const { imageUrl, title } = req.body;
       
-      if (!referenceId) {
-        return res.status(400).json({ message: "Reference ID is required" });
-      }
-      
-      // Get item details
-      const item = await storage.getItemWithDetailsByReferenceId(referenceId);
-      
-      if (!item) {
-        return res.status(404).json({ message: "Item not found" });
-      }
-      
-      // Check if shipping label already exists
-      if (item.shipping) {
-        return res.json({
-          success: true,
-          message: "Shipping label already generated",
-          data: {
-            labelUrl: item.shipping.labelUrl,
-            trackingNumber: item.shipping.trackingNumber,
-            carrier: item.shipping.carrier
-          }
+      if (!imageUrl) {
+        return res.status(400).json({
+          success: false,
+          message: "Image URL is required"
         });
       }
       
-      // Generate shipping label via Sendcloud
-      // In a real implementation, this would use actual address data
-      const label = await generateShippingLabel(
-        {
-          name: "Consignment Store",
-          address: "123 Main St",
-          city: "Anytown",
-          state: "CA",
-          postalCode: "12345",
-          country: "US"
-        },
-        {
-          name: item.customer.name,
-          address: item.customer.address || "456 Customer St",
-          city: item.customer.city || "Customertown",
-          state: item.customer.state || "CA",
-          postalCode: item.customer.postalCode || "54321",
-          country: item.customer.country
-        },
-        {
-          weight: 1,
-          length: 30,
-          width: 20,
-          height: 10
-        }
-      );
+      // Get the item
+      const item = await storage.getItemByReferenceId(referenceId);
       
-      // Store shipping information
-      const shippingData = insertShippingSchema.parse({
+      if (!item) {
+        return res.status(404).json({
+          success: false,
+          message: "Item not found"
+        });
+      }
+      
+      // Analyze the item with OpenAI
+      const analysisResult = await analyzeProduct(imageUrl, title);
+      
+      // Create analysis record
+      const newAnalysis = insertAnalysisSchema.parse({
         itemId: item.id,
-        labelUrl: label.labelUrl,
-        trackingNumber: label.trackingNumber,
-        carrier: label.carrier
+        brand: analysisResult.brand,
+        productType: analysisResult.productType,
+        model: analysisResult.model,
+        condition: analysisResult.condition,
+        accessories: analysisResult.accessories,
+        additionalNotes: analysisResult.additionalNotes
       });
       
-      const shipping = await storage.createShipping(shippingData);
+      const analysis = await storage.createAnalysis(newAnalysis);
+      
+      // Get market pricing from eBay
+      const searchTerm = `${analysisResult.brand} ${analysisResult.model} ${analysisResult.productType}`;
+      const marketData = await getMarketPricing(searchTerm, analysisResult.condition);
+      
+      // Calculate suggested pricing based on market data
+      const pricingResult = calculatePricing(marketData);
+      
+      // Create pricing record
+      const newPricing = insertPricingSchema.parse({
+        itemId: item.id,
+        averageMarketPrice: marketData.averagePrice,
+        suggestedListingPrice: pricingResult.suggestedListingPrice,
+        suggestedPayout: pricingResult.suggestedPayout,
+        commissionRate: pricingResult.commissionRate
+      });
+      
+      const pricing = await storage.createPricing(newPricing);
+      
+      // Update item status
+      await storage.updateItemStatus(item.id, ItemStatus.ANALYZED);
+      
+      res.json({
+        success: true,
+        data: {
+          analysis: analysisResult,
+          pricing: {
+            averageMarketPrice: marketData.averagePrice / 100, // Convert to EUR
+            suggestedListingPrice: pricingResult.suggestedListingPrice / 100, // Convert to EUR
+            suggestedPayout: pricingResult.suggestedPayout / 100, // Convert to EUR
+            commissionRate: pricingResult.commissionRate
+          }
+        }
+      });
+    } catch (err) {
+      handleValidationError(err, res);
+    }
+  });
+  
+  // Generate shipping label
+  app.post("/api/label/:referenceId", async (req, res) => {
+    try {
+      const { referenceId } = req.params;
+      const { 
+        fromAddress, 
+        toAddress,
+        packageDetails 
+      } = req.body;
+      
+      // Validate addresses and package details
+      if (!fromAddress || !toAddress || !packageDetails) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required shipping information"
+        });
+      }
+      
+      // Get the item
+      const item = await storage.getItemByReferenceId(referenceId);
+      
+      if (!item) {
+        return res.status(404).json({
+          success: false,
+          message: "Item not found"
+        });
+      }
+      
+      // Generate label via SendCloud service
+      const { labelUrl, trackingNumber, carrier } = await generateShippingLabel(
+        fromAddress,
+        toAddress,
+        packageDetails
+      );
+      
+      // Create shipping record
+      const newShipping = insertShippingSchema.parse({
+        itemId: item.id,
+        labelUrl,
+        trackingNumber,
+        carrier
+      });
+      
+      const shipping = await storage.createShipping(newShipping);
       
       // Update item status
       await storage.updateItemStatus(item.id, ItemStatus.SHIPPED);
       
-      // Return the label
       res.json({
         success: true,
-        message: "Shipping label generated successfully",
         data: {
-          labelUrl: shipping.labelUrl,
-          trackingNumber: shipping.trackingNumber,
-          carrier: shipping.carrier
+          labelUrl,
+          trackingNumber,
+          carrier
         }
       });
     } catch (err) {
@@ -264,18 +259,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { referenceId } = req.params;
       
-      // Get item details
+      // Get the item with shipping details
       const item = await storage.getItemWithDetailsByReferenceId(referenceId);
       
       if (!item) {
-        return res.status(404).json({ message: "Item not found" });
+        return res.status(404).json({
+          success: false,
+          message: "Item not found"
+        });
       }
       
       if (!item.shipping) {
-        return res.status(404).json({ message: "No shipping label found for this item" });
+        return res.status(404).json({
+          success: false,
+          message: "Shipping label not found for this item"
+        });
       }
       
-      // Return the label information
       res.json({
         success: true,
         data: {
@@ -289,85 +289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // ===== DASHBOARD ROUTES =====
-  
-  // Get dashboard statistics
-  app.get("/api/dashboard/stats", async (req, res) => {
-    try {
-      const stats = await storage.getDashboardStats();
-      
-      res.json({
-        success: true,
-        data: stats
-      });
-    } catch (err) {
-      handleValidationError(err, res);
-    }
-  });
-  
-  // Get all items for a customer
-  app.get("/api/dashboard/:customerId", async (req, res) => {
-    try {
-      const customerId = parseInt(req.params.customerId);
-      
-      if (isNaN(customerId)) {
-        return res.status(400).json({ message: "Invalid customer ID" });
-      }
-      
-      // Get customer
-      const customer = await storage.getCustomer(customerId);
-      
-      if (!customer) {
-        return res.status(404).json({ message: "Customer not found" });
-      }
-      
-      // Get all items for the customer
-      const items = await storage.getItemsWithDetailsByCustomerId(customerId);
-      
-      // Format the response
-      const formattedItems = items.map(item => ({
-        id: item.id,
-        referenceId: item.referenceId,
-        title: item.title,
-        description: item.description,
-        imageUrl: item.imageUrl,
-        status: item.status,
-        createdAt: item.createdAt,
-        analysis: item.analysis ? {
-          productType: item.analysis.productType,
-          brand: item.analysis.brand,
-          model: item.analysis.model,
-          condition: item.analysis.condition,
-          accessories: item.analysis.accessories
-        } : null,
-        pricing: item.pricing ? {
-          estimatedPrice: item.pricing.suggestedListingPrice / 100, // Convert cents to dollars
-          payout: item.pricing.suggestedPayout / 100, // Convert cents to dollars
-          finalSalePrice: item.pricing.finalSalePrice ? item.pricing.finalSalePrice / 100 : null,
-          finalPayout: item.pricing.finalPayout ? item.pricing.finalPayout / 100 : null
-        } : null,
-        shipping: item.shipping ? {
-          labelUrl: item.shipping.labelUrl,
-          trackingNumber: item.shipping.trackingNumber,
-          carrier: item.shipping.carrier
-        } : null
-      }));
-      
-      res.json({
-        success: true,
-        data: {
-          customer: {
-            id: customer.id,
-            name: customer.name,
-            email: customer.email
-          },
-          items: formattedItems
-        }
-      });
-    } catch (err) {
-      handleValidationError(err, res);
-    }
-  });
+  // ===== RECENT ITEMS ROUTES =====
   
   // Get all recent intakes
   app.get("/api/dashboard/items/recent", async (req, res) => {
@@ -375,60 +297,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all items
       const items = await storage.getAllItemsWithDetails();
       
-      // Sort by creation date (most recent first)
+      // Sort by creation date, newest first
       items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       
-      // Take only the most recent items (limit to 10)
-      const recentItems = items.slice(0, 10);
-      
-      // Format the response
-      const formattedItems = recentItems.map(item => ({
-        id: item.id,
+      // Take the 10 most recent items
+      const recentItems = items.slice(0, 10).map(item => ({
         referenceId: item.referenceId,
         title: item.title,
-        description: item.description,
         imageUrl: item.imageUrl,
         status: item.status,
         createdAt: item.createdAt,
-        customer: {
-          id: item.customer.id,
-          name: item.customer.name,
-          email: item.customer.email
-        },
-        analysis: item.analysis ? {
-          productType: item.analysis.productType,
-          brand: item.analysis.brand,
-          model: item.analysis.model,
-          condition: item.analysis.condition,
-          accessories: item.analysis.accessories
-        } : null,
         pricing: item.pricing ? {
-          estimatedPrice: item.pricing.suggestedListingPrice / 100, // Convert cents to dollars
-          payout: item.pricing.suggestedPayout / 100, // Convert cents to dollars
-          finalSalePrice: item.pricing.finalSalePrice ? item.pricing.finalSalePrice / 100 : null,
-          finalPayout: item.pricing.finalPayout ? item.pricing.finalPayout / 100 : null
+          estimatedPrice: item.pricing.suggestedListingPrice ? item.pricing.suggestedListingPrice / 100 : null,
+          payout: item.pricing.suggestedPayout ? item.pricing.suggestedPayout / 100 : null
         } : null
       }));
       
       res.json({
         success: true,
-        data: formattedItems
+        data: recentItems
       });
     } catch (err) {
       handleValidationError(err, res);
     }
   });
   
-  // Get details for a specific item
+  // ===== ITEM DETAILS =====
+  
+  // Get item details by reference ID
   app.get("/api/items/:referenceId", async (req, res) => {
     try {
       const { referenceId } = req.params;
       
-      // Get item details
+      // Get item with all details
       const item = await storage.getItemWithDetailsByReferenceId(referenceId);
       
       if (!item) {
-        return res.status(404).json({ message: "Item not found" });
+        return res.status(404).json({
+          success: false,
+          message: "Item not found"
+        });
       }
       
       // Format the response
@@ -455,17 +363,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           additionalNotes: item.analysis.additionalNotes
         } : null,
         pricing: item.pricing ? {
-          averageMarketPrice: item.pricing.averageMarketPrice / 100, // Convert cents to dollars
-          suggestedListingPrice: item.pricing.suggestedListingPrice / 100, // Convert cents to dollars
-          suggestedPayout: item.pricing.suggestedPayout / 100, // Convert cents to dollars
+          averageMarketPrice: item.pricing.averageMarketPrice ? item.pricing.averageMarketPrice / 100 : null,
+          suggestedListingPrice: item.pricing.suggestedListingPrice ? item.pricing.suggestedListingPrice / 100 : null,
+          suggestedPayout: item.pricing.suggestedPayout ? item.pricing.suggestedPayout / 100 : null,
+          commissionRate: item.pricing.commissionRate,
           finalSalePrice: item.pricing.finalSalePrice ? item.pricing.finalSalePrice / 100 : null,
-          finalPayout: item.pricing.finalPayout ? item.pricing.finalPayout / 100 : null
+          finalPayout: item.pricing.finalPayout ? item.pricing.finalPayout / 100 : null,
+          payoutType: item.pricing.payoutType
         } : null,
         shipping: item.shipping ? {
           labelUrl: item.shipping.labelUrl,
           trackingNumber: item.shipping.trackingNumber,
-          carrier: item.shipping.carrier,
-          createdAt: item.shipping.createdAt
+          carrier: item.shipping.carrier
         } : null
       };
       
@@ -478,65 +387,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // ===== WEBHOOK ROUTES =====
+  // ===== ORDER WEBHOOK =====
   
-  // Process order webhook from Shopify
-  app.post("/api/webhooks/order", async (req, res) => {
+  // Receive order webhook from Shopify
+  app.post("/api/orders/webhook", async (req, res) => {
     try {
-      // Validate webhook data
-      const webhookData = orderWebhookSchema.parse(req.body);
+      const data = orderWebhookSchema.parse(req.body);
       
-      // Process line items to find the consignment item
-      let consignmentItemFound = false;
+      // Get the item
+      const item = await storage.getItemByReferenceId(data.referenceId);
       
-      for (const lineItem of webhookData.line_items) {
-        // Look for consignment reference ID in the line item properties
-        // In a real implementation, this would be a Shopify product metafield or tag
-        const referenceIdProperty = lineItem.properties?.find(
-          prop => prop.name === "_consignment_ref_id"
-        );
-        
-        if (referenceIdProperty) {
-          const referenceId = referenceIdProperty.value;
-          
-          // Get the item
-          const item = await storage.getItemWithDetailsByReferenceId(referenceId);
-          
-          if (item && item.pricing) {
-            // Convert price from string to cents
-            const salePrice = Math.round(parseFloat(lineItem.price) * 100);
-            const payout = Math.round(salePrice * 0.8); // 80% payout
-            
-            // Update pricing with final values
-            await storage.updatePricing(item.pricing.id, {
-              finalSalePrice: salePrice,
-              finalPayout: payout
-            });
-            
-            // Update item status to sold
-            await storage.updateItemStatus(item.id, ItemStatus.SOLD);
-            
-            consignmentItemFound = true;
-          }
-        }
-      }
-      
-      if (!consignmentItemFound) {
-        return res.status(200).json({
-          success: true,
-          message: "Order processed, but no consignment items found"
+      if (!item) {
+        return res.status(404).json({
+          success: false,
+          message: "Item not found"
         });
       }
       
-      res.status(200).json({
+      // Get pricing info
+      const pricing = await storage.getPricingByItemId(item.id);
+      
+      if (!pricing) {
+        return res.status(404).json({
+          success: false,
+          message: "Pricing information not found"
+        });
+      }
+      
+      // Calculate final payout based on sale price
+      const { payoutAmount, commissionRate } = calculateCommission(
+        data.salePrice,
+        pricing.payoutType || 'cash'
+      );
+      
+      // Convert to cents
+      const finalSalePrice = Math.round(data.salePrice * 100);
+      const finalPayout = Math.round(payoutAmount * 100);
+      
+      // Update pricing with final values
+      await storage.updatePricing(pricing.id, {
+        finalSalePrice,
+        finalPayout,
+        commissionRate: commissionRate,
+        payoutType: pricing.payoutType || 'cash',
+        storeCreditAmount: pricing.payoutType === 'storecredit' ? finalPayout : null
+      });
+      
+      // Update item status
+      await storage.updateItemStatus(item.id, ItemStatus.SOLD);
+      
+      res.json({
         success: true,
-        message: "Order processed successfully"
+        data: {
+          referenceId: item.referenceId,
+          status: ItemStatus.SOLD,
+          salePrice: data.salePrice,
+          payout: payoutAmount,
+          commissionRate: commissionRate
+        }
       });
     } catch (err) {
       handleValidationError(err, res);
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  // Create HTTP server with the Express app
+  return createServer(app);
 }
