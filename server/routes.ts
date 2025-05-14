@@ -205,15 +205,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           
           // Calculate suggested pricing based on our sliding scale commission model
-          const commissionResult = calculateCommission(marketData.averagePrice / 100);
+          // Convert from cents to euros for commission calculation
+          const salePrice = marketData.averagePrice / 100;
+          const commissionResult = calculateCommission(salePrice);
           
           if (commissionResult.eligible) {
             // Create pricing record
+            // Convert back to cents for storing in the database
+            const suggestedPayout = commissionResult.payoutAmount !== undefined
+              ? Math.round(commissionResult.payoutAmount * 100)
+              : Math.round(marketData.averagePrice * (1 - (commissionResult.commissionRate || 0) / 100));
+              
             const newPricing = insertPricingSchema.parse({
               itemId: item.id,
               averageMarketPrice: marketData.averagePrice,
               suggestedListingPrice: marketData.averagePrice,
-              suggestedPayout: Math.round(marketData.averagePrice * (1 - (commissionResult.commissionRate || 0) / 100)),
+              suggestedPayout: suggestedPayout,
               commissionRate: commissionResult.commissionRate
             });
             
@@ -302,16 +309,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         analysisResult.condition
       );
       
-      // Calculate suggested pricing based on market data
-      const pricingResult = calculatePricing(marketData);
+      // Calculate using our commission model with proper euro conversion
+      // Convert from cents to euros for commission calculation
+      const salePrice = marketData.averagePrice / 100;
+      const commissionResult = calculateCommission(salePrice);
+      
+      let suggestedListingPrice = marketData.averagePrice;
+      let suggestedPayout = 0;
+      let commissionRate = 30; // Default
+      
+      if (commissionResult.eligible) {
+        commissionRate = commissionResult.commissionRate || 30;
+        suggestedPayout = commissionResult.payoutAmount !== undefined
+          ? Math.round(commissionResult.payoutAmount * 100)
+          : Math.round(marketData.averagePrice * (1 - commissionRate / 100));
+      } else {
+        // Use the default eBay-based calculation as fallback
+        const pricingResult = calculatePricing(marketData);
+        suggestedListingPrice = pricingResult.suggestedListingPrice;
+        suggestedPayout = pricingResult.suggestedPayout;
+        commissionRate = pricingResult.commissionRate;
+      }
       
       // Create pricing record
       const newPricing = insertPricingSchema.parse({
         itemId: item.id,
         averageMarketPrice: marketData.averagePrice,
-        suggestedListingPrice: pricingResult.suggestedListingPrice,
-        suggestedPayout: pricingResult.suggestedPayout,
-        commissionRate: pricingResult.commissionRate
+        suggestedListingPrice: suggestedListingPrice,
+        suggestedPayout: suggestedPayout,
+        commissionRate: commissionRate
       });
       
       const pricing = await storage.createPricing(newPricing);
@@ -325,9 +351,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           analysis: analysisResult,
           pricing: {
             averageMarketPrice: marketData.averagePrice / 100, // Convert to EUR
-            suggestedListingPrice: pricingResult.suggestedListingPrice / 100, // Convert to EUR
-            suggestedPayout: pricingResult.suggestedPayout / 100, // Convert to EUR
-            commissionRate: pricingResult.commissionRate
+            suggestedListingPrice: suggestedListingPrice / 100, // Convert to EUR
+            suggestedPayout: suggestedPayout / 100, // Convert to EUR
+            commissionRate: commissionRate
           }
         }
       });

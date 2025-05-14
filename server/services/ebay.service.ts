@@ -37,15 +37,35 @@ export async function getMarketPricing(
     let basePrice = 0;
     
     // Simulate different price ranges based on product type
-    if (productType.toLowerCase().includes("camera")) {
-      basePrice = Math.floor(Math.random() * 30000) + 10000; // $100-$400
-    } else if (productType.toLowerCase().includes("console") || productType.toLowerCase().includes("playstation")) {
+    const productTypeLower = productType.toLowerCase();
+    
+    // Camera accessories should be priced lower than cameras
+    if (productTypeLower.includes("camera accessory") || 
+        (productTypeLower.includes("accessory") && productTypeLower.includes("camera")) ||
+        productTypeLower.includes("flash") || 
+        productTypeLower.includes("lens cap") || 
+        productTypeLower.includes("lens filter")) {
+      basePrice = Math.floor(Math.random() * 5000) + 2000; // $20-$70 for camera accessories
+    }
+    // Full cameras should be priced higher
+    else if (productTypeLower === "camera" || 
+            (productTypeLower.includes("camera") && 
+            !productTypeLower.includes("accessory"))) {
+      basePrice = Math.floor(Math.random() * 30000) + 10000; // $100-$400 for cameras
+    } 
+    // Camera lenses in a middle range
+    else if (productTypeLower.includes("lens") && 
+            !productTypeLower.includes("filter") && 
+            !productTypeLower.includes("cap")) {
+      basePrice = Math.floor(Math.random() * 20000) + 8000; // $80-$280 for lenses
+    }
+    else if (productTypeLower.includes("console") || productTypeLower.includes("playstation")) {
       basePrice = Math.floor(Math.random() * 20000) + 25000; // $250-$450
-    } else if (productType.toLowerCase().includes("clothing") || productType.toLowerCase().includes("jacket")) {
+    } else if (productTypeLower.includes("clothing") || productTypeLower.includes("jacket")) {
       basePrice = Math.floor(Math.random() * 10000) + 5000; // $50-$150
-    } else if (productType.toLowerCase().includes("shoes") || productType.toLowerCase().includes("sneakers")) {
+    } else if (productTypeLower.includes("shoes") || productTypeLower.includes("sneakers")) {
       basePrice = Math.floor(Math.random() * 15000) + 8000; // $80-$230
-    } else if (productType.toLowerCase().includes("keyboard")) {
+    } else if (productTypeLower.includes("keyboard")) {
       basePrice = Math.floor(Math.random() * 8000) + 6000; // $60-$140
     } else {
       basePrice = Math.floor(Math.random() * 20000) + 5000; // $50-$250
