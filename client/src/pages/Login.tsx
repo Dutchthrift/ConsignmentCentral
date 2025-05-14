@@ -99,6 +99,117 @@ const Login = () => {
     checkAuthStatus();
   }, [setLocation]);
 
+  // Set up login form
+  const loginForm = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  // Set up registration form
+  const registerForm = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  // Handle login form submission
+  const onLoginSubmit = async (data: LoginFormValues) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.message || "Failed to login. Please try again.");
+        toast({
+          title: "Login Failed",
+          description: result.message || "Failed to login. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Success, redirect to dashboard
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+      });
+      setLocation("/dashboard");
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("An unexpected error occurred. Please try again.");
+      toast({
+        title: "Login Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle registration form submission
+  const onRegisterSubmit = async (data: RegisterFormValues) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      // Remove confirmPassword before sending to API
+      const { confirmPassword, ...registrationData } = data;
+      
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(registrationData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.message || "Failed to register. Please try again.");
+        toast({
+          title: "Registration Failed",
+          description: result.message || "Failed to register. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Success, redirect to dashboard
+      toast({
+        title: "Registration Successful",
+        description: "Your account has been created.",
+      });
+      setLocation("/dashboard");
+    } catch (err) {
+      console.error("Registration error:", err);
+      setError("An unexpected error occurred. Please try again.");
+      toast({
+        title: "Registration Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleGoogleLogin = useCallback(() => {
     window.location.href = "/api/auth/google";
   }, []);
@@ -116,7 +227,7 @@ const Login = () => {
             Dutch Thrift
           </h1>
           <h2 className="text-center text-xl font-medium text-gray-600">
-            Sign in to your account
+            {activeTab === "login" ? "Sign in to your account" : "Create a new account"}
           </h2>
         </div>
 
@@ -127,25 +238,148 @@ const Login = () => {
             </div>
           )}
 
-          <div className="space-y-4">
-            <Button 
-              className="w-full flex items-center justify-center gap-2"
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-            >
-              <SiGoogle className="h-4 w-4" />
-              <span>Continue with Google</span>
-            </Button>
+          <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
+            </TabsList>
             
-            <Button 
-              className="w-full flex items-center justify-center gap-2"
-              variant="outline"
-              onClick={handleAppleLogin}
-              disabled={isLoading}
-            >
-              <SiApple className="h-4 w-4" />
-              <span>Continue with Apple</span>
-            </Button>
+            <TabsContent value="login">
+              <Form {...loginForm}>
+                <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                  <FormField
+                    control={loginForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="your@email.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Signing in..." : "Sign in"}
+                  </Button>
+                </form>
+              </Form>
+            </TabsContent>
+            
+            <TabsContent value="register">
+              <Form {...registerForm}>
+                <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+                  <FormField
+                    control={registerForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="your@email.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Creating account..." : "Create account"}
+                  </Button>
+                </form>
+              </Form>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-sm text-gray-500 mb-4 text-center">Or continue with</p>
+            <div className="flex space-x-4">
+              <Button 
+                className="w-full flex items-center justify-center gap-2"
+                variant="outline"
+                onClick={handleGoogleLogin}
+                disabled={isLoading}
+              >
+                <SiGoogle className="h-4 w-4" />
+                <span>Google</span>
+              </Button>
+              
+              <Button 
+                className="w-full flex items-center justify-center gap-2"
+                variant="outline"
+                onClick={handleAppleLogin}
+                disabled={isLoading}
+              >
+                <SiApple className="h-4 w-4" />
+                <span>Apple</span>
+              </Button>
+            </div>
           </div>
           
           <div className="mt-6 text-center text-sm">
