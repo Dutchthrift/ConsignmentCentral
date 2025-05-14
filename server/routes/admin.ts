@@ -18,17 +18,13 @@ const DEFAULT_COMMISSION_SETTINGS = {
     tier1Rate: 50, // 50-99.99 EUR → 50%
     tier2Rate: 40, // 100-199.99 EUR → 40%
     tier3Rate: 30, // 200-499.99 EUR → 30%
-    tier4Rate: 25, // 500-999.99 EUR → 25%
-    tier5Rate: 20, // 1000+ EUR → 20%
+    tier4Rate: 20, // 500+ EUR → 20%
+    storeCreditBonus: 10, // 10% bonus for store credit
+    minimumValue: 50, // Minimum value for consignment
   },
-  thresholds: {
-    tier1Min: 50,   // EUR
-    tier2Min: 100,  // EUR
-    tier3Min: 200,  // EUR
-    tier4Min: 500,  // EUR
-    tier5Min: 1000, // EUR
-  },
-  minThreshold: 50, // EUR
+  storeCreditEnabled: true,
+  directBuyoutEnabled: true,
+  recyclingEnabled: true
 };
 
 let commissionSettings = { ...DEFAULT_COMMISSION_SETTINGS };
