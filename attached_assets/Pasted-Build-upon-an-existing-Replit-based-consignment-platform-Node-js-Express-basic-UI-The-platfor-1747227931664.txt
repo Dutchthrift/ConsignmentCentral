@@ -1,0 +1,88 @@
+Build upon an existing Replit-based consignment platform (Node.js + Express + basic UI). The platform includes an admin backend and storefront UI. Extend the project with the following features:
+
+1. Tiered commission logic in consignment settings
+Under /admin/consignment-settings, add logic for calculating commission based on expected resale value using this tier:
+
+€50 – €99.99 → 50% commission
+
+€100 – €199.99 → 40%
+
+€200 – €499.99 → 30%
+
+€500 and up → 20%
+
+Implement a utility:
+calculateCommission(salePrice, payoutType = "cash" | "storecredit")
+
+If payoutType === "storecredit" → add 10% bonus to net payout
+
+Use this to calculate both payout options during intake feedback
+
+2. Intake rule: minimum resale value
+Add validation to the intake and AI analysis steps:
+
+If estimated resale price < €50, show a clear warning:
+
+"Items with an expected resale price below €50 are not eligible for consignment."
+
+Explain why: low margin, handling cost, resale risk
+
+Offer an optional CTA:
+"Would you like to send this in for recycling or direct buyout?"
+
+3. Shop credit bonus option
+When an item is sold and payout is pending, show two options to the consignor:
+
+Cash payout (default, based on commission tier)
+
+Store credit payout (+10% bonus)
+
+Example:
+An item sold for €110 → 40% commission = €66 cash
+If store credit is chosen, payout = €72.60
+
+Add this to the consignor dashboard and final payout confirmation UI.
+
+4. Admin: Consignor overview page
+Create route /admin/consignors that shows:
+
+List of all consignors with:
+
+Name, email, # of submitted items, total sales
+
+Clicking a consignor expands:
+
+List of their items
+
+Status: Received, Tested, In Sale, Sold, Paid
+
+Total earnings, chosen payout types
+
+Use Airtable or DB data to populate.
+
+5. Frontend: Consignor dashboard UI
+Create a frontend page /dashboard/:consignorId that shows for each item:
+
+Product title and thumbnail
+
+Status (Received, Tested, In Sale, Sold, Paid)
+
+Estimated resale price
+
+Commission % and payout value
+
+Chosen payout method (cash / store credit)
+
+Optional: visual status timeline per item
+
+Build it responsive using HTML/CSS or Tailwind. Use mock data if needed.
+
+Structure
+/routes/admin.js → settings and consignor overview
+
+/routes/dashboard.js → frontend dashboard per user
+
+/utils/commission.js → commission + bonus logic
+
+Use EJS, React or similar templating based on the existing setup
+

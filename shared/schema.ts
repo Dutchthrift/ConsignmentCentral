@@ -8,9 +8,16 @@ export const ItemStatus = {
   ANALYZED: "analyzed",
   SHIPPED: "shipped",
   RECEIVED: "received",
+  TESTED: "tested",
   LISTED: "listed",
   SOLD: "sold",
   PAID: "paid",
+} as const;
+
+// Define payout type enum
+export const PayoutType = {
+  CASH: "cash",
+  STORE_CREDIT: "storecredit",
 } as const;
 
 // Customer table
@@ -76,6 +83,9 @@ export const pricing = pgTable("pricing", {
   suggestedPayout: integer("suggested_payout"), // Stored in cents
   finalSalePrice: integer("final_sale_price"), // Stored in cents, filled when sold
   finalPayout: integer("final_payout"), // Stored in cents, filled when sold
+  commissionRate: integer("commission_rate"), // Percentage (e.g., 40 for 40%)
+  payoutType: text("payout_type").default(PayoutType.CASH), // "cash" or "storecredit"
+  storeCreditAmount: integer("store_credit_amount"), // Amount if store credit chosen (including bonus)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
