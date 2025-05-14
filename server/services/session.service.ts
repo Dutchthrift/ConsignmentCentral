@@ -17,14 +17,26 @@ export class SessionService {
       pruneSessionInterval: 60 * 15 // 15 minutes
     });
 
+    // Replit is behind a proxy, so we need to trust it
+    const isReplit = !!process.env.REPL_ID;
+    const inDev = process.env.NODE_ENV === 'development';
+    
+    console.log('Session configuration:', {
+      environment: process.env.NODE_ENV,
+      isReplit,
+      cookieSecure: isReplit || process.env.NODE_ENV === 'production'
+    });
+    
     this.sessionOptions = {
       store: this.pgSession,
       secret: process.env.SESSION_SECRET || 'dutch-thrift-consignment-secret',
       resave: false,
       saveUninitialized: false,
+      name: 'dutchthrift.sid', // Custom name to avoid conflicts
+      proxy: isReplit, // Trust the proxy in Replit environment
       cookie: {
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        secure: process.env.NODE_ENV === 'production',
+        secure: false, // Set to false in development for simpler testing
         httpOnly: true,
         sameSite: 'lax'
       }

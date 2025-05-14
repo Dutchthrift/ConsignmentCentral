@@ -16,6 +16,15 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
   
   // User info endpoint - get current logged in user
   router.get('/api/auth/user', (req: Request, res: Response) => {
+    // Log session details for debugging (only sensitive info is session ID)
+    console.log('Session debug:', {
+      hasSession: !!req.session,
+      sessionID: req.sessionID, 
+      isAuthenticated: req.isAuthenticated(),
+      userPresent: !!req.user,
+      cookies: req.headers.cookie
+    });
+    
     if (!req.isAuthenticated()) {
       return res.status(401).json({ 
         success: false, 
@@ -23,10 +32,15 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
       });
     }
     
-    res.json({ 
-      success: true, 
-      data: req.user 
-    });
+    // Get the user data from the session
+    const userData = req.user;
+    
+    // Log what we're returning
+    console.log('Returning user data:', { userId: (userData as any)?.id });
+    
+    // Return the user object directly without wrapping
+    // This is what the frontend is expecting based on the client code
+    res.json(userData);
   });
   
   // Login status endpoint
@@ -124,7 +138,11 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
   
   router.post('/api/auth/login', (req: Request, res: Response, next: NextFunction) => {
     // Log the incoming request for debugging
-    console.log('Login attempt:', { email: req.body.email });
+    console.log('Login attempt:', { 
+      email: req.body.email,
+      hasSession: !!req.session,
+      sessionID: req.sessionID
+    });
     
     passport.authenticate('local', (err: Error | null, user: any, info: { message: string }) => {
       if (err) {
@@ -146,6 +164,14 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
           return next(err);
         }
         
+        // Debug session after login
+        console.log('After login session debug:', {
+          hasSession: !!req.session,
+          sessionID: req.sessionID,
+          isAuthenticated: req.isAuthenticated(),
+          userPresent: !!req.user
+        });
+        
         // Update last login timestamp
         storage.updateUserLastLogin(user.id).catch(console.error);
         
@@ -162,6 +188,18 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     res.json({
       success: true,
       isAdmin: authService.isAdmin(req)
+    });
+  });
+  
+  // Test endpoint to check server health
+  router.get('/api/auth/health', (req: Request, res: Response) => {
+    res.json({
+      success: true,
+      message: 'Auth system is healthy',
+      timestamp: new Date().toISOString(),
+      sessionExists: !!req.session,
+      sessionID: req.sessionID,
+      authenticated: req.isAuthenticated()
     });
   });
   
