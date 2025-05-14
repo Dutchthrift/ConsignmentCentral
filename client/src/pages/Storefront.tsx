@@ -163,34 +163,8 @@ export default function Storefront() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      {/* Header */}
-      <header className="bg-white shadow-sm py-4">
-        <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
-          <div className="flex items-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-primary h-6 w-6 mr-2"
-            >
-              <path d="M17 3L21 7L17 11" />
-              <path d="M3 13L7 17L3 21" />
-              <path d="M21 7H7" />
-              <path d="M17 17H3" />
-            </svg>
-            <h1 className="text-xl font-bold text-primary">ConsignPro</h1>
-          </div>
-          <div>
-            <Button variant="outline" className="mr-2">About Us</Button>
-            <Button variant="outline">Contact</Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-b from-secondary/10 to-white">
+      {/* Hero Section */}
 
       <main className="container mx-auto px-4 md:px-6 py-8">
         {/* Steps */}
