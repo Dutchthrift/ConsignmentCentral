@@ -22,6 +22,7 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
 
   // Format status for display
   const formatStatus = (status: string) => {
+    if (!status) return "Unknown";
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
@@ -37,6 +38,17 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
 
   // Get status badge
   const getStatusBadge = (status: string) => {
+    if (!status) {
+      return (
+        <Badge
+          variant="outline"
+          className="bg-gray-100 text-gray-800"
+        >
+          Unknown
+        </Badge>
+      );
+    }
+    
     const statusColors: Record<string, string> = {
       pending: "bg-amber-100 text-amber-800",
       analyzed: "bg-green-100 text-green-800",
