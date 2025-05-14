@@ -10,6 +10,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import IntakeForm from "@/pages/IntakeForm";
+import SystemHealth from "@/pages/SystemHealth";
 import Inventory from "@/pages/Inventory";
 import Orders from "@/pages/Orders";
 import Payouts from "@/pages/Payouts";
@@ -168,10 +169,7 @@ function Router() {
         <Route path="/storefront" component={Storefront} />
         
         {/* System Health Check - publicly accessible */}
-        <Route path="/system-health" component={() => {
-          const SystemHealth = require("./pages/SystemHealth").default;
-          return <SystemHealth />;
-        }} />
+        <Route path="/system-health" component={SystemHealth} />
         
         {/* 404 Page */}
         <Route component={NotFound} />
