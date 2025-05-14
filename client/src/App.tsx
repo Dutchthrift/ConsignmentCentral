@@ -12,6 +12,7 @@ import Payouts from "@/pages/Payouts";
 import Settings from "@/pages/Settings";
 import Storefront from "@/pages/Storefront";
 import ModelTraining from "@/pages/ModelTraining";
+import Login from "@/pages/Login";
 import Layout from "@/components/Layout";
 import StorefrontLayout from "@/components/StorefrontLayout";
 
