@@ -183,22 +183,28 @@ export const orderWebhookSchema = z.object({
 export type OrderWebhookData = z.infer<typeof orderWebhookSchema>;
 
 // Schema for dashboard statistics
+export const statusDistributionItemSchema = z.object({
+  status: z.string(),
+  count: z.number()
+});
+
+export const monthlySalesItemSchema = z.object({
+  month: z.string(),
+  sales: z.number()
+});
+
 export const dashboardStatsSchema = z.object({
   totalIntakes: z.number(),
   pendingAnalysis: z.number(),
   activeListings: z.number(),
   soldItems: z.number(),
   totalRevenue: z.number().optional(),
-  monthlySalesData: z.array(z.object({
-    month: z.string(),
-    sales: z.number(),
-  })).optional(),
-  statusDistribution: z.array(z.object({
-    status: z.string(),
-    count: z.number(),
-  })).optional(),
+  monthlySalesData: z.array(monthlySalesItemSchema).optional(),
+  statusDistribution: z.array(statusDistributionItemSchema).optional(),
 });
 
+export type StatusDistributionItem = z.infer<typeof statusDistributionItemSchema>;
+export type MonthlySalesItem = z.infer<typeof monthlySalesItemSchema>;
 export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
 
 // Schema for commission tiers

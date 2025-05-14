@@ -16,6 +16,11 @@ import { generateShippingLabel } from "./services/sendcloud.service";
 import { analyzeProduct } from "./services/openai.service";
 import { getMarketPricing, calculatePricing } from "./services/ebay.service";
 
+// Import route handlers
+import adminRoutes from "./routes/admin";
+import dashboardRoutes from "./routes/dashboard";
+import { calculateCommission, checkEligibility } from "./utils/commission";
+
 // Generate unique reference ID for new items
 function generateReferenceId(): string {
   const date = new Date();
@@ -50,6 +55,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       message: "Consignment Platform API is running" 
     });
   });
+  
+  // Register admin routes
+  app.use("/api/admin", adminRoutes);
+  
+  // Register dashboard routes
+  app.use("/api/dashboard", dashboardRoutes);
 
   // ===== INTAKE ROUTES =====
   

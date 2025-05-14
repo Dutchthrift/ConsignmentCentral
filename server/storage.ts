@@ -272,11 +272,93 @@ export class MemStorage implements IStorage {
   async getDashboardStats(): Promise<DashboardStats> {
     const allItems = Array.from(this.items.values());
     
+    // Count items by status
+    const pendingAnalysis = allItems.filter(
+      (item) => item.status === "pending"
+    ).length;
+    
+    const activeListings = allItems.filter(
+      (item) => item.status === "listed"
+    ).length;
+    
+    const soldItems = allItems.filter(
+      (item) => item.status === "sold" || item.status === "paid"
+    ).length;
+    
+    // Calculate total revenue
+    let totalRevenue = 0;
+    for (const item of allItems) {
+      if (item.status === "sold" || item.status === "paid") {
+        const pricing = await this.getPricingByItemId(item.id);
+        if (pricing && pricing.finalSalePrice) {
+          totalRevenue += pricing.finalSalePrice / 100; // Convert cents to EUR
+        }
+      }
+    }
+    
+    // Get status distribution
+    const statusCounts: Record<string, number> = {};
+    for (const item of allItems) {
+      statusCounts[item.status] = (statusCounts[item.status] || 0) + 1;
+    }
+    
+    const statusDistribution = Object.entries(statusCounts).map(([status, count]) => ({
+      status,
+      count,
+    }));
+    
+    // Create monthly sales data (this would normally come from real data)
+    const now = new Date();
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlySalesData = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthlySalesData.push({
+        month: `${monthNames[month.getMonth()]} ${month.getFullYear()}`,
+        sales: 0, // We'll calculate this in a real implementation
+      });
+    }
+    
     return {
       totalIntakes: allItems.length,
-      pendingAnalysis: allItems.filter(item => item.status === 'pending').length,
-      activeListings: allItems.filter(item => item.status === 'listed').length,
-      soldItems: allItems.filter(item => item.status === 'sold' || item.status === 'paid').length
+      pendingAnalysis,
+      activeListings,
+      soldItems,
+      totalRevenue,
+      statusDistribution,
+      monthlySalesData,
+    };
+  }
+  
+  async getConsignorStats(consignorId: number): Promise<{
+    totalItems: number;
+    totalSales: number;
+    itemsPerStatus: Record<string, number>;
+  }> {
+    const items = await this.getItemsByCustomerId(consignorId);
+    
+    // Count items by status
+    const itemsPerStatus: Record<string, number> = {};
+    for (const item of items) {
+      itemsPerStatus[item.status] = (itemsPerStatus[item.status] || 0) + 1;
+    }
+    
+    // Calculate total sales
+    let totalSales = 0;
+    for (const item of items) {
+      if (item.status === "sold" || item.status === "paid") {
+        const pricing = await this.getPricingByItemId(item.id);
+        if (pricing && pricing.finalSalePrice) {
+          totalSales += pricing.finalSalePrice / 100; // Convert cents to EUR
+        }
+      }
+    }
+    
+    return {
+      totalItems: items.length,
+      totalSales,
+      itemsPerStatus,
     };
   }
 }
