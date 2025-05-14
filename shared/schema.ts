@@ -188,6 +188,71 @@ export const dashboardStatsSchema = z.object({
   pendingAnalysis: z.number(),
   activeListings: z.number(),
   soldItems: z.number(),
+  totalRevenue: z.number().optional(),
+  monthlySalesData: z.array(z.object({
+    month: z.string(),
+    sales: z.number(),
+  })).optional(),
+  statusDistribution: z.array(z.object({
+    status: z.string(),
+    count: z.number(),
+  })).optional(),
 });
 
 export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
+
+// Schema for commission tiers
+export const commissionTierSchema = z.object({
+  tier1Rate: z.number(), // 50-99.99 EUR → 50%
+  tier2Rate: z.number(), // 100-199.99 EUR → 40%
+  tier3Rate: z.number(), // 200-499.99 EUR → 30%
+  tier4Rate: z.number(), // 500+ EUR → 20%
+  storeCreditBonus: z.number(), // Bonus percentage for store credit (default: 10%)
+  minimumValue: z.number(), // Minimum value for consignment (default: 50 EUR)
+});
+
+export const commissionSettingsSchema = z.object({
+  tiers: commissionTierSchema,
+  storeCreditEnabled: z.boolean(),
+  directBuyoutEnabled: z.boolean(),
+  recyclingEnabled: z.boolean(),
+});
+
+export type CommissionTiers = z.infer<typeof commissionTierSchema>;
+export type CommissionSettings = z.infer<typeof commissionSettingsSchema>;
+
+// Schema for payout options
+export const payoutOptionsSchema = z.object({
+  type: z.enum([PayoutType.CASH, PayoutType.STORE_CREDIT]),
+  amount: z.number(),
+  bonus: z.number().optional(),
+  total: z.number(),
+});
+
+export type PayoutOptions = z.infer<typeof payoutOptionsSchema>;
+
+// Schema for consignor dashboard view
+export const consignorDashboardSchema = z.object({
+  consignor: z.object({
+    id: z.number(),
+    name: z.string(),
+    email: z.string(),
+    totalItems: z.number(),
+    totalSales: z.number(),
+  }),
+  items: z.array(z.object({
+    id: z.number(),
+    referenceId: z.string(),
+    title: z.string(),
+    imageUrl: z.string().optional(),
+    status: z.string(),
+    createdAt: z.string(),
+    estimatedPrice: z.number().optional(),
+    commissionRate: z.number().optional(),
+    payoutAmount: z.number().optional(),
+    payoutType: z.enum([PayoutType.CASH, PayoutType.STORE_CREDIT]).optional(),
+    finalSalePrice: z.number().optional(),
+  })),
+});
+
+export type ConsignorDashboard = z.infer<typeof consignorDashboardSchema>;

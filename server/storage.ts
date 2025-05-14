@@ -14,6 +14,7 @@ export interface IStorage {
   getCustomer(id: number): Promise<Customer | undefined>;
   getCustomerByEmail(email: string): Promise<Customer | undefined>;
   createCustomer(customer: InsertCustomer): Promise<Customer>;
+  getAllCustomers(): Promise<Customer[]>;
   
   // Item methods
   getItem(id: number): Promise<Item | undefined>;
@@ -43,6 +44,11 @@ export interface IStorage {
   
   // Dashboard methods
   getDashboardStats(): Promise<DashboardStats>;
+  getConsignorStats(consignorId: number): Promise<{
+    totalItems: number;
+    totalSales: number;
+    itemsPerStatus: Record<string, number>;
+  }>;
 }
 
 // Memory Storage implementation
@@ -82,6 +88,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.customers.values()).find(
       (customer) => customer.email === email
     );
+  }
+  
+  async getAllCustomers(): Promise<Customer[]> {
+    return Array.from(this.customers.values());
   }
   
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
