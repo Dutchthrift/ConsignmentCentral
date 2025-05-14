@@ -33,7 +33,7 @@ export default function ConsignorProfile() {
   });
   
   // Initialize form data when data loads
-  React.useEffect(() => {
+  useEffect(() => {
     if (consignorData?.data?.consignor) {
       const consignor = consignorData.data.consignor;
       setFormData({

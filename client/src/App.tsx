@@ -119,6 +119,11 @@ function Router() {
         
         {/* Consignor Dashboard Routes */}
         <ProtectedRoute 
+          path="/consignor" 
+          component={ConsignorDashboard}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute 
           path="/consignor/dashboard" 
           component={ConsignorDashboard}
           allowedRoles={[UserRole.CONSIGNOR]} 
@@ -130,17 +135,27 @@ function Router() {
         />
         <ProtectedRoute 
           path="/consignor/items" 
-          component={() => <div>My Items</div>}
+          component={ConsignorItems}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute 
+          path="/consignor/history" 
+          component={ConsignorHistory}
           allowedRoles={[UserRole.CONSIGNOR]} 
         />
         <ProtectedRoute 
           path="/consignor/payouts" 
-          component={() => <div>My Payouts</div>}
+          component={ConsignorPayouts}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute 
+          path="/consignor/profile" 
+          component={ConsignorProfile}
           allowedRoles={[UserRole.CONSIGNOR]} 
         />
         <ProtectedRoute 
           path="/consignor/settings" 
-          component={() => <div>Account Settings</div>}
+          component={ConsignorSettings}
           allowedRoles={[UserRole.CONSIGNOR]} 
         />
         
