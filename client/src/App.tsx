@@ -137,6 +137,10 @@ function Router() {
           allowedRoles={[UserRole.CONSIGNOR]} 
         />
         
+        {/* Authentication Routes */}
+        <Route path="/auth" component={ConsignorLogin} />
+        <Route path="/consignor/login" component={ConsignorLogin} />
+        
         {/* Customer Storefront Routes */}
         <Route path="/storefront" component={Storefront} />
         

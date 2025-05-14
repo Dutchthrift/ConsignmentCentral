@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/auth/user"], null);
-      navigate("/login");
+      navigate("/auth");
       toast({
         title: "Logged out",
         description: "You have been successfully logged out.",

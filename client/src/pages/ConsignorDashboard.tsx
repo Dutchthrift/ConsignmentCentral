@@ -152,7 +152,7 @@ export default function ConsignorDashboard() {
         items={consignorData?.data?.items}
         isLoading={isLoading}
         onItemClick={handleItemClick}
-        customerId={userData?.customerId?.toString()}
+        customerId={user?.id?.toString()}
       />
       
       {/* Item detail modal */}
