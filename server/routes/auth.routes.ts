@@ -103,7 +103,7 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         externalId: null,
         profileImageUrl: null,
         customerId: null,
-        createdAt: new Date()
+        // createdAt is added automatically by the database schema
       });
       
       // Log the user in
