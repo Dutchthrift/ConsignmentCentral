@@ -19,8 +19,23 @@ import StorefrontLayout from "@/components/StorefrontLayout";
 function Router() {
   const [location] = useLocation();
   
+  // Check if the current path is a login path
+  const isLoginPath = location === "/login";
+  
   // Check if the current path is a storefront path
   const isStorefrontPath = location.startsWith("/storefront");
+  
+  // If we're on the login page, don't use any layout
+  if (isLoginPath) {
+    return (
+      <>
+        <Toaster />
+        <Switch>
+          <Route path="/login" component={Login} />
+        </Switch>
+      </>
+    );
+  }
   
   // Use different layouts based on path
   const AppLayout = isStorefrontPath ? StorefrontLayout : Layout;

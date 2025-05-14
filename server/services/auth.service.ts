@@ -2,21 +2,21 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as AppleStrategy } from 'passport-apple';
 import { IStorage } from '../storage';
-import { User } from '@shared/schema';
 import { Request } from 'express';
+import { User } from '@shared/schema';
+import SessionService from './session.service';
 
 export class AuthService {
   private storage: IStorage;
+  private sessionService: SessionService;
 
   constructor(storage: IStorage) {
     this.storage = storage;
-    this.configurePassport();
+    this.sessionService = new SessionService();
+    this.initializePassport();
   }
 
-  /**
-   * Configure passport strategies and serialization/deserialization
-   */
-  private configurePassport() {
+  private initializePassport() {
     // Serialize user to session
     passport.serializeUser((user: User, done) => {
       done(null, user.id);
@@ -26,65 +26,59 @@ export class AuthService {
     passport.deserializeUser(async (id: number, done) => {
       try {
         const user = await this.storage.getUserById(id);
-        done(null, user || false);
+        if (!user) {
+          return done(new Error('User not found'));
+        }
+        
+        // Update last login time
+        await this.storage.updateUserLastLogin(id);
+        
+        done(null, user);
       } catch (error) {
-        done(error, false);
+        done(error);
       }
     });
 
-    // Configure Google OAuth strategy
+    // Configure Google Strategy
     if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       passport.use(
         new GoogleStrategy(
           {
             clientID: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            callbackURL: '/api/auth/google/callback',
-            passReqToCallback: true
+            callbackURL: '/api/auth/google/callback'
           },
-          async (req: Request, accessToken, refreshToken, profile, done) => {
+          async (accessToken, refreshToken, profile, done) => {
             try {
-              // Check if user already exists with this external ID
-              let user = await this.storage.getUserByExternalId(profile.id, 'google');
-              
+              // Check if user exists by their Google ID
+              let user = await this.storage.getUserByExternalId(
+                profile.id,
+                'google'
+              );
+
               if (!user) {
-                // Create new user if doesn't exist
-                const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
-                if (!email) {
-                  return done(new Error('No email provided from Google'), false);
-                }
-                
-                // Check if user exists with same email
-                const existingUserWithEmail = await this.storage.getUserByEmail(email);
-                if (existingUserWithEmail) {
-                  // Link existing user to Google account
-                  user = await this.storage.updateUserExternalId(existingUserWithEmail.id, profile.id, 'google');
-                } else {
-                  // Create brand new user
-                  user = await this.storage.createUser({
-                    name: profile.displayName || email.split('@')[0],
-                    email,
-                    role: 'consignor', // Default role for new users
-                    externalId: profile.id,
-                    provider: 'google',
-                  });
-                }
-              } else {
-                // Update last login time for existing user
-                user = await this.storage.updateUserLastLogin(user.id);
+                // Create new user if they don't exist
+                user = await this.storage.createUser({
+                  name: profile.displayName,
+                  email: profile.emails && profile.emails[0] ? profile.emails[0].value : '',
+                  provider: 'google',
+                  externalId: profile.id,
+                  role: 'user', // Default role
+                  profileImageUrl: profile.photos && profile.photos[0] ? profile.photos[0].value : null
+                });
               }
-              
+
               return done(null, user);
             } catch (error) {
-              return done(error, false);
+              return done(error as Error);
             }
           }
         )
       );
     }
 
-    // Configure Apple OAuth strategy
-    if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID && process.env.APPLE_PRIVATE_KEY) {
+    // Configure Apple Strategy
+    if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID) {
       passport.use(
         new AppleStrategy(
           {
@@ -95,45 +89,33 @@ export class AuthService {
             callbackURL: '/api/auth/apple/callback',
             passReqToCallback: true
           },
-          async (req: Request, accessToken, refreshToken, idToken, profile, done) => {
+          async (req, accessToken, refreshToken, idToken, profile, done) => {
             try {
-              // Apple provides user details only on the first login
-              // We need to handle that case specially by checking the request body
-              const email = profile?.email || (req.body && req.body.user ? JSON.parse(req.body.user).email : null);
-              const name = profile?.name || (req.body && req.body.user ? JSON.parse(req.body.user).name : null);
+              // Apple profile does not always provide name and email after the first login
+              // Use data from the initial request if available
+              let email = profile.email;
+              let name = profile.name ? `${profile.name.firstName} ${profile.name.lastName}` : '';
               
-              if (!email) {
-                return done(new Error('No email provided from Apple'), false);
-              }
-              
-              // Check if user already exists with this external ID
-              let user = await this.storage.getUserByExternalId(idToken.sub, 'apple');
-              
+              // Check if user exists by their Apple ID
+              let user = await this.storage.getUserByExternalId(
+                profile.id,
+                'apple'
+              );
+
               if (!user) {
-                // Check if user exists with same email
-                const existingUserWithEmail = await this.storage.getUserByEmail(email);
-                if (existingUserWithEmail) {
-                  // Link existing user to Apple account
-                  user = await this.storage.updateUserExternalId(existingUserWithEmail.id, idToken.sub, 'apple');
-                } else {
-                  // Create brand new user
-                  const displayName = name ? `${name.firstName} ${name.lastName}` : email.split('@')[0];
-                  user = await this.storage.createUser({
-                    name: displayName,
-                    email,
-                    role: 'consignor', // Default role for new users
-                    externalId: idToken.sub,
-                    provider: 'apple',
-                  });
-                }
-              } else {
-                // Update last login time for existing user
-                user = await this.storage.updateUserLastLogin(user.id);
+                // Create new user if they don't exist
+                user = await this.storage.createUser({
+                  name: name || 'Apple User',
+                  email: email || '',
+                  provider: 'apple',
+                  externalId: profile.id,
+                  role: 'user'
+                });
               }
-              
+
               return done(null, user);
             } catch (error) {
-              return done(error, false);
+              return done(error as Error);
             }
           }
         )
@@ -141,38 +123,18 @@ export class AuthService {
     }
   }
 
-  /**
-   * Get the authentication middleware
-   */
   getAuthMiddleware() {
     return passport.initialize();
   }
 
-  /**
-   * Get the session middleware
-   */
   getSessionMiddleware() {
-    return passport.session();
+    return this.sessionService.getSessionMiddleware();
   }
 
-  /**
-   * Check if user is authenticated
-   */
-  isAuthenticated(req: Request) {
-    return req.isAuthenticated();
-  }
-
-  /**
-   * Check if user has admin role
-   */
-  isAdmin(req: Request) {
+  // Check if the user is an admin
+  isAdmin(req: Request): boolean {
     return req.isAuthenticated() && req.user && (req.user as User).role === 'admin';
   }
-
-  /**
-   * Check if user is authenticated and has the specified role
-   */
-  hasRole(req: Request, role: string) {
-    return req.isAuthenticated() && req.user && (req.user as User).role === role;
-  }
 }
+
+export default AuthService;

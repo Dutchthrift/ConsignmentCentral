@@ -1,14 +1,17 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction, Express } from 'express';
 import passport from 'passport';
 import { IStorage } from '../storage';
-import { AuthService } from '../services/auth.service';
+import AuthService from '../services/auth.service';
 
-export function registerAuthRoutes(router: Router, storage: IStorage) {
+export function registerAuthRoutes(app: Express, storage: IStorage) {
   const authService = new AuthService(storage);
   
   // Initialize auth middleware
-  router.use(authService.getAuthMiddleware());
-  router.use(authService.getSessionMiddleware());
+  app.use(authService.getAuthMiddleware());
+  app.use(authService.getSessionMiddleware());
+  
+  // Create a router for auth routes
+  const router = Router();
   
   // User info endpoint - get current logged in user
   router.get('/api/auth/user', (req: Request, res: Response) => {

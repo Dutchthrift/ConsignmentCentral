@@ -1,32 +1,39 @@
-import session from 'express-session';
+import session, { SessionOptions } from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import { pool } from '../db';
-import { Express } from 'express';
 
-export function configureSession(app: Express) {
-  const pgSession = connectPgSimple(session);
-  
-  const sessionOptions: session.SessionOptions = {
-    store: new pgSession({
+export class SessionService {
+  private pgSession: any;
+  private sessionOptions: SessionOptions;
+
+  constructor() {
+    const PgSession = connectPgSimple(session);
+    this.pgSession = new PgSession({
       pool,
-      tableName: 'sessions' // Uses the sessions table we created
-    }),
-    secret: process.env.SESSION_SECRET || 'dutchthrift_session_secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
-    }
-  };
-  
-  // In production, ensure secure cookie when using HTTPS
-  if (process.env.NODE_ENV === 'production') {
-    app.set('trust proxy', 1); // Trust first proxy
+      tableName: 'sessions',
+      // Use the same schema as the one specified in drizzle schema
+      schemaName: 'public',
+      // Clean up expired sessions (default is 24h)
+      pruneSessionInterval: 60 * 15 // 15 minutes
+    });
+
+    this.sessionOptions = {
+      store: this.pgSession,
+      secret: process.env.SESSION_SECRET || 'dutch-thrift-consignment-secret',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax'
+      }
+    };
   }
-  
-  // Use session middleware
-  app.use(session(sessionOptions));
-  
-  return session;
+
+  getSessionMiddleware() {
+    return session(this.sessionOptions);
+  }
 }
+
+export default SessionService;

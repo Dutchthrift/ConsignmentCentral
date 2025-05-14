@@ -15,7 +15,7 @@ import { ZodError } from "zod";
 import { generateShippingLabel } from "./services/sendcloud.service";
 import { analyzeProduct } from "./services/openai.service";
 import { getMarketPricing, calculatePricing } from "./services/ebay.service";
-import { configureSession } from "./services/session.service";
+import SessionService from "./services/session.service";
 import { registerAuthRoutes } from "./routes/auth.routes";
 
 // Import route handlers
@@ -50,7 +50,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Configure session handling
-  configureSession(app);
+  const sessionService = new SessionService();
+  app.use(sessionService.getSessionMiddleware());
   
   // Register authentication routes
   const authService = registerAuthRoutes(app, storage);
