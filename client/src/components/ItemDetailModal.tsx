@@ -109,7 +109,10 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
                 />
               ) : (
                 <div className="w-full h-64 bg-neutral-200 rounded-lg flex items-center justify-center text-neutral-500">
-                  No image available
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-sm ml-2">No image available</p>
                 </div>
               )}
 
@@ -155,7 +158,12 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
                   <h3 className="text-lg font-medium">{item.title}</h3>
                   {getStatusBadge(item.status)}
                 </div>
-                <p className="text-sm text-neutral-500">ID: {item.referenceId}</p>
+                <div className="flex items-center mt-1">
+                  <span className="text-sm font-medium mr-2">ID:</span>
+                  <Badge variant="outline" className="bg-neutral-100 font-mono">
+                    {item.referenceId}
+                  </Badge>
+                </div>
               </div>
 
               <Separator />
@@ -213,23 +221,34 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
               {item.pricing && (
                 <div>
                   <Separator />
-                  <h3 className="text-sm font-medium mb-2">Market Pricing</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-xs text-neutral-500">Average Market</p>
-                      <p className="text-sm font-medium">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-medium">Market Pricing</h3>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                      eBay Market Data
+                    </Badge>
+                  </div>
+                  
+                  <div className="bg-blue-50/40 rounded-lg p-3 mb-3">
+                    <div className="flex justify-between">
+                      <span className="text-xs font-medium">Average Market Price:</span>
+                      <span className="text-sm font-bold">
                         €{(item.pricing.averageMarketPrice / 100 || 0).toFixed(2)}
-                      </p>
+                      </span>
                     </div>
-                    <div>
-                      <p className="text-xs text-neutral-500">Our Listing</p>
-                      <p className="text-sm font-medium text-primary">
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-primary/10 rounded-lg p-3">
+                      <p className="text-xs font-medium text-primary-700 mb-1">Our Listing Price</p>
+                      <p className="text-lg font-bold text-primary">
                         €{(item.pricing.suggestedListingPrice / 100 || 0).toFixed(2)}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-xs text-neutral-500">Consignor Payout ({100 - (item.pricing.commissionRate || 20)}%)</p>
-                      <p className="text-sm font-medium">
+                    <div className="bg-yellow-50 rounded-lg p-3">
+                      <p className="text-xs font-medium text-yellow-800 mb-1">
+                        Consignor Payout <span className="text-yellow-600">({100 - (item.pricing.commissionRate || 20)}%)</span>
+                      </p>
+                      <p className="text-lg font-bold text-yellow-700">
                         €{(item.pricing.suggestedPayout / 100 || 0).toFixed(2)}
                       </p>
                     </div>
@@ -318,10 +337,25 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
               </div>
 
               <div className="flex justify-between">
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    // Create a dropdown or dialog for status selection in a real implementation
+                    alert("Status update functionality would open a dropdown or dialog here");
+                  }}
+                  className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                >
                   Update Status
                 </Button>
-                <Button className="flex items-center" size="sm">
+                <Button 
+                  className="flex items-center bg-[#96bf48] hover:bg-[#7aa93c]" 
+                  size="sm"
+                  onClick={() => {
+                    // In a real implementation, this would link to the Shopify product
+                    window.open(`https://admin.shopify.com/store/dutchthrift/products`, '_blank');
+                  }}
+                >
                   <ExternalLink className="h-4 w-4 mr-1" /> View in Shopify
                 </Button>
               </div>
