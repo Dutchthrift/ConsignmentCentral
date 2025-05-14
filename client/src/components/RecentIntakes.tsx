@@ -6,6 +6,7 @@ import { MoreVertical, Package } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface ItemProps {
+  id?: number;
   referenceId: string;
   title: string;
   imageUrl?: string;
@@ -133,9 +134,19 @@ export default function RecentIntakes({
                       <td className="py-3 px-4">
                         <Skeleton className="h-4 w-16" />
                       </td>
+                      {customerId && (
+                        <td className="py-3 px-4">
+                          <Skeleton className="h-4 w-16" />
+                        </td>
+                      )}
                       <td className="py-3 px-4">
                         <Skeleton className="h-4 w-16" />
                       </td>
+                      {customerId && (
+                        <td className="py-3 px-4">
+                          <Skeleton className="h-5 w-24" />
+                        </td>
+                      )}
                       <td className="py-3 px-4">
                         <Skeleton className="h-6 w-6 rounded-full" />
                       </td>
@@ -185,7 +196,7 @@ export default function RecentIntakes({
                     </td>
                     <td className="py-3 px-4 text-sm font-medium">
                       {(item.estimatedPrice || item.pricing?.estimatedPrice)
-                        ? `€${(item.estimatedPrice || item.pricing?.estimatedPrice).toFixed(2)}`
+                        ? `€${(item.estimatedPrice || item.pricing?.estimatedPrice || 0).toFixed(2)}`
                         : "-"}
                     </td>
                     {customerId && (
@@ -197,7 +208,7 @@ export default function RecentIntakes({
                     )}
                     <td className="py-3 px-4 text-sm text-neutral-600">
                       {item.payoutAmount || item.pricing?.payout
-                        ? `€${(item.payoutAmount || item.pricing?.payout).toFixed(2)}`
+                        ? `€${(item.payoutAmount || item.pricing?.payout || 0).toFixed(2)}`
                         : "-"}
                     </td>
                     {customerId && (
@@ -210,7 +221,7 @@ export default function RecentIntakes({
                             onChange={(e) => {
                               e.stopPropagation();
                               // Call API to update payout method
-                              fetch(`/api/dashboard/${customerId}/items/${item.id}/payout`, {
+                              fetch(`/api/dashboard/${customerId}/items/${item.id || 0}/payout`, {
                                 method: 'POST',
                                 headers: {
                                   'Content-Type': 'application/json',
