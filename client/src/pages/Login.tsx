@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { SiGoogle, SiApple } from "react-icons/si";
-import { Logo } from "@/components/Logo";
+import { Logo } from "../components/Logo";
 
 const Login = () => {
   const [, setLocation] = useLocation();
