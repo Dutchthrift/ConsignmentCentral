@@ -1,0 +1,185 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import ItemDetailModal from "@/components/ItemDetailModal";
+
+// Helper to format date
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+// Helper to get status badge color
+function getStatusBadge(status: string) {
+  switch (status) {
+    case "pending":
+      return <Badge variant="outline" className="bg-neutral-100">Pending</Badge>;
+    case "analyzed":
+      return <Badge variant="outline" className="bg-purple-100 text-purple-800">Analyzed</Badge>;
+    case "shipped":
+      return <Badge variant="outline" className="bg-blue-100 text-blue-800">Shipped</Badge>;
+    case "received":
+      return <Badge variant="outline" className="bg-indigo-100 text-indigo-800">Received</Badge>;
+    case "tested":
+      return <Badge variant="outline" className="bg-cyan-100 text-cyan-800">Tested</Badge>;
+    case "listed":
+      return <Badge variant="outline" className="bg-green-100 text-green-800">Listed</Badge>;
+    case "sold":
+      return <Badge variant="outline" className="bg-amber-100 text-amber-800">Sold</Badge>;
+    case "paid":
+      return <Badge variant="outline" className="bg-green-100 text-green-800">Paid</Badge>;
+    default:
+      return <Badge variant="outline">{status}</Badge>;
+  }
+}
+
+export default function ConsignorItems() {
+  const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+
+  // Fetch consignor's data
+  const { data: consignorData, isLoading } = useQuery<any>({
+    queryKey: ["/api/consignor/dashboard"],
+    enabled: !!user?.id,
+  });
+
+  const items = consignorData?.data?.items || [];
+  
+  // Filter items based on search term
+  const filteredItems = items.filter((item: any) => 
+    item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.referenceId.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleItemClick = (referenceId: string) => {
+    setSelectedItemId(referenceId);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedItemId(null);
+  };
+
+  return (
+    <div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">My Items</h1>
+          <p className="text-neutral-600">
+            View and manage all your consigned items
+          </p>
+        </div>
+        
+        <div className="relative w-full md:w-64">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-neutral-500" />
+          <Input
+            placeholder="Search items..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>All Items</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array(5).fill(0).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : filteredItems.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Reference ID</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date Added</TableHead>
+                    <TableHead>Est. Price</TableHead>
+                    <TableHead>Commission</TableHead>
+                    <TableHead>Payout</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredItems.map((item: any) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {item.imageUrl && (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.title}
+                              className="h-10 w-10 rounded-md object-cover"
+                            />
+                          )}
+                          <span className="font-medium">{item.title}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{item.referenceId}</TableCell>
+                      <TableCell>{getStatusBadge(item.status)}</TableCell>
+                      <TableCell>{formatDate(item.createdAt)}</TableCell>
+                      <TableCell>
+                        {item.estimatedPrice ? `€${item.estimatedPrice.toFixed(2)}` : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {item.commissionRate ? `${item.commissionRate}%` : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {item.payoutAmount ? `€${item.payoutAmount.toFixed(2)}` : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleItemClick(item.referenceId)}
+                        >
+                          Details
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-neutral-500">No items found</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Item detail modal */}
+      {selectedItemId && (
+        <ItemDetailModal
+          referenceId={selectedItemId}
+          onClose={handleCloseModal}
+        />
+      )}
+    </div>
+  );
+}
