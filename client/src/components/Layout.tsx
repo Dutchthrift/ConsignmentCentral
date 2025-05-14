@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Separator } from "@/components/ui/separator";
 // Import logo
-import logoPath from "../assets/logo.png";
+import logoPath from "../assets/dutch_thrift_logo.jpeg";
 
 // Icons
 import {
@@ -35,7 +35,9 @@ const menuItems: MenuItem[] = [
   { icon: <Wallet className="mr-2 h-5 w-5" />, label: "Payouts", path: "/payouts" },
   { icon: <Users className="mr-2 h-5 w-5" />, label: "Consignors", path: "/consignors" },
   { icon: <Brain className="mr-2 h-5 w-5" />, label: "Model Training", path: "/model-training" },
+  { icon: <HelpCircle className="mr-2 h-5 w-5" />, label: "Help", path: "/help" },
   { icon: <Settings className="mr-2 h-5 w-5" />, label: "Settings", path: "/settings" },
+  { icon: <Bell className="mr-2 h-5 w-5" />, label: "System Health", path: "/system-health" },
 ];
 
 type LayoutProps = {
@@ -99,7 +101,10 @@ export default function Layout({ children }: LayoutProps) {
           <button onClick={toggleMobileMenu} className="mr-2">
             <Menu className="h-6 w-6" />
           </button>
-          <h1 className="text-lg font-medium">Consignment Portal</h1>
+          <div className="flex items-center">
+            <img src={logoPath} alt="Dutch Thrift Logo" className="h-10 mr-2" />
+            <h1 className="text-lg font-medium">Dutch Thrift</h1>
+          </div>
         </div>
         <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
           <span className="text-primary text-sm font-medium">JD</span>
@@ -112,22 +117,8 @@ export default function Layout({ children }: LayoutProps) {
           <div className="bg-neutral-800 text-white w-64 h-full overflow-y-auto">
             <div className="p-4 flex items-center justify-between border-b border-neutral-700">
               <div className="flex items-center">
-                <svg
-                  className="mr-2 h-6 w-6"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M17 3L21 7L17 11" />
-                  <path d="M3 13L7 17L3 21" />
-                  <path d="M21 7H7" />
-                  <path d="M17 17H3" />
-                </svg>
-                <h1 className="text-xl font-medium">Consignment Portal</h1>
+                <img src={logoPath} alt="Dutch Thrift Logo" className="h-10 mr-2" />
+                <h1 className="text-xl font-medium">Dutch Thrift</h1>
               </div>
               <button onClick={toggleMobileMenu}>
                 <X className="h-6 w-6" />
