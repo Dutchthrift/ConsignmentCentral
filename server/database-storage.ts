@@ -7,6 +7,7 @@ import {
   mlTrainingExamples, MlTrainingExample, InsertMlTrainingExample,
   mlModelConfigs, MlModelConfig, InsertMlModelConfig,
   mlTrainingSessions, MlTrainingSession, InsertMlTrainingSession,
+  users, User, InsertUser,
   ItemWithDetails, DashboardStats
 } from "@shared/schema";
 import { db } from "./db";

@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, boolean, jsonb, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // Define status enum for consignment items
 export const ItemStatus = {
@@ -334,3 +335,78 @@ export type InsertMlModelConfig = z.infer<typeof insertMlModelConfigSchema>;
 
 export type MlTrainingSession = typeof mlTrainingSessions.$inferSelect;
 export type InsertMlTrainingSession = z.infer<typeof insertMlTrainingSessionSchema>;
+
+// User roles
+export const UserRole = {
+  CONSIGNOR: "consignor",
+  ADMIN: "admin"
+} as const;
+
+// Auth Providers
+export const AuthProvider = {
+  GOOGLE: "google",
+  APPLE: "apple",
+  LOCAL: "local"
+} as const;
+
+// User authentication table
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  externalId: text("external_id"), // Auth provider's user ID
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
+  role: text("role").notNull().default(UserRole.CONSIGNOR),
+  provider: text("provider").notNull(), // google, apple, etc.
+  profileImageUrl: text("profile_image_url"),
+  lastLogin: timestamp("last_login").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  customerId: integer("customer_id").references(() => customers.id),
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  lastLogin: true,
+  createdAt: true,
+});
+
+// Relations
+export const usersRelations = relations(users, ({ one }) => ({
+  customer: one(customers, {
+    fields: [users.customerId],
+    references: [customers.id],
+  }),
+}));
+
+export const customersRelations = relations(customers, ({ many }) => ({
+  users: many(users),
+  items: many(items),
+}));
+
+export const itemsRelations = relations(items, ({ one, many }) => ({
+  customer: one(customers, {
+    fields: [items.customerId],
+    references: [customers.id],
+  }),
+  analysis: one(analyses, {
+    fields: [items.id],
+    references: [analyses.itemId],
+  }),
+  pricing: one(pricing, {
+    fields: [items.id],
+    references: [pricing.itemId],
+  }),
+  shipping: one(shipping, {
+    fields: [items.id],
+    references: [shipping.itemId],
+  }),
+}));
+
+// Session table for express-session with connect-pg-simple
+export const sessions = pgTable("sessions", {
+  sid: text("sid").primaryKey(),
+  sess: jsonb("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
