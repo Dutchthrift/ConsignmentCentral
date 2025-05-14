@@ -11,6 +11,7 @@ import Orders from "@/pages/Orders";
 import Payouts from "@/pages/Payouts";
 import Settings from "@/pages/Settings";
 import Storefront from "@/pages/Storefront";
+import ModelTraining from "@/pages/ModelTraining";
 import Layout from "@/components/Layout";
 import StorefrontLayout from "@/components/StorefrontLayout";
 
@@ -34,6 +35,7 @@ function Router() {
         <Route path="/orders" component={Orders} />
         <Route path="/payouts" component={Payouts} />
         <Route path="/settings" component={Settings} />
+        <Route path="/model-training" component={ModelTraining} />
         <Route path="/dashboard/:customerId" component={Dashboard} />
         
         {/* Customer Storefront Routes */}

@@ -19,6 +19,7 @@ import { getMarketPricing, calculatePricing } from "./services/ebay.service";
 // Import route handlers
 import adminRoutes from "./routes/admin";
 import dashboardRoutes from "./routes/dashboard";
+import mlTrainingRoutes from "./routes/ml-training";
 import { calculateCommission, checkEligibility } from "./utils/commission.ts";
 
 // Generate unique reference ID for new items
@@ -78,6 +79,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register dashboard routes
   app.use("/api/dashboard", dashboardRoutes);
+  
+  // Register ML training routes
+  app.use("/api/ml", mlTrainingRoutes);
 
   // ===== INTAKE ROUTES =====
   
