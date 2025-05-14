@@ -149,7 +149,7 @@ const Login = () => {
         title: "Login Successful",
         description: "Welcome back!",
       });
-      setLocation("/dashboard");
+      setLocation("/");
     } catch (err) {
       console.error("Login error:", err);
       setError("An unexpected error occurred. Please try again.");
@@ -196,7 +196,7 @@ const Login = () => {
         title: "Registration Successful",
         description: "Your account has been created.",
       });
-      setLocation("/dashboard");
+      setLocation("/");
     } catch (err) {
       console.error("Registration error:", err);
       setError("An unexpected error occurred. Please try again.");

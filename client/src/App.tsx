@@ -46,6 +46,7 @@ function Router() {
       <Switch>
         {/* Admin Dashboard Routes */}
         <Route path="/" component={Dashboard} />
+        <Route path="/dashboard" component={Dashboard} />
         <Route path="/intake" component={IntakeForm} />
         <Route path="/inventory" component={Inventory} />
         <Route path="/orders" component={Orders} />
