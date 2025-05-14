@@ -813,7 +813,7 @@ export default function Settings() {
                     <div className="p-4 flex items-center justify-between border-b border-neutral-200">
                       <div className="flex items-center">
                         <div className="w-10 h-10 rounded-md bg-blue-100 flex items-center justify-center mr-3">
-                          <BankIcon className="h-5 w-5 text-blue-600" />
+                          <Building2 className="h-5 w-5 text-blue-600" />
                         </div>
                         <div>
                           <p className="text-sm font-medium">Bank Transfers</p>
