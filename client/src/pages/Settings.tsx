@@ -45,8 +45,10 @@ import {
   Edit3,
   Trash2,
   AlertTriangle,
-  Building2
+  Building2,
+  Calculator
 } from "lucide-react";
+import CommissionCalculator from "@/components/CommissionCalculator";
 
 // Form schema for company settings
 const companySettingsSchema = z.object({
@@ -128,7 +130,7 @@ export default function Settings() {
     resolver: zodResolver(consignmentSettingsSchema),
     defaultValues: {
       commissionRate: 20,
-      minimumSalePrice: 25,
+      minimumSalePrice: 50, // Dutch Thrift minimum is €50
       maximumConsignmentPeriod: 90,
       autoPayConsignors: true,
       paymentThreshold: 50,
@@ -772,7 +774,31 @@ export default function Settings() {
                     </Button>
                   </div>
                   
-                  <CardFooter className="flex justify-end pt-4 px-0">
+                  <Separator className="my-8" />
+                  
+                  <div>
+                    <h3 className="text-md font-medium mb-4 flex items-center">
+                      <Calculator className="mr-2 h-5 w-5" />
+                      Commission Calculator
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Use this calculator to estimate commission rates and payouts for consigned items based on our tiered pricing structure:
+                    </p>
+                    
+                    <div className="bg-accent/30 px-4 py-3 rounded-md mb-6">
+                      <ul className="list-disc pl-5 space-y-1 text-sm">
+                        <li>€50 – €99.99 → 50% commission</li>
+                        <li>€100 – €199.99 → 40% commission</li>
+                        <li>€200 – €499.99 → 30% commission</li>
+                        <li>€500 and up → 20% commission</li>
+                        <li>Store credit option adds 10% bonus to payout</li>
+                      </ul>
+                    </div>
+                    
+                    <CommissionCalculator />
+                  </div>
+                  
+                  <CardFooter className="flex justify-end pt-8 px-0">
                     <Button type="submit" className="flex items-center">
                       <Save className="h-4 w-4 mr-2" /> Save Settings
                     </Button>
