@@ -101,10 +101,10 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
         ) : item ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1">
-              {item.imageUrl ? (
+              {item.item && item.item.imageUrl ? (
                 <img
-                  src={item.imageUrl}
-                  alt={item.title}
+                  src={item.item.imageUrl}
+                  alt={item.item.title}
                   className="w-full h-auto rounded-lg object-cover"
                 />
               ) : (
@@ -160,8 +160,8 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
                 </div>
                 <div className="flex items-center mt-1">
                   <span className="text-sm font-medium mr-2">ID:</span>
-                  <Badge variant="outline" className="bg-neutral-100 font-mono">
-                    {item.referenceId}
+                  <Badge variant="outline" className="bg-neutral-100 font-mono text-black">
+                    {item.referenceId || "Unknown"}
                   </Badge>
                 </div>
               </div>
@@ -232,7 +232,7 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
                     <div className="flex justify-between">
                       <span className="text-xs font-medium">Average Market Price:</span>
                       <span className="text-sm font-bold">
-                        €{(item.pricing.averageMarketPrice / 100 || 0).toFixed(2)}
+                        €{(item.pricing.estimatedSalePrice || 0).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -241,15 +241,15 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
                     <div className="bg-primary/10 rounded-lg p-3">
                       <p className="text-xs font-medium text-primary-700 mb-1">Our Listing Price</p>
                       <p className="text-lg font-bold text-primary">
-                        €{(item.pricing.suggestedListingPrice / 100 || 0).toFixed(2)}
+                        €{(item.pricing.estimatedSalePrice || 0).toFixed(2)}
                       </p>
                     </div>
                     <div className="bg-yellow-50 rounded-lg p-3">
                       <p className="text-xs font-medium text-yellow-800 mb-1">
-                        Consignor Payout <span className="text-yellow-600">({100 - (item.pricing.commissionRate || 20)}%)</span>
+                        Consignor Payout <span className="text-yellow-600">({100 - (item.pricing.commissionRate || 35)}%)</span>
                       </p>
                       <p className="text-lg font-bold text-yellow-700">
-                        €{(item.pricing.suggestedPayout / 100 || 0).toFixed(2)}
+                        €{(item.pricing.yourPayout || 0).toFixed(2)}
                       </p>
                     </div>
                   </div>
