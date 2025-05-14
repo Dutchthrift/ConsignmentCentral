@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Package } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface ItemProps {
