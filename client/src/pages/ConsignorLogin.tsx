@@ -74,7 +74,9 @@ export default function ConsignorLogin() {
   
   const onRegisterSubmit = (data: RegisterFormValues) => {
     registerMutation.mutate({
-      ...data,
+      name: data.name,
+      email: data.email,
+      password: data.password,
       role: UserRole.CONSIGNOR,  // Force consignor role
       provider: "local",
     });

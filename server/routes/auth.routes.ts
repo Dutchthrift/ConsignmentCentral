@@ -123,12 +123,17 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
   });
   
   router.post('/api/auth/login', (req: Request, res: Response, next: NextFunction) => {
+    // Log the incoming request for debugging
+    console.log('Login attempt:', { email: req.body.email });
+    
     passport.authenticate('local', (err, user, info) => {
       if (err) {
+        console.error('Auth error:', err);
         return next(err);
       }
       
       if (!user) {
+        console.log('Auth failed:', info?.message);
         return res.status(401).json({
           success: false,
           message: info?.message || 'Invalid credentials'
@@ -137,11 +142,14 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
       
       req.login(user, (err) => {
         if (err) {
+          console.error('Login error:', err);
           return next(err);
         }
         
         // Update last login timestamp
         storage.updateUserLastLogin(user.id).catch(console.error);
+        
+        console.log('Login successful:', { userId: user.id, role: user.role });
         
         return res.json({
           success: true,

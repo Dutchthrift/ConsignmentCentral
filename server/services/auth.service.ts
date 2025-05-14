@@ -41,6 +41,7 @@ export class AuthService {
       usernameField: 'email',
       passwordField: 'password'
     }, async (email, password, done) => {
+      console.log('Local strategy call:', { email });
       try {
         // Find user by email
         const user = await this.storage.getUserByEmail(email);

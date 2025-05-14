@@ -22,6 +22,7 @@ import ConsignorDashboard from "@/pages/ConsignorDashboard";
 import Layout from "@/components/Layout";
 import StorefrontLayout from "@/components/StorefrontLayout";
 import ConsignorLayout from "@/components/ConsignorLayout";
+import AuthLayout from "@/components/AuthLayout";
 
 function Router() {
   const [location] = useLocation();
@@ -32,17 +33,16 @@ function Router() {
   const isStorefrontPath = location.startsWith("/storefront");
   const isConsignorPath = location.startsWith("/consignor") && !isConsignorLoginPath;
   
-  // If we're on a login page, don't use any layout
+  // If we're on a login page, use the AuthLayout
   if (isLoginPath || isConsignorLoginPath) {
     return (
-      <>
-        <Toaster />
+      <AuthLayout>
         <Switch>
           <Route path="/login" component={Login} />
           <Route path="/auth" component={ConsignorLogin} />
           <Route path="/consignor/login" component={ConsignorLogin} />
         </Switch>
-      </>
+      </AuthLayout>
     );
   }
   
