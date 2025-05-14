@@ -98,7 +98,8 @@ export function calculatePricing(marketData: EbaySearchResult): {
   const suggestedListingPrice = Math.round(basePrice * 0.95);
   
   // For the commission rate, we'll use 30% as a default
-  const commissionRate = 30;
+  // Must be an integer for database schema (no decimals)
+  const commissionRate = Math.round(30);
   
   // Calculate payout (typically 70% of sale price with our default rate)
   const suggestedPayout = Math.round(suggestedListingPrice * (1 - commissionRate/100));

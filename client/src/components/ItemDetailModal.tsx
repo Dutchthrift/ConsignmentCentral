@@ -206,19 +206,19 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
                     <div>
                       <p className="text-xs text-neutral-500">Average Market</p>
                       <p className="text-sm font-medium">
-                        ${(item.pricing.averageMarketPrice || 0).toFixed(2)}
+                        €{(item.pricing.averageMarketPrice / 100 || 0).toFixed(2)}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-neutral-500">Our Listing</p>
                       <p className="text-sm font-medium text-primary">
-                        ${(item.pricing.suggestedListingPrice || 0).toFixed(2)}
+                        €{(item.pricing.suggestedListingPrice / 100 || 0).toFixed(2)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-neutral-500">Consignor Payout (80%)</p>
+                      <p className="text-xs text-neutral-500">Consignor Payout ({100 - (item.pricing.commissionRate || 20)}%)</p>
                       <p className="text-sm font-medium">
-                        ${(item.pricing.suggestedPayout || 0).toFixed(2)}
+                        €{(item.pricing.suggestedPayout / 100 || 0).toFixed(2)}
                       </p>
                     </div>
                   </div>

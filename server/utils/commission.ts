@@ -86,7 +86,7 @@ export function calculateCommission(salePrice: number, payoutType: string = "cas
   
   return {
     eligible: true,
-    commissionRate: Number((commissionRate * 100).toFixed(1)), // Convert to percentage with 1 decimal point
+    commissionRate: Math.round(commissionRate * 100), // Convert to percentage as an integer
     commissionAmount,
     payoutAmount,
     payoutType
