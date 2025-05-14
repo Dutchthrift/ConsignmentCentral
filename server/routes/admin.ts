@@ -1,6 +1,12 @@
 import { Router, Request, Response } from "express";
 import { storage } from "../storage";
-import { commissionSettingsSchema, commissionTierSchema } from "@shared/schema";
+import { 
+  commissionSettingsSchema, 
+  commissionTierSchema,
+  Item,
+  ItemWithDetails,
+  Customer
+} from "@shared/schema";
 import { ZodError } from "zod";
 import { calculateCommission, checkEligibility } from "../utils/commission.ts";
 
@@ -102,35 +108,43 @@ router.get("/commission-calculator", (req: Request, res: Response) => {
   }
 });
 
+import { Item } from "@shared/schema";
+
 // GET /api/admin/consignors - list all consignors
 router.get("/consignors", async (req: Request, res: Response) => {
   try {
-    // Get all customers (consignors)
-    const customers = await storage.getAllCustomers();
+    // Get all users with role consignor
+    const consignorUsers = await storage.getUsersByRole('consignor');
     
-    // For each customer, get their items
+    // For each user, get their customer data and items
     const consignors = await Promise.all(
-      customers.map(async (customer) => {
-        const items = await storage.getItemsByCustomerId(customer.id);
-        
-        // Calculate stats
-        const totalItems = items.length;
+      consignorUsers.map(async (user) => {
+        let totalItems = 0;
         let totalSales = 0;
+        let items: Item[] = [];
         
-        // Count sales and calculate total
-        for (const item of items) {
-          if (item.status === "sold" || item.status === "paid") {
-            const pricing = await storage.getPricingByItemId(item.id);
-            if (pricing && pricing.finalSalePrice) {
-              totalSales += pricing.finalSalePrice / 100; // Convert cents to EUR
+        // If user has a linked customer, get their items
+        if (user.customerId) {
+          items = await storage.getItemsByCustomerId(user.customerId);
+          
+          // Calculate stats
+          totalItems = items.length;
+          
+          // Count sales and calculate total
+          for (const item of items) {
+            if (item.status === "sold" || item.status === "paid") {
+              const pricing = await storage.getPricingByItemId(item.id);
+              if (pricing && pricing.finalSalePrice) {
+                totalSales += pricing.finalSalePrice / 100; // Convert cents to EUR
+              }
             }
           }
         }
         
         return {
-          id: customer.id,
-          name: customer.name,
-          email: customer.email,
+          id: user.id,
+          name: user.name,
+          email: user.email,
           totalItems,
           totalSales,
         };
@@ -162,17 +176,25 @@ router.get("/consignors/:id", async (req: Request, res: Response) => {
       });
     }
     
-    // Get customer and their items
-    const customer = await storage.getCustomer(consignorId);
+    // Get user with consignor role
+    const user = await storage.getUserById(consignorId);
     
-    if (!customer) {
+    if (!user || user.role !== 'consignor') {
       return res.status(404).json({
         success: false,
         message: "Consignor not found",
       });
     }
     
-    const items = await storage.getItemsWithDetailsByCustomerId(consignorId);
+    // Placeholder for items
+    let items: ItemWithDetails[] = [];
+    let customer = null;
+    
+    // If user has a linked customer, get their items
+    if (user.customerId) {
+      customer = await storage.getCustomer(user.customerId);
+      items = await storage.getItemsWithDetailsByCustomerId(user.customerId);
+    }
     
     // Format the data for the dashboard
     const formattedItems = items.map((item) => {
