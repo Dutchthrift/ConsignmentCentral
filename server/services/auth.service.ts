@@ -82,20 +82,36 @@ export class AuthService {
       done(null, user.id);
     });
 
-    // Deserialize user from session
+    // Deserialize user from session with enhanced error handling
     passport.deserializeUser(async (id: number, done) => {
       try {
-        const user = await this.storage.getUserById(id);
+        // Add timeouts to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Database timeout')), 5000);
+        });
+        
+        // Race the database query with a timeout
+        const user = await Promise.race([
+          this.storage.getUserById(id),
+          timeoutPromise
+        ]) as any;
+        
         if (!user) {
-          return done(new Error('User not found'));
+          console.warn(`User not found during session deserialization: ${id}`);
+          // Instead of throwing an error, just return null to force re-login
+          return done(null, null);
         }
         
-        // Update last login time
-        await this.storage.updateUserLastLogin(id);
+        // Try to update last login, but don't block if it fails
+        this.storage.updateUserLastLogin(id).catch(err => {
+          console.warn('Failed to update last login time:', err);
+        });
         
         done(null, user);
       } catch (error) {
-        done(error);
+        console.error('Error deserializing user:', error);
+        // Return null instead of the error to prevent crashes
+        done(null, null);
       }
     });
 
@@ -188,7 +204,25 @@ export class AuthService {
   }
 
   getSessionMiddleware() {
-    return this.sessionService.getSessionMiddleware();
+    // Add a wrapper around the session middleware to catch any errors
+    const sessionMiddleware = this.sessionService.getSessionMiddleware();
+    
+    return (req: any, res: any, next: any) => {
+      try {
+        sessionMiddleware(req, res, (err: any) => {
+          if (err) {
+            console.error('Session middleware error:', err);
+            // Continue even with session errors to prevent crashes
+            return next();
+          }
+          return next();
+        });
+      } catch (error) {
+        console.error('Uncaught session error:', error);
+        // Continue even with session errors to prevent crashes
+        return next();
+      }
+    };
   }
 
   // Check if the user is an admin

@@ -27,23 +27,31 @@ export class SessionService {
       cookieSecure: isReplit || process.env.NODE_ENV === 'production'
     });
     
-    // Use safer settings for the session store
+    // Use safer settings for the session store with enhanced stability
     this.sessionOptions = {
       store: this.pgSession,
       secret: process.env.SESSION_SECRET || 'dutch-thrift-consignment-secret',
       resave: false,
-      saveUninitialized: true, // Changed to true to ensure session ID is always assigned
+      saveUninitialized: true, // Ensure session ID is always assigned
       rolling: true, // Extend session lifetime on each request
       name: 'dutchthrift.sid', // Custom name to avoid conflicts
       proxy: isReplit, // Trust the proxy in Replit environment
       cookie: {
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        secure: false, // Set to false in development for simpler testing
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days - shorter maxAge may be more stable
+        secure: false, // Set to false regardless of environment for testing
         httpOnly: true,
         sameSite: 'lax',
         path: '/'
-      }
+      },
+      // Add unhandled error handling for session store
+      unset: 'destroy', // Remove session from store when req.session is destroyed
     };
+    
+    // Add error handler to the session store
+    this.pgSession.on('error', (error: Error) => {
+      console.error('Session store error:', error);
+      // Continue operation despite errors
+    });
   }
 
   getSessionMiddleware() {
