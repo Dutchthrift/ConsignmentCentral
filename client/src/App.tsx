@@ -27,6 +27,7 @@ import ConsignorHistory from "@/pages/ConsignorHistory";
 import ConsignorPayouts from "@/pages/ConsignorPayouts";
 import ConsignorProfile from "@/pages/ConsignorProfile";
 import ConsignorSettings from "@/pages/ConsignorSettings";
+import ConsignorInsights from "@/pages/ConsignorInsights";
 import Layout from "@/components/Layout";
 import StorefrontLayout from "@/components/StorefrontLayout";
 import ConsignorLayout from "@/components/ConsignorLayout";
@@ -149,6 +150,11 @@ function Router() {
         <ProtectedRoute 
           path="/consignor/payouts" 
           component={ConsignorPayouts}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute 
+          path="/consignor/insights" 
+          component={ConsignorInsights}
           allowedRoles={[UserRole.CONSIGNOR]} 
         />
         <ProtectedRoute 

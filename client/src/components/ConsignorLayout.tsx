@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { UserRound, Package, BarChart3, Settings, LogOut, History, CreditCard } from "lucide-react";
+import { UserRound, Package, BarChart3, Settings, LogOut, History, CreditCard, PieChart, ChartBar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
@@ -94,6 +94,18 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
             <Link to="/consignor/history">
               <History className="mr-2 h-4 w-4" />
               Sales History
+            </Link>
+          </Button>
+          
+          <Button
+            variant={location === "/consignor/insights" ? "default" : "ghost"}
+            size="sm"
+            className="w-full justify-start"
+            asChild
+          >
+            <Link to="/consignor/insights">
+              <PieChart className="mr-2 h-4 w-4" />
+              Insights
             </Link>
           </Button>
           
