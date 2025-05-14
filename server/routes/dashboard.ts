@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { storage } from "../storage";
-import { calculateCommission } from "../utils/commission";
+import { calculateCommission } from "../utils/commission.ts";
 import { PayoutType } from "@shared/schema";
 
 const router = Router();

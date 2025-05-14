@@ -19,7 +19,7 @@ import { getMarketPricing, calculatePricing } from "./services/ebay.service";
 // Import route handlers
 import adminRoutes from "./routes/admin";
 import dashboardRoutes from "./routes/dashboard";
-import { calculateCommission, checkEligibility } from "./utils/commission";
+import { calculateCommission, checkEligibility } from "./utils/commission.ts";
 
 // Generate unique reference ID for new items
 function generateReferenceId(): string {
@@ -54,6 +54,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: "ok", 
       message: "Consignment Platform API is running" 
     });
+  });
+  
+  // Test route for OpenAI integration
+  app.get("/api/test/openai", (req, res) => {
+    if (process.env.OPENAI_API_KEY) {
+      res.json({
+        status: "ok",
+        message: "OpenAI API key is configured",
+        keyConfigured: true
+      });
+    } else {
+      res.json({
+        status: "warning",
+        message: "OpenAI API key is not configured",
+        keyConfigured: false
+      });
+    }
   });
   
   // Register admin routes

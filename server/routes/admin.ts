@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { storage } from "../storage";
 import { commissionSettingsSchema, commissionTierSchema } from "@shared/schema";
 import { ZodError } from "zod";
-import { calculateCommission, checkEligibility } from "../utils/commission";
+import { calculateCommission, checkEligibility } from "../utils/commission.ts";
 
 const router = Router();
 
