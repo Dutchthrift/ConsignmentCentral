@@ -80,11 +80,10 @@ const apiIntegrationsSchema = z.object({
 
 // Form schema for consignment settings
 const consignmentSettingsSchema = z.object({
-  commissionRate: z.number().min(0).max(100),
-  minimumSalePrice: z.number().min(0),
-  maximumConsignmentPeriod: z.number().min(1),
+  minimumSalePrice: z.number().min(50, "Minimum sale price must be at least €50"),
+  maximumConsignmentPeriod: z.number().min(1, "Consignment period must be at least 1 day"),
   autoPayConsignors: z.boolean(),
-  paymentThreshold: z.number().min(0),
+  paymentThreshold: z.number().min(0, "Payment threshold must be a positive number"),
 });
 
 export default function Settings() {
@@ -129,7 +128,6 @@ export default function Settings() {
   const consignmentForm = useForm<z.infer<typeof consignmentSettingsSchema>>({
     resolver: zodResolver(consignmentSettingsSchema),
     defaultValues: {
-      commissionRate: 20,
       minimumSalePrice: 50, // Dutch Thrift minimum is €50
       maximumConsignmentPeriod: 90,
       autoPayConsignors: true,
@@ -610,43 +608,20 @@ export default function Settings() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={consignmentForm.control}
-                      name="commissionRate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Commission Rate (%)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min="0" 
-                              max="100" 
-                              {...field} 
-                              onChange={e => field.onChange(parseFloat(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Percentage of sale price retained by your company
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={consignmentForm.control}
                       name="minimumSalePrice"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Minimum Sale Price ($)</FormLabel>
+                          <FormLabel>Minimum Sale Price (€)</FormLabel>
                           <FormControl>
                             <Input 
                               type="number" 
-                              min="0" 
+                              min="50" 
                               {...field} 
                               onChange={e => field.onChange(parseFloat(e.target.value))}
                             />
                           </FormControl>
                           <FormDescription>
-                            Minimum price for consigned items
+                            Minimum price for consigned items (Dutch Thrift minimum: €50)
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -786,11 +761,19 @@ export default function Settings() {
                     </p>
                     
                     <div className="bg-accent/30 px-4 py-3 rounded-md mb-6">
+                      <p className="text-sm font-medium mb-2">Sliding Scale Commission Model:</p>
                       <ul className="list-disc pl-5 space-y-1 text-sm">
-                        <li>€50 – €99.99 → 50% commission</li>
-                        <li>€100 – €199.99 → 40% commission</li>
-                        <li>€200 – €499.99 → 30% commission</li>
-                        <li>€500 and up → 20% commission</li>
+                        <li>At €50 → 50% commission</li>
+                        <li>At €100 → 40% commission</li>
+                        <li>At €200 → 30% commission</li>
+                        <li>At €500 and above → 20% commission</li>
+                      </ul>
+                      <p className="text-sm mt-2 italic">Between these reference points, commission decreases linearly.</p>
+                      <p className="text-sm font-medium mt-3">Examples:</p>
+                      <ul className="list-disc pl-5 space-y-1 text-sm">
+                        <li>€75 item → ~45% commission</li>
+                        <li>€150 item → ~35% commission</li>
+                        <li>€350 item → ~25% commission</li>
                         <li>Store credit option adds 10% bonus to payout</li>
                       </ul>
                     </div>

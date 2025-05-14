@@ -1,11 +1,16 @@
 /**
- * Calculates commission and payout amount based on tiered structure
+ * Calculates commission and payout amount based on a sliding scale approach
  * 
- * Tier structure:
- * - €50 – €99.99 → 50% commission
- * - €100 – €199.99 → 40% commission
- * - €200 – €499.99 → 30% commission
- * - €500 and up → 20% commission
+ * Uses linear interpolation between these anchor points:
+ * - At €50 → 50% commission
+ * - At €100 → 40% commission
+ * - At €200 → 30% commission
+ * - At €500 and above → 20% commission
+ * 
+ * Between these points, commission decreases linearly per euro.
+ * For example:
+ * - €75 → commission ~45%
+ * - €350 → commission ~25%
  * 
  * If payoutType is "storecredit", add 10% bonus to net payout
  * 
@@ -38,17 +43,32 @@ export function calculateCommission(salePrice: number, payoutType: string = "cas
     };
   }
   
-  // Determine commission rate based on sale price tier
+  // Define the commission tiers with sliding scale anchors
+  const tiers = [
+    { min: 50, max: 99.99, from: 0.50, to: 0.40 },
+    { min: 100, max: 199.99, from: 0.40, to: 0.30 },
+    { min: 200, max: 499.99, from: 0.30, to: 0.20 },
+    { min: 500, max: Infinity, from: 0.20, to: 0.20 } // flat rate above €500
+  ];
+  
+  // Determine commission rate based on sliding scale
   let commissionRate: number;
   
-  if (salePrice >= 50 && salePrice < 100) {
-    commissionRate = 0.50; // 50%
-  } else if (salePrice >= 100 && salePrice < 200) {
-    commissionRate = 0.40; // 40%
-  } else if (salePrice >= 200 && salePrice < 500) {
-    commissionRate = 0.30; // 30%
-  } else { // salePrice >= 500
-    commissionRate = 0.20; // 20%
+  // Find the applicable tier
+  const tier = tiers.find(t => salePrice >= t.min && salePrice <= t.max);
+  
+  if (!tier) {
+    // This should never happen given our tier definitions, but just in case
+    commissionRate = 0.20; // Default to lowest rate
+  } else {
+    if (tier.min === tier.max || tier.from === tier.to) {
+      // Flat rate tier (like the €500+ tier)
+      commissionRate = tier.from;
+    } else {
+      // Calculate linear interpolation between the tier boundaries
+      const position = (salePrice - tier.min) / (tier.max - tier.min);
+      commissionRate = tier.from - position * (tier.from - tier.to);
+    }
   }
   
   // Calculate commission amount
@@ -66,7 +86,7 @@ export function calculateCommission(salePrice: number, payoutType: string = "cas
   
   return {
     eligible: true,
-    commissionRate: commissionRate * 100, // Convert to percentage
+    commissionRate: Number((commissionRate * 100).toFixed(1)), // Convert to percentage with 1 decimal point
     commissionAmount,
     payoutAmount,
     payoutType

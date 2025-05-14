@@ -66,13 +66,22 @@ export default function CommissionCalculator() {
     }
   };
 
-  // Get tier description based on sale price
+  // Get tier description based on sale price for the sliding scale
   const getTierDescription = (price: number): string => {
     if (price < 50) return "Not eligible for consignment";
-    if (price < 100) return "Tier 1: €50 – €99.99 → 50% commission";
-    if (price < 200) return "Tier 2: €100 – €199.99 → 40% commission";
-    if (price < 500) return "Tier 3: €200 – €499.99 → 30% commission";
-    return "Tier 4: €500+ → 20% commission";
+    if (price < 100) {
+      const rate = 50 - ((price - 50) / 50) * 10;
+      return `Sliding scale: ~${rate.toFixed(1)}% commission`;
+    }
+    if (price < 200) {
+      const rate = 40 - ((price - 100) / 100) * 10;
+      return `Sliding scale: ~${rate.toFixed(1)}% commission`;
+    }
+    if (price < 500) {
+      const rate = 30 - ((price - 200) / 300) * 10;
+      return `Sliding scale: ~${rate.toFixed(1)}% commission`;
+    }
+    return "Flat rate: 20% commission";
   };
 
   // Format currency
