@@ -71,17 +71,17 @@ export default function CommissionCalculator() {
     if (price < 50) return "Not eligible for consignment";
     if (price < 100) {
       const rate = 50 - ((price - 50) / 50) * 10;
-      return `Sliding scale: ~${rate.toFixed(1)}% commission`;
+      return `${rate.toFixed(1)}% commission`;
     }
     if (price < 200) {
       const rate = 40 - ((price - 100) / 100) * 10;
-      return `Sliding scale: ~${rate.toFixed(1)}% commission`;
+      return `${rate.toFixed(1)}% commission`;
     }
     if (price < 500) {
       const rate = 30 - ((price - 200) / 300) * 10;
-      return `Sliding scale: ~${rate.toFixed(1)}% commission`;
+      return `${rate.toFixed(1)}% commission`;
     }
-    return "Flat rate: 20% commission";
+    return "20.0% commission";
   };
 
   // Format currency
@@ -112,10 +112,33 @@ export default function CommissionCalculator() {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
+          <div className="bg-muted/50 p-3 rounded-md mb-2">
+            <p className="text-sm font-medium mb-1">Dutch Thrift sliding scale commission:</p>
+            <div className="grid grid-cols-4 gap-2 text-xs">
+              <div className="text-center">
+                <div className="bg-primary/20 rounded p-1">€50</div>
+                <div className="mt-1 font-bold">50%</div>
+              </div>
+              <div className="text-center">
+                <div className="bg-primary/20 rounded p-1">€100</div>
+                <div className="mt-1 font-bold">40%</div>
+              </div>
+              <div className="text-center">
+                <div className="bg-primary/20 rounded p-1">€200</div>
+                <div className="mt-1 font-bold">30%</div>
+              </div>
+              <div className="text-center">
+                <div className="bg-primary/20 rounded p-1">€500+</div>
+                <div className="mt-1 font-bold">20%</div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 italic">Commission rates decrease linearly between price points</p>
+          </div>
+          
           <div className="space-y-2">
             <div className="flex justify-between">
               <Label htmlFor="sale-price">Expected Sale Price</Label>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm font-medium">
                 {getTierDescription(salePrice)}
               </div>
             </div>
@@ -219,10 +242,17 @@ export default function CommissionCalculator() {
         </div>
       </CardContent>
       <CardFooter>
-        <p className="text-xs text-muted-foreground">
-          Note: Final payouts may vary based on actual sale price and condition assessment. 
-          Store credit bonus is applied to your final payout after the item sells.
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium">Dutch Thrift sliding scale:</span> Commission rates decrease linearly between the price points (€50, €100, €200, €500).
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium">Store credit bonus:</span> Choosing store credit adds a 10% bonus to your payout amount.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium">Minimum value:</span> Items must have an estimated value of at least €50 to be accepted for consignment.
+          </p>
+        </div>
       </CardFooter>
     </Card>
   );

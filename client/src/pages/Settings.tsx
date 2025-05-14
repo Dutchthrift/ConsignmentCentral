@@ -655,7 +655,7 @@ export default function Settings() {
                       name="paymentThreshold"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Payment Threshold ($)</FormLabel>
+                          <FormLabel>Payment Threshold (€)</FormLabel>
                           <FormControl>
                             <Input 
                               type="number" 
