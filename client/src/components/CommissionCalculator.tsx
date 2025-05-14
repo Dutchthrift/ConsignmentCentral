@@ -42,14 +42,22 @@ export default function CommissionCalculator() {
   const calculateCommission = async () => {
     setLoading(true);
     try {
-      const response = await apiRequest<{ success: boolean; data: CommissionResult }>(
-        `/api/admin/commission-calculator?price=${salePrice}&type=${payoutType}`
-      );
+      const response = await fetch(`/api/admin/commission-calculator?price=${salePrice}&type=${payoutType}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
       
-      if (response && response.success) {
-        setResult(response.data);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.success) {
+        setResult(data.data);
       } else {
-        console.error("Error calculating commission:", response?.message || "Unknown error");
+        console.error("Error calculating commission:", data?.message || "Unknown error");
       }
     } catch (error) {
       console.error("Error calculating commission:", error);
