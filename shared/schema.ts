@@ -262,3 +262,75 @@ export const consignorDashboardSchema = z.object({
 });
 
 export type ConsignorDashboard = z.infer<typeof consignorDashboardSchema>;
+
+// ML Training Examples table
+export const mlTrainingExamples = pgTable("ml_training_examples", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").references(() => items.id),
+  imageUrl: text("image_url"),
+  imageData: text("image_data"), // Base64 encoded image data
+  productType: text("product_type").notNull(),
+  brand: text("brand"),
+  model: text("model"),
+  condition: text("condition"),
+  marketValue: integer("market_value"), // Value in cents 
+  isVerified: boolean("is_verified").default(false), // Whether this example has been verified by an admin
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertMlTrainingExampleSchema = createInsertSchema(mlTrainingExamples).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ML Model Configurations table
+export const mlModelConfigs = pgTable("ml_model_configs", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  modelId: text("model_id"), // OpenAI fine-tuned model ID
+  baseModel: text("base_model").notNull(), // e.g., "gpt-4o"
+  trainingParams: jsonb("training_params"), // Training parameters 
+  specialization: text("specialization").notNull(), // e.g., "electronics", "fashion", "collectibles"
+  accuracy: integer("accuracy"), // Accuracy score (percentage)
+  isActive: boolean("is_active").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertMlModelConfigSchema = createInsertSchema(mlModelConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ML Model Training Sessions table
+export const mlTrainingSessions = pgTable("ml_training_sessions", {
+  id: serial("id").primaryKey(),
+  modelConfigId: integer("model_config_id").references(() => mlModelConfigs.id),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  status: text("status").notNull().default("pending"), // pending, training, completed, failed
+  trainingExampleCount: integer("training_example_count").default(0),
+  validationExampleCount: integer("validation_example_count").default(0),
+  trainingLoss: text("training_loss"),
+  validationLoss: text("validation_loss"),
+  notes: text("notes"),
+  resultData: jsonb("result_data"), // JSON with training results
+});
+
+export const insertMlTrainingSessionSchema = createInsertSchema(mlTrainingSessions).omit({
+  id: true,
+  startedAt: true,
+});
+
+export type MlTrainingExample = typeof mlTrainingExamples.$inferSelect;
+export type InsertMlTrainingExample = z.infer<typeof insertMlTrainingExampleSchema>;
+
+export type MlModelConfig = typeof mlModelConfigs.$inferSelect;
+export type InsertMlModelConfig = z.infer<typeof insertMlModelConfigSchema>;
+
+export type MlTrainingSession = typeof mlTrainingSessions.$inferSelect;
+export type InsertMlTrainingSession = z.infer<typeof insertMlTrainingSessionSchema>;

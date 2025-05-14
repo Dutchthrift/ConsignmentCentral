@@ -36,6 +36,31 @@ export interface IStorage {
   getShippingByItemId(itemId: number): Promise<Shipping | undefined>;
   createShipping(shipping: InsertShipping): Promise<Shipping>;
   
+  // ML Training Example methods
+  getAllMlTrainingExamples(): Promise<MlTrainingExample[]>;
+  getMlTrainingExampleById(id: number): Promise<MlTrainingExample | undefined>;
+  getMlTrainingExamplesByProductType(productType: string): Promise<MlTrainingExample[]>;
+  createMlTrainingExample(example: InsertMlTrainingExample): Promise<MlTrainingExample>;
+  updateMlTrainingExample(id: number, updates: Partial<MlTrainingExample>): Promise<MlTrainingExample | undefined>;
+  deleteMlTrainingExample(id: number): Promise<boolean>;
+  getVerifiedMlTrainingExamples(): Promise<MlTrainingExample[]>;
+  
+  // ML Model Config methods
+  getAllMlModelConfigs(): Promise<MlModelConfig[]>;
+  getMlModelConfigById(id: number): Promise<MlModelConfig | undefined>;
+  getMlModelConfigByModelId(modelId: string): Promise<MlModelConfig | undefined>;
+  createMlModelConfig(config: InsertMlModelConfig): Promise<MlModelConfig>;
+  updateMlModelConfig(id: number, updates: Partial<MlModelConfig>): Promise<MlModelConfig | undefined>;
+  getActiveMlModelConfig(): Promise<MlModelConfig | undefined>;
+  setMlModelConfigActive(id: number, active: boolean): Promise<MlModelConfig | undefined>;
+  
+  // ML Training Session methods
+  getAllMlTrainingSessions(): Promise<MlTrainingSession[]>;
+  getMlTrainingSessionById(id: number): Promise<MlTrainingSession | undefined>;
+  getMlTrainingSessionsByModelConfigId(modelConfigId: number): Promise<MlTrainingSession[]>;
+  createMlTrainingSession(session: InsertMlTrainingSession): Promise<MlTrainingSession>;
+  updateMlTrainingSessionStatus(id: number, status: string, updates?: Partial<MlTrainingSession>): Promise<MlTrainingSession | undefined>;
+  
   // Composite methods
   getItemWithDetails(itemId: number): Promise<ItemWithDetails | undefined>;
   getItemWithDetailsByReferenceId(referenceId: string): Promise<ItemWithDetails | undefined>;
@@ -58,12 +83,18 @@ export class MemStorage implements IStorage {
   private analyses: Map<number, Analysis>;
   private pricing: Map<number, Pricing>;
   private shipping: Map<number, Shipping>;
+  private mlTrainingExamples: Map<number, MlTrainingExample>;
+  private mlModelConfigs: Map<number, MlModelConfig>;
+  private mlTrainingSessions: Map<number, MlTrainingSession>;
   
   private customerIdCounter: number;
   private itemIdCounter: number;
   private analysisIdCounter: number;
   private pricingIdCounter: number;
   private shippingIdCounter: number;
+  private mlTrainingExampleIdCounter: number;
+  private mlModelConfigIdCounter: number;
+  private mlTrainingSessionIdCounter: number;
   
   constructor() {
     this.customers = new Map();
