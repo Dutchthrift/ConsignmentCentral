@@ -19,7 +19,7 @@ import SessionService from "./services/session.service";
 import { registerAuthRoutes } from "./routes/auth.routes";
 
 // Import route handlers
-const adminRoutes = require("./routes/admin");
+import adminRoutes from "./routes/admin.js";
 import dashboardRoutes from "./routes/dashboard";
 import consignorRoutes from "./routes/consignor";
 import mlTrainingRoutes from "./routes/ml-training";

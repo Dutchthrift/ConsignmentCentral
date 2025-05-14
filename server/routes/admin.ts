@@ -75,6 +75,7 @@ router.get("/commission-calculator", (req: Request, res: Response) => {
   try {
     const marketValueStr = req.query.marketValue as string;
     const marketValue = parseFloat(marketValueStr);
+    const payoutType = (req.query.payoutType as string) || 'cash';
     
     if (isNaN(marketValue)) {
       return res.status(400).json({
@@ -84,30 +85,31 @@ router.get("/commission-calculator", (req: Request, res: Response) => {
     }
     
     // Check if the item is eligible for consignment
-    const eligible = checkEligibility(marketValue, commissionSettings.minThreshold);
+    const eligibilityCheck = checkEligibility(marketValue);
     
-    if (!eligible) {
+    if (!eligibilityCheck.eligible) {
       return res.json({
         success: true,
         data: {
           marketValue,
           eligible: false,
-          reason: `Item value is below the minimum threshold of €${commissionSettings.minThreshold}.`,
+          reason: eligibilityCheck.reason || "Item is not eligible for consignment",
         },
       });
     }
     
     // Calculate the commission
-    const commission = calculateCommission(marketValue, commissionSettings);
+    const commission = calculateCommission(marketValue, payoutType);
     
     res.json({
       success: true,
       data: {
         marketValue,
         eligible: true,
-        commissionRate: commission.rate,
-        commissionAmount: commission.amount,
-        sellerPayout: commission.sellerPayout,
+        commissionRate: commission.commissionRate,
+        commissionAmount: commission.commissionAmount,
+        payoutAmount: commission.payoutAmount,
+        payoutType: commission.payoutType
       },
     });
   } catch (error) {
@@ -196,4 +198,4 @@ router.get("/consignors/:id", async (req: Request, res: Response) => {
   }
 });
 
-module.exports = router;
+export default router;
