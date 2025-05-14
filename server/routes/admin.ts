@@ -1,12 +1,6 @@
 import { Router, Request, Response } from "express";
 import { storage } from "../storage";
-import { 
-  commissionSettingsSchema, 
-  commissionTierSchema,
-  Item,
-  ItemWithDetails,
-  Customer
-} from "@shared/schema";
+import { commissionSettingsSchema, commissionTierSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { calculateCommission, checkEligibility } from "../utils/commission.ts";
 
@@ -116,40 +110,16 @@ router.get("/consignors", async (req: Request, res: Response) => {
     // Get all users with role consignor
     const consignorUsers = await storage.getUsersByRole('consignor');
     
-    // For each user, get their customer data and items
-    const consignors = await Promise.all(
-      consignorUsers.map(async (user) => {
-        let totalItems = 0;
-        let totalSales = 0;
-        let items: Item[] = [];
-        
-        // If user has a linked customer, get their items
-        if (user.customerId) {
-          items = await storage.getItemsByCustomerId(user.customerId);
-          
-          // Calculate stats
-          totalItems = items.length;
-          
-          // Count sales and calculate total
-          for (const item of items) {
-            if (item.status === "sold" || item.status === "paid") {
-              const pricing = await storage.getPricingByItemId(item.id);
-              if (pricing && pricing.finalSalePrice) {
-                totalSales += pricing.finalSalePrice / 100; // Convert cents to EUR
-              }
-            }
-          }
-        }
-        
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          totalItems,
-          totalSales,
-        };
-      })
-    );
+    // Simplified version - just return users with no additional processing
+    const consignors = consignorUsers.map(user => {
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        totalItems: 0,
+        totalSales: 0
+      };
+    });
     
     res.json({
       success: true,
