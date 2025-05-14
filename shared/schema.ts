@@ -354,9 +354,10 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   externalId: text("external_id"), // Auth provider's user ID
   email: text("email").notNull().unique(),
+  password: text("password"), // Only for local auth
   name: text("name").notNull(),
   role: text("role").notNull().default(UserRole.CONSIGNOR),
-  provider: text("provider").notNull(), // google, apple, etc.
+  provider: text("provider").notNull(), // google, apple, local, etc.
   profileImageUrl: text("profile_image_url"),
   lastLogin: timestamp("last_login").defaultNow(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

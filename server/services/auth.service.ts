@@ -1,22 +1,74 @@
 import passport from 'passport';
+import { Strategy as LocalStrategy } from 'passport-local';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as AppleStrategy } from 'passport-apple';
 import { IStorage } from '../storage';
 import { Request } from 'express';
 import { User } from '@shared/schema';
 import SessionService from './session.service';
+import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
+import { promisify } from 'util';
 
 export class AuthService {
   private storage: IStorage;
   private sessionService: SessionService;
+  private scryptAsync = promisify(scrypt);
 
   constructor(storage: IStorage) {
     this.storage = storage;
     this.sessionService = new SessionService();
     this.initializePassport();
   }
+  
+  // Hash password for storage
+  async hashPassword(password: string): Promise<string> {
+    const salt = randomBytes(16).toString('hex');
+    const buf = (await this.scryptAsync(password, salt, 64)) as Buffer;
+    return `${buf.toString('hex')}.${salt}`;
+  }
+
+  // Verify password against stored hash
+  async verifyPassword(suppliedPassword: string, storedHash: string): Promise<boolean> {
+    const [hashedPassword, salt] = storedHash.split('.');
+    const hashedPasswordBuf = Buffer.from(hashedPassword, 'hex');
+    const suppliedPasswordBuf = (await this.scryptAsync(suppliedPassword, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+  }
 
   private initializePassport() {
+    // Configure Local Strategy for email/password login
+    passport.use(new LocalStrategy({
+      usernameField: 'email',
+      passwordField: 'password'
+    }, async (email, password, done) => {
+      try {
+        // Find user by email
+        const user = await this.storage.getUserByEmail(email);
+        
+        if (!user) {
+          return done(null, false, { message: 'Incorrect email or password' });
+        }
+        
+        // Check if this is an email-based account
+        if (user.provider !== 'local') {
+          return done(null, false, { 
+            message: `This email is associated with a ${user.provider} account` 
+          });
+        }
+        
+        // Verify password
+        const isValid = await this.verifyPassword(password, user.password || '');
+        
+        if (!isValid) {
+          return done(null, false, { message: 'Incorrect email or password' });
+        }
+        
+        return done(null, user);
+      } catch (error) {
+        return done(error);
+      }
+    }));
+    
     // Serialize user to session
     passport.serializeUser((user: User, done) => {
       done(null, user.id);

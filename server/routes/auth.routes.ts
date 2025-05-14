@@ -78,6 +78,79 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     }
   );
   
+  // Local authentication routes
+  router.post('/api/auth/register', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email, password, name } = req.body;
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'User already exists'
+        });
+      }
+      
+      // Hash password and create user
+      const hashedPassword = await authService.hashPassword(password);
+      const user = await storage.createUser({
+        email,
+        password: hashedPassword,
+        name,
+        provider: 'local',
+        role: 'consignor',
+        externalId: null,
+        profileImageUrl: null,
+        customerId: null,
+        createdAt: new Date()
+      });
+      
+      // Log the user in
+      req.login(user, (err) => {
+        if (err) {
+          return next(err);
+        }
+        
+        return res.status(201).json({
+          success: true,
+          data: user
+        });
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  router.post('/api/auth/login', (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate('local', (err, user, info) => {
+      if (err) {
+        return next(err);
+      }
+      
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: info?.message || 'Invalid credentials'
+        });
+      }
+      
+      req.login(user, (err) => {
+        if (err) {
+          return next(err);
+        }
+        
+        // Update last login timestamp
+        storage.updateUserLastLogin(user.id).catch(console.error);
+        
+        return res.json({
+          success: true,
+          data: user
+        });
+      });
+    })(req, res, next);
+  });
+  
   // Admin check
   router.get('/api/auth/admin-check', (req: Request, res: Response) => {
     res.json({
