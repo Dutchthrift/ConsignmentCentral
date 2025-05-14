@@ -336,6 +336,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update item status
+  app.put("/api/items/:referenceId/status", async (req, res) => {
+    try {
+      const { referenceId } = req.params;
+      const { status } = req.body;
+      
+      if (!status || !Object.values(ItemStatus).includes(status as ItemStatus)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid status value"
+        });
+      }
+      
+      // Get the item
+      const item = await storage.getItemByReferenceId(referenceId);
+      
+      if (!item) {
+        return res.status(404).json({
+          success: false,
+          message: "Item not found"
+        });
+      }
+      
+      // Update the item status
+      const updatedItem = await storage.updateItemStatus(item.id, status);
+      
+      if (!updatedItem) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to update item status"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: {
+          id: updatedItem.id,
+          referenceId: updatedItem.referenceId,
+          status: updatedItem.status
+        }
+      });
+    } catch (err) {
+      handleValidationError(err, res);
+    }
+  });
+  
   // Generate shipping label
   app.post("/api/label/:referenceId", async (req, res) => {
     try {

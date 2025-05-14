@@ -4,8 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, Check, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "@/hooks/use-toast";
 
 interface ItemDetailModalProps {
   referenceId: string;
@@ -14,11 +21,54 @@ interface ItemDetailModalProps {
 
 export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModalProps) {
   // Fetch item details
-  const { data, isLoading, error } = useQuery<any>({
+  const { data, isLoading, error, refetch } = useQuery<any>({
     queryKey: [`/api/items/${referenceId}`],
   });
 
   const item = data?.data;
+  
+  // Define available status options for the item
+  const statusOptions = [
+    "pending",
+    "analyzed", 
+    "shipped", 
+    "received", 
+    "listed", 
+    "sold", 
+    "paid"
+  ];
+  
+  // Handle status update
+  const handleStatusUpdate = async (newStatus: string) => {
+    try {
+      const response = await fetch(`/api/items/${referenceId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+      
+      // Refetch the item data to get the updated status
+      await refetch();
+      
+      toast({
+        title: "Status updated",
+        description: `Item status changed to ${newStatus}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update item status",
+        variant: "destructive",
+      });
+      console.error("Error updating status:", error);
+    }
+  };
 
   // Format status for display
   const formatStatus = (status: string) => {
@@ -337,17 +387,33 @@ export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModa
               </div>
 
               <div className="flex justify-between">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => {
-                    // Create a dropdown or dialog for status selection in a real implementation
-                    alert("Status update functionality would open a dropdown or dialog here");
-                  }}
-                  className="border-amber-500 text-amber-600 hover:bg-amber-50"
-                >
-                  Update Status
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="border-amber-500 text-amber-600 hover:bg-amber-50 flex items-center gap-1"
+                    >
+                      Update Status <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    {statusOptions.map((status) => (
+                      <DropdownMenuItem 
+                        key={status}
+                        className="flex items-center gap-2 capitalize cursor-pointer"
+                        onClick={() => handleStatusUpdate(status)}
+                      >
+                        {item?.item?.status === status && (
+                          <Check className="h-4 w-4 text-green-500" />
+                        )}
+                        <span className={item?.item?.status === status ? "font-medium" : ""}>
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button 
                   className="flex items-center bg-[#96bf48] hover:bg-[#7aa93c]" 
                   size="sm"
