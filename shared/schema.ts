@@ -136,6 +136,16 @@ export type ItemWithDetails = Item & {
   shipping?: Shipping;
 };
 
+// Schema for a single item in the intake form
+export const intakeItemSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  imageUrl: z.string().url().optional(),
+  imageBase64: z.string().optional(),
+});
+
+export type IntakeItem = z.infer<typeof intakeItemSchema>;
+
 // Schema for intake form submission
 export const intakeFormSchema = z.object({
   customer: z.object({
@@ -148,12 +158,22 @@ export const intakeFormSchema = z.object({
     postalCode: z.string().optional(),
     country: z.string().optional(),
   }),
-  item: z.object({
-    title: z.string().min(1),
-    description: z.string().optional(),
-    imageUrl: z.string().url().optional(),
-    imageBase64: z.string().optional(),
+  items: z.array(intakeItemSchema).min(1),
+});
+
+// Legacy schema for backward compatibility
+export const legacyIntakeFormSchema = z.object({
+  customer: z.object({
+    name: z.string().min(1),
+    email: z.string().email(),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    country: z.string().optional(),
   }),
+  item: intakeItemSchema,
 });
 
 export type IntakeFormData = z.infer<typeof intakeFormSchema>;
