@@ -14,13 +14,34 @@ export function ProtectedRoute({
   component: Component, 
   allowedRoles = [] 
 }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, error } = useAuth();
 
+  // Handle loading state
   if (isLoading) {
     return (
       <Route path={path}>
         <div className="flex items-center justify-center min-h-screen">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+        </div>
+      </Route>
+    );
+  }
+
+  // Handle error state (added error handling)
+  if (error) {
+    console.error("Auth error in ProtectedRoute:", error);
+    return (
+      <Route path={path}>
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          <div className="text-destructive mb-4">Authentication Error</div>
+          <p className="text-sm text-muted-foreground mb-4">There was a problem checking your authentication status.</p>
+          <button 
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
+            onClick={() => window.location.href = "/auth"}
+          >
+            Go to Login
+          </button>
         </div>
       </Route>
     );
@@ -28,6 +49,7 @@ export function ProtectedRoute({
 
   // If no user, redirect to auth page
   if (!user) {
+    console.log("No user found, redirecting to auth");
     return (
       <Route path={path}>
         <Redirect to="/auth" />

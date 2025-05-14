@@ -46,6 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } = useQuery<User | null, Error>({
     queryKey: ["/api/auth/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    retry: 1,
+    retryDelay: 1000,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    onError: (err) => {
+      console.error("Auth query error:", err);
+      // Don't show toast for auth errors, just log them
+    }
   });
 
   // Determine user roles

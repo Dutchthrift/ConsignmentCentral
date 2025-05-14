@@ -46,12 +46,16 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      refetchOnWindowFocus: true, // Changed to handle reconnections
+      refetchOnReconnect: true,  // Added to handle reconnections
+      retryOnMount: true,        // Added to retry queries on component re-mount
+      staleTime: 30000,         // 30 seconds instead of Infinity
+      retry: 3,                  // Try up to 3 times
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     },
     mutations: {
-      retry: false,
+      retry: 2,                  // Allow retrying mutations
+      retryDelay: 1000,          // 1s delay between retries
     },
   },
 });
