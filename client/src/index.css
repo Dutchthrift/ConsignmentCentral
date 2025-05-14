@@ -32,28 +32,47 @@
   --destructive-foreground: 60 9.1% 97.8%;
   --ring: 30 100% 60%;
   --radius: 0.5rem;
+  
+  /* Chart colors */
+  --chart-1: 30 100% 60%; /* Dutch Orange */
+  --chart-2: 50 100% 65%; /* Dutch Yellow */
+  --chart-3: 20 90% 65%; /* Dark Orange */
+  --chart-4: 60 100% 65%; /* Light Yellow */
+  --chart-5: 40 100% 65%; /* Mid Yellow-Orange */
 }
   .dark {
-      --background: 240 10% 3.9%;
---foreground: 0 0% 98%;
---muted: 240 3.7% 15.9%;
---muted-foreground: 240 5% 64.9%;
---popover: 240 10% 3.9%;
---popover-foreground: 0 0% 98%;
---card: 240 10% 3.9%;
---card-foreground: 0 0% 98%;
---border: 240 3.7% 15.9%;
---input: 240 3.7% 15.9%;
---primary: 207 90% 54%;
---primary-foreground: 211 100% 99%;
---secondary: 240 3.7% 15.9%;
---secondary-foreground: 0 0% 98%;
---accent: 240 3.7% 15.9%;
---accent-foreground: 0 0% 98%;
---destructive: 0 62.8% 30.6%;
---destructive-foreground: 0 0% 98%;
---ring: 240 4.9% 83.9%;
---radius: 0.5rem;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    
+    /* Primary color: Using the orange from Dutch Thrift - slight adjustment for dark mode */
+    --primary: 30 100% 55%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary color: Using the yellow from Dutch Thrift - slight adjustment for dark mode */
+    --secondary: 50 100% 60%;
+    --secondary-foreground: 0 0% 0%;
+    
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --ring: 30 100% 55%;
+    --radius: 0.5rem;
+    
+    /* Chart colors - adjusted for dark mode */
+    --chart-1: 30 100% 55%; /* Dutch Orange */
+    --chart-2: 50 100% 60%; /* Dutch Yellow */
+    --chart-3: 20 90% 60%; /* Dark Orange */
+    --chart-4: 60 100% 60%; /* Light Yellow */
+    --chart-5: 40 100% 60%; /* Mid Yellow-Orange */
   }
 
 @layer base {

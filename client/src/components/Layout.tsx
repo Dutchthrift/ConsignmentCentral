@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Separator } from "@/components/ui/separator";
+// Import logo
+import logoPath from "../assets/logo.png";
 
 // Icons
 import {
@@ -49,23 +51,9 @@ export default function Layout({ children }: LayoutProps) {
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar - Desktop */}
       <aside className="bg-neutral-800 text-white w-64 flex-shrink-0 hidden md:flex flex-col">
-        <div className="p-4 flex items-center border-b border-neutral-700">
-          <svg
-            className="mr-2 h-6 w-6"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M17 3L21 7L17 11" />
-            <path d="M3 13L7 17L3 21" />
-            <path d="M21 7H7" />
-            <path d="M17 17H3" />
-          </svg>
-          <h1 className="text-xl font-medium">Consignment Portal</h1>
+        <div className="p-4 flex flex-col items-center justify-center border-b border-neutral-700">
+          <img src={logoPath} alt="Dutch Thrift Logo" className="h-16 mb-2" />
+          <h1 className="text-xl font-medium text-center">Consignment Portal</h1>
         </div>
         
         <nav className="mt-4 flex-1">
