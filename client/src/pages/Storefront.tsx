@@ -171,25 +171,25 @@ export default function Storefront() {
         <div className="max-w-4xl mx-auto mb-8">
           <div className="flex justify-between">
             <div className={`flex flex-col items-center ${activeStep >= 1 ? 'text-primary' : 'text-neutral-400'}`}>
-              <div className={`w-10 h-10 rounded-full ${activeStep >= 1 ? 'bg-primary' : 'bg-neutral-200'} flex items-center justify-center text-white mb-2`}>
+              <div className={`w-10 h-10 rounded-full ${activeStep >= 1 ? 'dutch-thrift-gradient' : 'bg-neutral-200'} flex items-center justify-center text-white mb-2 shadow-md`}>
                 <Camera className="h-5 w-5" />
               </div>
               <span className="text-sm font-medium">Submit Item</span>
             </div>
             <div className="flex-1 flex items-center justify-center">
-              <div className={`h-1 w-full ${activeStep >= 2 ? 'bg-primary' : 'bg-neutral-200'}`}></div>
+              <div className={`h-1 w-full ${activeStep >= 2 ? 'dutch-thrift-gradient' : 'bg-neutral-200'}`}></div>
             </div>
             <div className={`flex flex-col items-center ${activeStep >= 2 ? 'text-primary' : 'text-neutral-400'}`}>
-              <div className={`w-10 h-10 rounded-full ${activeStep >= 2 ? 'bg-primary' : 'bg-neutral-200'} flex items-center justify-center text-white mb-2`}>
+              <div className={`w-10 h-10 rounded-full ${activeStep >= 2 ? 'dutch-thrift-gradient' : 'bg-neutral-200'} flex items-center justify-center text-white mb-2 shadow-md`}>
                 <DollarSign className="h-5 w-5" />
               </div>
               <span className="text-sm font-medium">View Quote</span>
             </div>
             <div className="flex-1 flex items-center justify-center">
-              <div className={`h-1 w-full ${activeStep >= 3 ? 'bg-primary' : 'bg-neutral-200'}`}></div>
+              <div className={`h-1 w-full ${activeStep >= 3 ? 'dutch-thrift-gradient' : 'bg-neutral-200'}`}></div>
             </div>
             <div className={`flex flex-col items-center ${activeStep >= 3 ? 'text-primary' : 'text-neutral-400'}`}>
-              <div className={`w-10 h-10 rounded-full ${activeStep >= 3 ? 'bg-primary' : 'bg-neutral-200'} flex items-center justify-center text-white mb-2`}>
+              <div className={`w-10 h-10 rounded-full ${activeStep >= 3 ? 'dutch-thrift-gradient' : 'bg-neutral-200'} flex items-center justify-center text-white mb-2 shadow-md`}>
                 <PackageCheck className="h-5 w-5" />
               </div>
               <span className="text-sm font-medium">Ship Item</span>
@@ -200,7 +200,7 @@ export default function Storefront() {
         {activeStep === 1 && (
           <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
             <div className="md:flex">
-              <div className="md:w-1/2 bg-gradient-to-br from-primary to-primary-dark text-white p-8">
+              <div className="md:w-1/2 dutch-thrift-gradient text-white p-8">
                 <h2 className="text-2xl font-bold mb-4">Start Your Consignment Journey</h2>
                 <p className="mb-6">Turn your unused items into cash with our hassle-free consignment service.</p>
                 
@@ -365,7 +365,7 @@ export default function Storefront() {
                       <Button 
                         type="submit" 
                         disabled={isSubmitting || !imageBase64} 
-                        className="w-full"
+                        className="w-full btn-gradient"
                       >
                         {isSubmitting ? (
                           <>
@@ -491,7 +491,7 @@ export default function Storefront() {
                   <div className="mt-6 space-y-3">
                     <Button 
                       onClick={handleAcceptQuote} 
-                      className="w-full"
+                      className="w-full btn-gradient"
                       size="lg"
                     >
                       Accept & Continue
