@@ -5,7 +5,10 @@ import {
   Pricing, InsertPricing, 
   Shipping, InsertShipping,
   ItemWithDetails,
-  DashboardStats
+  DashboardStats,
+  MlTrainingExample, InsertMlTrainingExample,
+  MlModelConfig, InsertMlModelConfig,
+  MlTrainingSession, InsertMlTrainingSession
 } from "@shared/schema";
 
 // Storage interface
@@ -102,12 +105,18 @@ export class MemStorage implements IStorage {
     this.analyses = new Map();
     this.pricing = new Map();
     this.shipping = new Map();
+    this.mlTrainingExamples = new Map();
+    this.mlModelConfigs = new Map();
+    this.mlTrainingSessions = new Map();
     
     this.customerIdCounter = 1;
     this.itemIdCounter = 1;
     this.analysisIdCounter = 1;
     this.pricingIdCounter = 1;
     this.shippingIdCounter = 1;
+    this.mlTrainingExampleIdCounter = 1;
+    this.mlModelConfigIdCounter = 1;
+    this.mlTrainingSessionIdCounter = 1;
   }
   
   // Customer methods
@@ -242,6 +251,189 @@ export class MemStorage implements IStorage {
     };
     this.shipping.set(id, newShipping);
     return newShipping;
+  }
+  
+  // ML Training Example methods
+  async getAllMlTrainingExamples(): Promise<MlTrainingExample[]> {
+    return Array.from(this.mlTrainingExamples.values());
+  }
+  
+  async getMlTrainingExampleById(id: number): Promise<MlTrainingExample | undefined> {
+    return this.mlTrainingExamples.get(id);
+  }
+  
+  async getMlTrainingExamplesByProductType(productType: string): Promise<MlTrainingExample[]> {
+    return Array.from(this.mlTrainingExamples.values()).filter(
+      example => example.productType === productType
+    );
+  }
+  
+  async createMlTrainingExample(example: InsertMlTrainingExample): Promise<MlTrainingExample> {
+    const id = this.mlTrainingExampleIdCounter++;
+    const newExample: MlTrainingExample = {
+      id,
+      itemId: example.itemId || null,
+      imageUrl: example.imageUrl || null,
+      imageData: example.imageData || null,
+      productType: example.productType,
+      brand: example.brand || null,
+      model: example.model || null,
+      condition: example.condition || null,
+      marketValue: example.marketValue || null,
+      isVerified: example.isVerified || false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.mlTrainingExamples.set(id, newExample);
+    return newExample;
+  }
+  
+  async updateMlTrainingExample(id: number, updates: Partial<MlTrainingExample>): Promise<MlTrainingExample | undefined> {
+    const example = this.mlTrainingExamples.get(id);
+    if (!example) return undefined;
+    
+    const updatedExample: MlTrainingExample = {
+      ...example,
+      ...updates,
+      updatedAt: new Date()
+    };
+    this.mlTrainingExamples.set(id, updatedExample);
+    return updatedExample;
+  }
+  
+  async deleteMlTrainingExample(id: number): Promise<boolean> {
+    return this.mlTrainingExamples.delete(id);
+  }
+  
+  async getVerifiedMlTrainingExamples(): Promise<MlTrainingExample[]> {
+    return Array.from(this.mlTrainingExamples.values()).filter(
+      example => example.isVerified
+    );
+  }
+  
+  // ML Model Config methods
+  async getAllMlModelConfigs(): Promise<MlModelConfig[]> {
+    return Array.from(this.mlModelConfigs.values());
+  }
+  
+  async getMlModelConfigById(id: number): Promise<MlModelConfig | undefined> {
+    return this.mlModelConfigs.get(id);
+  }
+  
+  async getMlModelConfigByModelId(modelId: string): Promise<MlModelConfig | undefined> {
+    return Array.from(this.mlModelConfigs.values()).find(
+      config => config.modelId === modelId
+    );
+  }
+  
+  async createMlModelConfig(config: InsertMlModelConfig): Promise<MlModelConfig> {
+    const id = this.mlModelConfigIdCounter++;
+    const newConfig: MlModelConfig = {
+      id,
+      name: config.name,
+      description: config.description || null,
+      modelId: config.modelId || null,
+      baseModel: config.baseModel,
+      trainingParams: config.trainingParams || null,
+      specialization: config.specialization,
+      accuracy: config.accuracy || null,
+      isActive: config.isActive || false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.mlModelConfigs.set(id, newConfig);
+    return newConfig;
+  }
+  
+  async updateMlModelConfig(id: number, updates: Partial<MlModelConfig>): Promise<MlModelConfig | undefined> {
+    const config = this.mlModelConfigs.get(id);
+    if (!config) return undefined;
+    
+    const updatedConfig: MlModelConfig = {
+      ...config,
+      ...updates,
+      updatedAt: new Date()
+    };
+    this.mlModelConfigs.set(id, updatedConfig);
+    return updatedConfig;
+  }
+  
+  async getActiveMlModelConfig(): Promise<MlModelConfig | undefined> {
+    return Array.from(this.mlModelConfigs.values()).find(
+      config => config.isActive
+    );
+  }
+  
+  async setMlModelConfigActive(id: number, active: boolean): Promise<MlModelConfig | undefined> {
+    // First, set all configs to inactive if setting this one to active
+    if (active) {
+      for (const config of this.mlModelConfigs.values()) {
+        if (config.isActive) {
+          const updatedConfig = { ...config, isActive: false, updatedAt: new Date() };
+          this.mlModelConfigs.set(config.id, updatedConfig);
+        }
+      }
+    }
+    
+    // Now update the target config
+    const config = this.mlModelConfigs.get(id);
+    if (!config) return undefined;
+    
+    const updatedConfig: MlModelConfig = {
+      ...config,
+      isActive: active,
+      updatedAt: new Date()
+    };
+    this.mlModelConfigs.set(id, updatedConfig);
+    return updatedConfig;
+  }
+  
+  // ML Training Session methods
+  async getAllMlTrainingSessions(): Promise<MlTrainingSession[]> {
+    return Array.from(this.mlTrainingSessions.values());
+  }
+  
+  async getMlTrainingSessionById(id: number): Promise<MlTrainingSession | undefined> {
+    return this.mlTrainingSessions.get(id);
+  }
+  
+  async getMlTrainingSessionsByModelConfigId(modelConfigId: number): Promise<MlTrainingSession[]> {
+    return Array.from(this.mlTrainingSessions.values()).filter(
+      session => session.modelConfigId === modelConfigId
+    );
+  }
+  
+  async createMlTrainingSession(session: InsertMlTrainingSession): Promise<MlTrainingSession> {
+    const id = this.mlTrainingSessionIdCounter++;
+    const newSession: MlTrainingSession = {
+      id,
+      modelConfigId: session.modelConfigId,
+      startedAt: new Date(),
+      completedAt: null,
+      status: session.status || "pending",
+      trainingExampleCount: session.trainingExampleCount || 0,
+      validationExampleCount: session.validationExampleCount || 0,
+      trainingLoss: session.trainingLoss || null,
+      validationLoss: session.validationLoss || null,
+      notes: session.notes || null,
+      resultData: session.resultData || null
+    };
+    this.mlTrainingSessions.set(id, newSession);
+    return newSession;
+  }
+  
+  async updateMlTrainingSessionStatus(id: number, status: string, updates?: Partial<MlTrainingSession>): Promise<MlTrainingSession | undefined> {
+    const session = this.mlTrainingSessions.get(id);
+    if (!session) return undefined;
+    
+    const updatedSession: MlTrainingSession = {
+      ...session,
+      ...updates,
+      status,
+      completedAt: (status === "completed" || status === "failed") ? new Date() : session.completedAt
+    };
+    this.mlTrainingSessions.set(id, updatedSession);
+    return updatedSession;
   }
   
   // Composite methods
