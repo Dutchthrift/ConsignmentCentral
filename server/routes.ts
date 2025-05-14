@@ -17,6 +17,7 @@ import { analyzeProduct } from "./services/openai.service";
 import { getMarketPricing, calculatePricing } from "./services/ebay.service";
 import SessionService from "./services/session.service";
 import { registerAuthRoutes } from "./routes/auth.routes";
+import insightsRoutes from "./routes/insights";
 
 // Import route handlers
 import adminRoutes from "./routes/admin.js";
@@ -95,6 +96,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register ML training routes
   app.use("/api/ml", mlTrainingRoutes);
+  
+  // Register insights routes
+  app.use('/api/insights', insightsRoutes);
 
   // ===== ITEM ROUTES =====
   
