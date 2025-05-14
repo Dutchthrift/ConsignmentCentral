@@ -15,6 +15,11 @@ interface ItemProps {
     estimatedPrice?: number;
     payout?: number;
   };
+  estimatedPrice?: number;
+  commissionRate?: number;
+  payoutAmount?: number;
+  payoutType?: string;
+  finalSalePrice?: number;
 }
 
 const statusColors: Record<string, string> = {
