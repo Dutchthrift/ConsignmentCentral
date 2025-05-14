@@ -15,9 +15,9 @@ interface EbaySearchResult {
  */
 export async function getMarketPricing(
   productType: string,
-  brand: string,
-  model: string,
-  condition: string
+  brand: string = "Unknown",
+  model: string = "Unknown",
+  condition: string = "Good"
 ): Promise<EbaySearchResult> {
   try {
     // In a real implementation, this would make API calls to eBay's API
@@ -87,22 +87,26 @@ export async function getMarketPricing(
  * Calculate suggested listing price and payout based on market data
  */
 export function calculatePricing(marketData: EbaySearchResult): {
-  suggestedPrice: number;
+  suggestedListingPrice: number;
   suggestedPayout: number;
+  commissionRate: number;
 } {
   // Use the average price as a baseline
   const basePrice = marketData.averagePrice;
   
   // Set our price slightly below average to be competitive
-  const suggestedPrice = Math.round(basePrice * 0.95);
+  const suggestedListingPrice = Math.round(basePrice * 0.95);
   
-  // Calculate consignor payout (typically 70-80% of sale price)
-  const consignorPercentage = 0.8; // 80%
-  const suggestedPayout = Math.round(suggestedPrice * consignorPercentage);
+  // For the commission rate, we'll use 30% as a default
+  const commissionRate = 30;
+  
+  // Calculate payout (typically 70% of sale price with our default rate)
+  const suggestedPayout = Math.round(suggestedListingPrice * (1 - commissionRate/100));
   
   return {
-    suggestedPrice,
-    suggestedPayout
+    suggestedListingPrice,
+    suggestedPayout,
+    commissionRate
   };
 }
 

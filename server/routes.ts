@@ -83,6 +83,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register ML training routes
   app.use("/api/ml", mlTrainingRoutes);
 
+  // ===== ITEM ROUTES =====
+  
+  // Get an item by its reference ID with detailed info including pricing
+  app.get("/api/items/:referenceId", async (req, res) => {
+    try {
+      const { referenceId } = req.params;
+      
+      const item = await storage.getItemWithDetailsByReferenceId(referenceId);
+      
+      if (!item) {
+        return res.status(404).json({
+          success: false,
+          message: "Item not found"
+        });
+      }
+      
+      // Format the response to include pricing information
+      const response = {
+        item: {
+          id: item.id,
+          referenceId: item.referenceId,
+          title: item.title,
+          description: item.description,
+          imageUrl: item.imageUrl,
+          status: item.status,
+          createdAt: item.createdAt
+        },
+        customer: {
+          id: item.customer.id,
+          name: item.customer.name,
+          email: item.customer.email
+        },
+        pricing: item.pricing ? {
+          estimatedSalePrice: item.pricing.suggestedListingPrice ? item.pricing.suggestedListingPrice / 100 : 0,
+          yourPayout: item.pricing.suggestedPayout ? item.pricing.suggestedPayout / 100 : 0,
+          commissionRate: item.pricing.commissionRate || 0
+        } : null,
+        analysis: item.analysis || null
+      };
+      
+      res.json({
+        success: true,
+        data: response
+      });
+    } catch (err) {
+      handleValidationError(err, res);
+    }
+  });
+  
   // ===== INTAKE ROUTES =====
   
   // Process new intake from Shopify form
@@ -123,6 +172,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const item = await storage.createItem(newItem);
+      
+      // If we have an image, analyze the item immediately
+      if (data.item.imageBase64) {
+        try {
+          // Analyze the item with OpenAI
+          const analysisResult = await analyzeProduct(
+            data.item.title,
+            data.item.description || "",
+            data.item.imageBase64
+          );
+
+          // Create analysis record
+          const newAnalysis = insertAnalysisSchema.parse({
+            itemId: item.id,
+            brand: analysisResult.brand,
+            productType: analysisResult.productType,
+            model: analysisResult.model,
+            condition: analysisResult.condition,
+            accessories: analysisResult.accessories,
+            additionalNotes: analysisResult.additionalNotes
+          });
+          
+          const analysis = await storage.createAnalysis(newAnalysis);
+          
+          // Get market pricing from eBay
+          const marketData = await getMarketPricing(
+            analysisResult.productType,
+            analysisResult.brand,
+            analysisResult.model,
+            analysisResult.condition
+          );
+          
+          // Calculate suggested pricing based on our sliding scale commission model
+          const commissionResult = calculateCommission(marketData.averagePrice / 100);
+          
+          if (commissionResult.eligible) {
+            // Create pricing record
+            const newPricing = insertPricingSchema.parse({
+              itemId: item.id,
+              averageMarketPrice: marketData.averagePrice,
+              suggestedListingPrice: marketData.averagePrice,
+              suggestedPayout: Math.round(marketData.averagePrice * (1 - (commissionResult.commissionRate || 0) / 100)),
+              commissionRate: commissionResult.commissionRate
+            });
+            
+            const pricing = await storage.createPricing(newPricing);
+          }
+          
+          // Update item status
+          await storage.updateItemStatus(item.id, ItemStatus.ANALYZED);
+        } catch (analysisError) {
+          console.error("Error during automatic analysis:", analysisError);
+          // Continue with the submission even if analysis fails
+        }
+      }
       
       res.json({
         success: true,
