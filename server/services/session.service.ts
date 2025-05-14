@@ -38,7 +38,7 @@ export class SessionService {
       proxy: isReplit, // Trust the proxy in Replit environment
       cookie: {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days - shorter maxAge may be more stable
-        secure: false, // Set to false regardless of environment for testing
+        secure: isReplit || process.env.NODE_ENV === 'production', // Should be true in production and Replit
         httpOnly: true,
         sameSite: 'lax',
         path: '/'

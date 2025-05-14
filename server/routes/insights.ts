@@ -14,7 +14,10 @@ const ensureConsignor = (req: Request, res: Response, next: Function) => {
     });
   }
   
-  if (!req.user || req.user.role !== UserRole.CONSIGNOR) {
+  // Log the user object to debug the issue
+  console.log("User object in insights middleware:", req.user);
+  
+  if (!req.user || req.user.role !== 'consignor') {
     return res.status(403).json({
       success: false,
       message: "Access denied. Consignor role required.",
