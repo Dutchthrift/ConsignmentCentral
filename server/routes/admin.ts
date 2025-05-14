@@ -70,13 +70,20 @@ router.post("/consignment-settings", (req: Request, res: Response) => {
 // GET /api/admin/commission-calculator - utility endpoint for testing commission calculation
 router.get("/commission-calculator", (req: Request, res: Response) => {
   try {
-    const salePrice = Number(req.query.salePrice);
-    const payoutType = req.query.payoutType as string || "cash";
+    const salePrice = Number(req.query.price || req.query.salePrice); // Support both price and salePrice params
+    const payoutType = (req.query.type || req.query.payoutType) as string || "cash"; // Support both type and payoutType
     
     if (isNaN(salePrice)) {
       return res.status(400).json({
         success: false,
         message: "Invalid sale price",
+      });
+    }
+    
+    if (payoutType !== 'cash' && payoutType !== 'storecredit') {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payout type. Must be 'cash' or 'storecredit'"
       });
     }
     
