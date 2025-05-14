@@ -94,19 +94,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const referenceId = generateReferenceId();
       
       // Check if customer exists or create new
-      let customer = await storage.getCustomerByEmail(data.email);
+      let customer = await storage.getCustomerByEmail(data.customer.email);
       
       if (!customer) {
         // Create new customer
         const newCustomer = insertCustomerSchema.parse({
-          name: data.name,
-          email: data.email,
-          phone: data.phone || null,
-          address: data.address || null,
-          city: data.city || null,
-          state: data.state || null,
-          postalCode: data.postalCode || null,
-          country: data.country || null
+          name: data.customer.name,
+          email: data.customer.email,
+          phone: data.customer.phone || null,
+          address: data.customer.address || null,
+          city: data.customer.city || null,
+          state: data.customer.state || null,
+          postalCode: data.customer.postalCode || null,
+          country: data.customer.country || null
         });
         
         customer = await storage.createCustomer(newCustomer);
@@ -115,9 +115,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create new item
       const newItem = insertItemSchema.parse({
         customerId: customer.id, 
-        title: data.itemTitle,
-        description: data.itemDescription || null,
-        imageUrl: data.itemImageUrl || null,
+        title: data.item.title,
+        description: data.item.description || null,
+        imageUrl: data.item.imageUrl || null,
         status: ItemStatus.PENDING,
         referenceId
       });
