@@ -72,17 +72,16 @@ export default function Layout({ children }: LayoutProps) {
           <ul>
             {menuItems.map((item, index) => (
               <li key={index}>
-                <Link href={item.path}>
-                  <a
-                    className={`flex items-center px-4 py-3 ${
-                      location === item.path
-                        ? "bg-primary hover:bg-primary-dark text-white"
-                        : "hover:bg-neutral-700"
-                    }`}
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </a>
+                <Link 
+                  href={item.path}
+                  className={`flex items-center px-4 py-3 ${
+                    location === item.path
+                      ? "bg-primary hover:bg-primary-dark text-white"
+                      : "hover:bg-neutral-700"
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
                 </Link>
               </li>
             ))}
@@ -147,18 +146,17 @@ export default function Layout({ children }: LayoutProps) {
               <ul>
                 {menuItems.map((item, index) => (
                   <li key={index}>
-                    <Link href={item.path}>
-                      <a
-                        className={`flex items-center px-4 py-3 ${
-                          location === item.path
-                            ? "bg-primary hover:bg-primary-dark text-white"
-                            : "hover:bg-neutral-700"
-                        }`}
-                        onClick={toggleMobileMenu}
-                      >
-                        {item.icon}
-                        <span>{item.label}</span>
-                      </a>
+                    <Link 
+                      href={item.path}
+                      className={`flex items-center px-4 py-3 ${
+                        location === item.path
+                          ? "bg-primary hover:bg-primary-dark text-white"
+                          : "hover:bg-neutral-700"
+                      }`}
+                      onClick={toggleMobileMenu}
+                    >
+                      {item.icon}
+                      <span>{item.label}</span>
                     </Link>
                   </li>
                 ))}
