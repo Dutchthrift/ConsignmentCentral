@@ -1,5 +1,33 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Store the auth token
+let authToken: string | null = null;
+
+// Set the auth token for future requests
+export function setAuthToken(token: string | null) {
+  console.log("Setting auth token:", token ? "token-present" : "token-cleared");
+  authToken = token;
+  
+  // Store token in localStorage for persistence
+  if (token) {
+    localStorage.setItem('dutchthrift_auth_token', token);
+  } else {
+    localStorage.removeItem('dutchthrift_auth_token');
+  }
+}
+
+// Initialize token from localStorage if available
+const initToken = () => {
+  const savedToken = localStorage.getItem('dutchthrift_auth_token');
+  if (savedToken) {
+    console.log("Found saved auth token in localStorage");
+    authToken = savedToken;
+  }
+};
+
+// Call initialization
+initToken();
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     try {
@@ -29,14 +57,21 @@ export async function apiRequest(
     // Add a timestamp query parameter to avoid caching issues
     const urlWithTimestamp = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
     
+    const headers: Record<string, string> = {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      "Accept": "application/json",
+      "Cache-Control": "no-cache, no-store",
+      "X-Requested-With": "XMLHttpRequest" // Help server identify this as AJAX request
+    };
+    
+    // Add authorization header if we have a token
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+    
     const res = await fetch(urlWithTimestamp, {
       method,
-      headers: {
-        ...(data ? { "Content-Type": "application/json" } : {}),
-        "Accept": "application/json",
-        "Cache-Control": "no-cache, no-store",
-        "X-Requested-With": "XMLHttpRequest" // Help server identify this as AJAX request
-      },
+      headers,
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
       mode: "cors" // Enable CORS for cross-domain requests
@@ -83,15 +118,23 @@ function getQueryFn<T>({ on401 }: { on401: UnauthorizedBehavior }): QueryFunctio
         ]);
       };
       
+      // Prepare headers
+      const headers: Record<string, string> = {
+        "Accept": "application/json",
+        "Cache-Control": "no-cache, no-store",
+        "Connection": "keep-alive", // Explicitly request connection reuse
+        "X-Requested-With": "XMLHttpRequest" // Help server identify this as AJAX request
+      };
+      
+      // Add authorization header if we have a token
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+      
       // Use our improved fetch with timeout
       const res = await fetchWithTimeout(url, {
         credentials: "include", // Always include credentials (cookies)
-        headers: {
-          "Accept": "application/json",
-          "Cache-Control": "no-cache, no-store",
-          "Connection": "keep-alive", // Explicitly request connection reuse
-          "X-Requested-With": "XMLHttpRequest" // Help server identify this as AJAX request
-        },
+        headers,
         mode: "cors" // Enable CORS for cross-domain requests
       });
 

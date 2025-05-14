@@ -1,11 +1,11 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useEffect } from "react";
 import {
   useQuery,
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
 import { User, UserRole } from "@shared/schema";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
+import { getQueryFn, apiRequest, queryClient, setAuthToken } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
@@ -94,9 +94,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Could not parse server response");
       }
     },
-    onSuccess: (userData: User) => {
+    onSuccess: (userData: User & { token?: string }) => {
       console.log("Login successful, received user data:", userData);
-      queryClient.setQueryData(["/api/auth/user"], userData);
+      
+      // Store the token if it was returned
+      if (userData.token) {
+        console.log("Token received in login response, saving it");
+        setAuthToken(userData.token);
+        
+        // Remove token from user data before storing in cache
+        const { token, ...userWithoutToken } = userData;
+        queryClient.setQueryData(["/api/auth/user"], userWithoutToken);
+      } else {
+        console.log("No token received in login response");
+        queryClient.setQueryData(["/api/auth/user"], userData);
+      }
       
       // Navigate based on user role - use setTimeout to ensure state is updated first
       setTimeout(() => {
@@ -206,6 +218,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     onSuccess: () => {
+      // Clear the stored token
+      setAuthToken(null);
+      
       queryClient.setQueryData(["/api/auth/user"], null);
       navigate("/auth");
       toast({
