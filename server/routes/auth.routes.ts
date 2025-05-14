@@ -112,10 +112,10 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
           return next(err);
         }
         
-        return res.status(201).json({
-          success: true,
-          data: user
-        });
+        console.log('Registration successful:', { userId: user.id, role: user.role, name: user.name });
+        
+        // Return user directly (client expects the user object directly, not wrapped in data property)
+        return res.status(201).json(user);
       });
     } catch (error) {
       next(error);
@@ -149,12 +149,10 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         // Update last login timestamp
         storage.updateUserLastLogin(user.id).catch(console.error);
         
-        console.log('Login successful:', { userId: user.id, role: user.role });
+        console.log('Login successful:', { userId: user.id, role: user.role, name: user.name });
         
-        return res.json({
-          success: true,
-          data: user
-        });
+        // Return user directly (client expects the user object directly, not wrapped in data property)
+        return res.json(user);
       });
     })(req, res, next);
   });

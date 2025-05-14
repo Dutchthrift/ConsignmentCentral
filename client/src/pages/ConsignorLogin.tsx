@@ -268,6 +268,12 @@ export default function ConsignorLogin() {
               </TabsContent>
             </Tabs>
           </Card>
+          
+          <div className="text-center mt-6">
+            <a href="/login" className="text-sm text-primary hover:underline">
+              Login to Admin Dashboard
+            </a>
+          </div>
         </div>
       </div>
       

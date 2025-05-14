@@ -62,25 +62,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       
       const res = await apiRequest("POST", "/api/auth/login", loginData);
+      console.log("Login response status:", res.status);
+      
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Invalid credentials");
+        let errorMessage = "Invalid credentials";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        throw new Error(errorMessage);
       }
-      return await res.json();
+      
+      try {
+        const responseData = await res.json();
+        console.log("Login response data:", responseData);
+        
+        // Handle both direct user object and wrapped data formats
+        if (responseData.success && responseData.data) {
+          return responseData.data;
+        }
+        
+        return responseData;
+      } catch (e) {
+        console.error("Error parsing success response:", e);
+        throw new Error("Could not parse server response");
+      }
     },
     onSuccess: (userData: User) => {
+      console.log("Login successful, received user data:", userData);
       queryClient.setQueryData(["/api/auth/user"], userData);
       
-      // Navigate based on user role
-      if (userData.role === UserRole.ADMIN) {
-        navigate("/");
-      } else if (userData.role === UserRole.CONSIGNOR) {
-        navigate("/consignor/dashboard");
-      }
+      // Navigate based on user role - use setTimeout to ensure state is updated first
+      setTimeout(() => {
+        if (userData.role === UserRole.ADMIN) {
+          console.log("Redirecting to admin dashboard");
+          navigate("/");
+        } else if (userData.role === UserRole.CONSIGNOR) {
+          console.log("Redirecting to consignor dashboard");
+          navigate("/consignor/dashboard");
+        } else {
+          console.log("Unknown role:", userData.role);
+        }
+      }, 100);
       
       toast({
         title: "Login successful",
-        description: `Welcome back, ${userData.name}!`,
+        description: `Welcome back, ${userData.name || "user"}!`,
       });
     },
     onError: (error: Error) => {
@@ -105,25 +134,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       
       const res = await apiRequest("POST", "/api/auth/register", registerData);
+      console.log("Register response status:", res.status);
+      
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Registration failed");
+        let errorMessage = "Registration failed";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        throw new Error(errorMessage);
       }
-      return await res.json();
+      
+      try {
+        const responseData = await res.json();
+        console.log("Registration response data:", responseData);
+        
+        // Handle both direct user object and wrapped data formats
+        if (responseData.success && responseData.data) {
+          return responseData.data;
+        }
+        
+        return responseData;
+      } catch (e) {
+        console.error("Error parsing success response:", e);
+        throw new Error("Could not parse server response");
+      }
     },
     onSuccess: (userData: User) => {
+      console.log("Registration successful, received user data:", userData);
       queryClient.setQueryData(["/api/auth/user"], userData);
       
-      // Navigate based on user role
-      if (userData.role === UserRole.ADMIN) {
-        navigate("/");
-      } else if (userData.role === UserRole.CONSIGNOR) {
-        navigate("/consignor/dashboard");
-      }
+      // Navigate based on user role - use setTimeout to ensure state is updated first
+      setTimeout(() => {
+        if (userData.role === UserRole.ADMIN) {
+          console.log("Redirecting to admin dashboard");
+          navigate("/");
+        } else if (userData.role === UserRole.CONSIGNOR) {
+          console.log("Redirecting to consignor dashboard");
+          navigate("/consignor/dashboard");
+        } else {
+          console.log("Unknown role:", userData.role);
+        }
+      }, 100);
       
       toast({
         title: "Registration successful",
-        description: `Welcome, ${userData.name}!`,
+        description: `Welcome, ${userData.name || "user"}!`,
       });
     },
     onError: (error: Error) => {
