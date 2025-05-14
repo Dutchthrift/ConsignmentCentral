@@ -177,8 +177,20 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         
         console.log('Login successful:', { userId: user.id, role: user.role, name: user.name });
         
-        // Return user directly (client expects the user object directly, not wrapped in data property)
-        return res.json(user);
+        // Generate auth token
+        try {
+          const token = authService.generateToken(user);
+          
+          // Return user with token
+          return res.json({
+            ...user,
+            token: token
+          });
+        } catch (tokenError) {
+          console.error('Token generation error:', tokenError);
+          // If token generation fails, still return the user without token
+          return res.json(user);
+        }
       });
     })(req, res, next);
   });

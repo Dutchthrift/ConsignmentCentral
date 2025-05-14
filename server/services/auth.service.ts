@@ -3,21 +3,84 @@ import { Strategy as LocalStrategy } from 'passport-local';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as AppleStrategy } from 'passport-apple';
 import { IStorage } from '../storage';
-import { Request } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { User } from '@shared/schema';
 import SessionService from './session.service';
-import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
+import { scrypt, randomBytes, timingSafeEqual, createHmac } from 'crypto';
 import { promisify } from 'util';
+import jwt from 'jsonwebtoken';
 
 export class AuthService {
   private storage: IStorage;
   private sessionService: SessionService;
   private scryptAsync = promisify(scrypt);
+  private readonly JWT_SECRET = process.env.JWT_SECRET || 'dutch-thrift-jwt-secret';
+  private readonly TOKEN_EXPIRY = '7d'; // Token valid for 7 days
 
   constructor(storage: IStorage) {
     this.storage = storage;
     this.sessionService = new SessionService();
     this.initializePassport();
+  }
+  
+  // Generate a JWT token for a user
+  generateToken(user: User): string {
+    const payload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name
+    };
+    
+    return jwt.sign(payload, this.JWT_SECRET, { expiresIn: this.TOKEN_EXPIRY });
+  }
+  
+  // Verify a JWT token
+  verifyToken(token: string): any {
+    try {
+      return jwt.verify(token, this.JWT_SECRET);
+    } catch (error) {
+      return null;
+    }
+  }
+  
+  // Middleware to authenticate using JWT token
+  authenticateJWT = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Try to get token from Authorization header
+      const authHeader = req.headers['authorization'];
+      const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
+      
+      if (token) {
+        const decoded = this.verifyToken(token);
+        if (decoded) {
+          // If token is valid, find the user
+          const user = await this.storage.getUserById(decoded.id);
+          if (user) {
+            // Set the user in the request
+            req.user = user;
+            return next();
+          }
+        }
+      }
+      
+      // If no token or invalid token, proceed with regular session-based auth
+      if (req.isAuthenticated()) {
+        return next();
+      }
+      
+      // If not authenticated by any method, return 401
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    } catch (error) {
+      console.error('JWT authentication error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Authentication error'
+      });
+    }
   }
   
   // Hash password for storage

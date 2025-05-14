@@ -1,11 +1,43 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
 import { UserRole } from "@shared/schema";
+import AuthService from "../services/auth.service";
 
 const router = Router();
+const authService = new AuthService(storage);
 
 // Middleware to check if user is authenticated and is a consignor
-const ensureConsignor = (req: Request, res: Response, next: Function) => {
+const ensureConsignor = async (req: Request, res: Response, next: NextFunction) => {
+  // First try JWT token authentication
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
+  
+  if (token) {
+    const decoded = authService.verifyToken(token);
+    if (decoded) {
+      try {
+        // If token is valid, find the user
+        const user = await storage.getUserById(decoded.id);
+        if (user) {
+          // Set the user in the request
+          req.user = user;
+          
+          if (user.role !== 'consignor') {
+            return res.status(403).json({
+              success: false,
+              message: "Access denied. Consignor role required.",
+            });
+          }
+          
+          return next();
+        }
+      } catch (error) {
+        console.error("Error verifying JWT user:", error);
+      }
+    }
+  }
+  
+  // Fallback to session-based authentication
   if (!req.isAuthenticated()) {
     return res.status(401).json({
       success: false,
