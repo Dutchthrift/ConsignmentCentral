@@ -55,7 +55,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/auth/login", credentials);
+      // Rename username to email for the server
+      const loginData = {
+        email: credentials.username, 
+        password: credentials.password
+      };
+      
+      const res = await apiRequest("POST", "/api/auth/login", loginData);
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Invalid credentials");

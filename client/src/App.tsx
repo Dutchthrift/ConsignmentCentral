@@ -27,7 +27,7 @@ function Router() {
   const [location] = useLocation();
   
   // Check path types
-  const isLoginPath = location === "/login";
+  const isLoginPath = location === "/login" || location === "/auth";
   const isConsignorLoginPath = location === "/consignor/login";
   const isStorefrontPath = location.startsWith("/storefront");
   const isConsignorPath = location.startsWith("/consignor") && !isConsignorLoginPath;
@@ -39,6 +39,7 @@ function Router() {
         <Toaster />
         <Switch>
           <Route path="/login" component={Login} />
+          <Route path="/auth" component={ConsignorLogin} />
           <Route path="/consignor/login" component={ConsignorLogin} />
         </Switch>
       </>
