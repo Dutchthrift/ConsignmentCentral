@@ -14,7 +14,7 @@ const ensureConsignor = (req: Request, res: Response, next: Function) => {
     });
   }
   
-  if (req.user.role !== UserRole.CONSIGNOR) {
+  if (!req.user || req.user.role !== UserRole.CONSIGNOR) {
     return res.status(403).json({
       success: false,
       message: "Access denied. Consignor role required.",
@@ -371,7 +371,8 @@ function generateRecommendations(items: any[], performance: any) {
   
   // Category-specific recommendations
   const categories = items.map(item => item.productType).filter(Boolean);
-  const uniqueCategories = [...new Set(categories)];
+  const categorySet = new Set(categories);
+  const uniqueCategories = Array.from(categorySet);
   
   if (uniqueCategories.length < 3 && items.length > 5) {
     recommendations.push({

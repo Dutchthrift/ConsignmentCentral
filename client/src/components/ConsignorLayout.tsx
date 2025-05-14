@@ -232,6 +232,18 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
             </Button>
             
             <Button
+              variant={location === "/consignor/insights" ? "default" : "ghost"}
+              size="sm"
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/consignor/insights" onClick={() => setIsMenuOpen(false)}>
+                <PieChart className="mr-2 h-4 w-4" />
+                Insights
+              </Link>
+            </Button>
+            
+            <Button
               variant={location === "/consignor/payouts" ? "default" : "ghost"}
               size="sm"
               className="w-full justify-start"
