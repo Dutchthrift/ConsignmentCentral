@@ -29,7 +29,14 @@ import {
   PackageCheck
 } from "lucide-react";
 
-// Form schema 
+// Form schema
+// Single item schema
+const itemSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+});
+
+// Full form schema
 const storeFrontSchema = z.object({
   customer: z.object({
     name: z.string().min(1, "Name is required"),
@@ -41,10 +48,7 @@ const storeFrontSchema = z.object({
     postalCode: z.string().optional(),
     country: z.string().default("US"),
   }),
-  item: z.object({
-    title: z.string().min(1, "Title is required"),
-    description: z.string().optional(),
-  }),
+  items: z.array(itemSchema).min(1, "At least one item is required"),
 });
 
 export default function Storefront() {
@@ -56,6 +60,13 @@ export default function Storefront() {
   const [quoteResult, setQuoteResult] = useState<any>(null);
   const [activeStep, setActiveStep] = useState(1);
 
+  // State for managing multiple items with images
+  const [items, setItems] = useState<{ 
+    id: string;
+    imagePreview: string | null;
+    imageBase64: string | null;
+  }[]>([{ id: "1", imagePreview: null, imageBase64: null }]);
+  
   // Define form
   const form = useForm({
     resolver: zodResolver(storeFrontSchema),
@@ -70,15 +81,55 @@ export default function Storefront() {
         postalCode: "",
         country: "US",
       },
-      item: {
-        title: "",
-        description: "",
-      },
+      items: [
+        {
+          title: "",
+          description: "",
+        }
+      ],
     },
   });
 
+  // Add a new item to the form
+  const addItem = () => {
+    const newItemId = String(items.length + 1);
+    setItems([...items, { id: newItemId, imagePreview: null, imageBase64: null }]);
+    
+    // Get current items from form
+    const currentItems = form.getValues("items") || [];
+    
+    // Add new empty item
+    form.setValue("items", [
+      ...currentItems,
+      { title: "", description: "" }
+    ]);
+  };
+  
+  // Remove an item from the form
+  const removeItem = (index: number) => {
+    if (items.length <= 1) {
+      toast({
+        title: "Cannot remove item",
+        description: "You must have at least one item",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Remove item from state
+    const newItems = [...items];
+    newItems.splice(index, 1);
+    setItems(newItems);
+    
+    // Remove item from form values
+    const currentItems = form.getValues("items");
+    const updatedItems = [...currentItems];
+    updatedItems.splice(index, 1);
+    form.setValue("items", updatedItems);
+  };
+
   // Handle file input change
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (index: number) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
@@ -94,7 +145,14 @@ export default function Storefront() {
     
     // Create preview URL
     const previewUrl = URL.createObjectURL(file);
-    setImagePreview(previewUrl);
+    
+    // Update the specific item's image preview
+    const updatedItems = [...items];
+    updatedItems[index] = {
+      ...updatedItems[index],
+      imagePreview: previewUrl
+    };
+    setItems(updatedItems);
     
     // Convert to base64
     const reader = new FileReader();
@@ -102,7 +160,14 @@ export default function Storefront() {
       const base64String = reader.result as string;
       // Remove data URL prefix
       const base64 = base64String.split(",")[1];
-      setImageBase64(base64);
+      
+      // Update the specific item's base64 data
+      const itemsWithBase64 = [...items];
+      itemsWithBase64[index] = {
+        ...itemsWithBase64[index],
+        imageBase64: base64
+      };
+      setItems(itemsWithBase64);
     };
     reader.readAsDataURL(file);
   };
@@ -112,13 +177,15 @@ export default function Storefront() {
     setIsSubmitting(true);
     
     try {
-      // Add image base64 to the payload
+      // Add image base64 data to each item in the payload
+      const itemsWithImages = data.items.map((item: any, index: number) => ({
+        ...item,
+        imageBase64: items[index]?.imageBase64 || null,
+      }));
+      
       const payload = {
         ...data,
-        item: {
-          ...data.item,
-          imageBase64: imageBase64,
-        },
+        items: itemsWithImages
       };
       
       const response = await apiRequest("POST", "/api/intake", payload);
@@ -130,13 +197,13 @@ export default function Storefront() {
         
         toast({
           title: "Analysis complete!",
-          description: "We've analyzed your item and prepared a quote",
+          description: `We've analyzed your ${result.data.items?.length || 1} item(s) and prepared quotes`,
         });
       }
     } catch (error) {
       console.error("Error submitting intake:", error);
       toast({
-        title: "Error submitting item",
+        title: "Error submitting items",
         description: (error as Error).message || "Please try again later",
         variant: "destructive",
       });
@@ -241,75 +308,104 @@ export default function Storefront() {
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div>
-                      <h3 className="text-lg font-medium mb-4">Item Information</h3>
-                      <div className="space-y-4">
-                        <FormField
-                          control={form.control}
-                          name="item.title"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Item Name</FormLabel>
-                              <FormControl>
-                                <Input placeholder="e.g., Fuji Camera DL-1000" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="item.description"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Item Description</FormLabel>
-                              <FormControl>
-                                <Textarea 
-                                  placeholder="Describe the item, including condition and accessories" 
-                                  rows={3}
-                                  {...field} 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <div>
-                          <FormLabel>Item Image</FormLabel>
-                          <div className="mt-1">
-                            <label
-                              htmlFor="file-upload"
-                              className="cursor-pointer bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center justify-center w-full"
-                            >
-                              <Camera className="h-4 w-4 mr-2" />
-                              Upload Image
-                            </label>
-                            <input
-                              id="file-upload"
-                              name="file-upload"
-                              type="file"
-                              accept="image/*"
-                              className="sr-only"
-                              onChange={handleFileChange}
-                            />
-                            <p className="text-xs text-gray-500 mt-1 text-center">
-                              Clear image helps our AI analyze better
-                            </p>
-                          </div>
-                          
-                          {imagePreview && (
-                            <div className="mt-4">
-                              <p className="text-sm font-medium text-gray-700 mb-2">Image Preview</p>
-                              <img
-                                src={imagePreview}
-                                alt="Preview"
-                                className="h-32 object-contain border rounded-md mx-auto"
-                              />
-                            </div>
-                          )}
-                        </div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-medium">Item Information</h3>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          onClick={addItem}
+                          className="flex items-center"
+                        >
+                          + Add Another Item
+                        </Button>
                       </div>
+                      
+                      {items.map((item, index) => (
+                        <div key={item.id} className="border rounded-lg p-4 mb-6 relative">
+                          {index > 0 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute top-2 right-2 h-8 w-8 p-0"
+                              onClick={() => removeItem(index)}
+                            >
+                              ✕
+                            </Button>
+                          )}
+                          
+                          <h4 className="font-medium mb-4">Item {index + 1}</h4>
+                          <div className="space-y-4">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.title`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Item Name</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="e.g., Fuji Camera DL-1000" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.description`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Item Description</FormLabel>
+                                  <FormControl>
+                                    <Textarea 
+                                      placeholder="Describe the item, including condition and accessories" 
+                                      rows={3}
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <div>
+                              <FormLabel>Item Image</FormLabel>
+                              <div className="mt-1">
+                                <label
+                                  htmlFor={`file-upload-${index}`}
+                                  className="cursor-pointer bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center justify-center w-full"
+                                >
+                                  <Camera className="h-4 w-4 mr-2" />
+                                  Upload Image
+                                </label>
+                                <input
+                                  id={`file-upload-${index}`}
+                                  name={`file-upload-${index}`}
+                                  type="file"
+                                  accept="image/*"
+                                  className="sr-only"
+                                  onChange={handleFileChange(index)}
+                                />
+                                <p className="text-xs text-gray-500 mt-1 text-center">
+                                  Clear image helps our AI analyze better
+                                </p>
+                              </div>
+                              
+                              {item.imagePreview && (
+                                <div className="mt-4">
+                                  <p className="text-sm font-medium text-gray-700 mb-2">Image Preview</p>
+                                  <img
+                                    src={item.imagePreview}
+                                    alt={`Item ${index + 1} Preview`}
+                                    className="h-32 object-contain border rounded-md mx-auto"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                     
                     <Separator />
@@ -396,83 +492,96 @@ export default function Storefront() {
                 </div>
               </div>
               
-              <h2 className="text-2xl font-bold text-center mb-2">Your Item Quote is Ready!</h2>
-              <p className="text-center text-neutral-600 mb-8">
-                We've analyzed your {quoteResult.title} and prepared an estimate
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <div className="border rounded-lg overflow-hidden">
-                    {imagePreview ? (
-                      <img 
-                        src={imagePreview} 
-                        alt={quoteResult.title} 
-                        className="w-full h-48 object-contain bg-neutral-100"
-                      />
-                    ) : (
-                      <div className="w-full h-48 bg-neutral-100 flex items-center justify-center">
-                        <Camera className="h-12 w-12 text-neutral-400" />
-                      </div>
-                    )}
-                    
-                    <div className="p-4">
-                      <h3 className="font-medium">{quoteResult.title}</h3>
-                      <p className="text-sm text-neutral-500 mt-1">Reference: {quoteResult.referenceId}</p>
+              {/* Handle both old and new response formats */}
+              {Array.isArray(quoteResult.items) ? (
+                <>
+                  <h2 className="text-2xl font-bold text-center mb-2">Your Quotes are Ready!</h2>
+                  <p className="text-center text-neutral-600 mb-8">
+                    We've analyzed your {quoteResult.items.length} items and prepared estimates
+                  </p>
+                  
+                  {quoteResult.items.map((item, index) => (
+                    <div key={item.referenceId} className="mb-8 border-b pb-8 last:border-b-0">
+                      <h3 className="text-xl font-semibold mb-4">Item {index + 1}: {item.title}</h3>
                       
-                      {quoteResult.analysis && (
-                        <div className="mt-4 space-y-2">
-                          <div className="flex items-center text-sm">
-                            <Brain className="h-4 w-4 text-primary mr-2" />
-                            <span className="text-neutral-600">
-                              <span className="font-medium">Analysis:</span> {quoteResult.analysis.productType}
-                            </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                          <div className="border rounded-lg overflow-hidden">
+                            {items[index]?.imagePreview ? (
+                              <img 
+                                src={items[index].imagePreview} 
+                                alt={item.title} 
+                                className="w-full h-48 object-contain bg-neutral-100"
+                              />
+                            ) : (
+                              <div className="w-full h-48 bg-neutral-100 flex items-center justify-center">
+                                <Camera className="h-12 w-12 text-neutral-400" />
+                              </div>
+                            )}
+                            
+                            <div className="p-4">
+                              <h3 className="font-medium">{item.title}</h3>
+                              <p className="text-sm text-neutral-500 mt-1">Reference: {item.referenceId}</p>
+                              
+                              {item.analysis && (
+                                <div className="mt-4 space-y-2">
+                                  <div className="flex items-center text-sm">
+                                    <Brain className="h-4 w-4 text-primary mr-2" />
+                                    <span className="text-neutral-600">
+                                      <span className="font-medium">Analysis:</span> {item.analysis.productType}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <span className="text-neutral-600 ml-6">
+                                      <span className="font-medium">Brand:</span> {item.analysis.brand}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center text-sm">
+                                    <span className="text-neutral-600 ml-6">
+                                      <span className="font-medium">Condition:</span> {item.analysis.condition}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center text-sm">
-                            <span className="text-neutral-600 ml-6">
-                              <span className="font-medium">Brand:</span> {quoteResult.analysis.brand}
-                            </span>
-                          </div>
-                          <div className="flex items-center text-sm">
-                            <span className="text-neutral-600 ml-6">
-                              <span className="font-medium">Condition:</span> {quoteResult.analysis.condition}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col justify-between">
-                  <div>
-                    <div className="bg-primary-light/10 rounded-lg p-6 mb-6">
-                      <h3 className="text-lg font-medium mb-4">Your Estimate</h3>
-                      
-                      <div className="space-y-4">
-                        <div className="flex justify-between">
-                          <span className="text-neutral-600">Estimated Sale Price:</span>
-                          <span className="font-medium">
-                            {quoteResult.pricing?.estimatedSalePrice 
-                              ? formatCurrency(quoteResult.pricing.estimatedSalePrice)
-                              : '-'}
-                          </span>
                         </div>
                         
-                        <Separator />
-                        
-                        <div className="flex justify-between">
-                          <span className="text-neutral-600">Your Payout ({quoteResult.pricing?.commissionRate ? (100 - quoteResult.pricing.commissionRate) : 70}%):</span>
-                          <span className="font-medium text-lg text-primary">
-                            {quoteResult.pricing?.yourPayout 
-                              ? formatCurrency(quoteResult.pricing.yourPayout)
-                              : '-'}
-                          </span>
+                        <div className="flex flex-col justify-between">
+                          <div>
+                            <div className="bg-primary-light/10 rounded-lg p-6 mb-6">
+                              <h3 className="text-lg font-medium mb-4">Your Estimate</h3>
+                              
+                              <div className="space-y-4">
+                                <div className="flex justify-between">
+                                  <span className="text-neutral-600">Estimated Sale Price:</span>
+                                  <span className="font-medium">
+                                    {item.pricing?.estimatedSalePrice 
+                                      ? formatCurrency(item.pricing.estimatedSalePrice)
+                                      : '-'}
+                                  </span>
+                                </div>
+                                
+                                <Separator />
+                                
+                                <div className="flex justify-between">
+                                  <span className="text-neutral-600">Your Payout ({item.pricing?.commissionRate ? (100 - item.pricing.commissionRate) : 70}%):</span>
+                                  <span className="font-medium text-lg text-primary">
+                                    {item.pricing?.yourPayout 
+                                      ? formatCurrency(item.pricing.yourPayout)
+                                      : '-'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="space-y-2 text-sm text-neutral-600">
+                  ))}
+                  
+                  <div className="mt-8 pt-4 border-t">
+                    <div className="space-y-2 text-sm text-neutral-600 mb-8">
                       <p>
                         <Check className="h-4 w-4 text-green-500 inline mr-2" />
                         Free shipping label provided
@@ -486,22 +595,131 @@ export default function Storefront() {
                         Payment within 7 days of sale
                       </p>
                     </div>
+                    
+                    <div className="flex flex-col md:flex-row gap-3 justify-center">
+                      <Button 
+                        onClick={handleAcceptQuote} 
+                        className="btn-gradient"
+                        size="lg"
+                      >
+                        Accept All Quotes & Continue
+                      </Button>
+                      <Button variant="outline" size="lg">
+                        Decline Quotes
+                      </Button>
+                    </div>
                   </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-bold text-center mb-2">Your Item Quote is Ready!</h2>
+                  <p className="text-center text-neutral-600 mb-8">
+                    We've analyzed your {quoteResult.title} and prepared an estimate
+                  </p>
                   
-                  <div className="mt-6 space-y-3">
-                    <Button 
-                      onClick={handleAcceptQuote} 
-                      className="w-full btn-gradient"
-                      size="lg"
-                    >
-                      Accept & Continue
-                    </Button>
-                    <Button variant="outline" className="w-full">
-                      Decline Quote
-                    </Button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <div className="border rounded-lg overflow-hidden">
+                        {items[0]?.imagePreview ? (
+                          <img 
+                            src={items[0].imagePreview} 
+                            alt={quoteResult.title} 
+                            className="w-full h-48 object-contain bg-neutral-100"
+                          />
+                        ) : (
+                          <div className="w-full h-48 bg-neutral-100 flex items-center justify-center">
+                            <Camera className="h-12 w-12 text-neutral-400" />
+                          </div>
+                        )}
+                        
+                        <div className="p-4">
+                          <h3 className="font-medium">{quoteResult.title}</h3>
+                          <p className="text-sm text-neutral-500 mt-1">Reference: {quoteResult.referenceId}</p>
+                          
+                          {quoteResult.analysis && (
+                            <div className="mt-4 space-y-2">
+                              <div className="flex items-center text-sm">
+                                <Brain className="h-4 w-4 text-primary mr-2" />
+                                <span className="text-neutral-600">
+                                  <span className="font-medium">Analysis:</span> {quoteResult.analysis.productType}
+                                </span>
+                              </div>
+                              <div className="flex items-center text-sm">
+                                <span className="text-neutral-600 ml-6">
+                                  <span className="font-medium">Brand:</span> {quoteResult.analysis.brand}
+                                </span>
+                              </div>
+                              <div className="flex items-center text-sm">
+                                <span className="text-neutral-600 ml-6">
+                                  <span className="font-medium">Condition:</span> {quoteResult.analysis.condition}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col justify-between">
+                      <div>
+                        <div className="bg-primary-light/10 rounded-lg p-6 mb-6">
+                          <h3 className="text-lg font-medium mb-4">Your Estimate</h3>
+                          
+                          <div className="space-y-4">
+                            <div className="flex justify-between">
+                              <span className="text-neutral-600">Estimated Sale Price:</span>
+                              <span className="font-medium">
+                                {quoteResult.pricing?.estimatedSalePrice 
+                                  ? formatCurrency(quoteResult.pricing.estimatedSalePrice)
+                                  : '-'}
+                              </span>
+                            </div>
+                            
+                            <Separator />
+                            
+                            <div className="flex justify-between">
+                              <span className="text-neutral-600">Your Payout ({quoteResult.pricing?.commissionRate ? (100 - quoteResult.pricing.commissionRate) : 70}%):</span>
+                              <span className="font-medium text-lg text-primary">
+                                {quoteResult.pricing?.yourPayout 
+                                  ? formatCurrency(quoteResult.pricing.yourPayout)
+                                  : '-'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2 text-sm text-neutral-600">
+                          <p>
+                            <Check className="h-4 w-4 text-green-500 inline mr-2" />
+                            Free shipping label provided
+                          </p>
+                          <p>
+                            <Check className="h-4 w-4 text-green-500 inline mr-2" />
+                            Professional listing creation
+                          </p>
+                          <p>
+                            <Check className="h-4 w-4 text-green-500 inline mr-2" />
+                            Payment within 7 days of sale
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6 space-y-3">
+                        <Button 
+                          onClick={handleAcceptQuote} 
+                          className="w-full btn-gradient"
+                          size="lg"
+                        >
+                          Accept & Continue
+                        </Button>
+                        <Button variant="outline" className="w-full">
+                          Decline Quote
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           </div>
         )}

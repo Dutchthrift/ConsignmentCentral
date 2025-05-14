@@ -2,7 +2,8 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
-  intakeFormSchema, 
+  intakeFormSchema,
+  legacyIntakeFormSchema,
   orderWebhookSchema, 
   ItemStatus,
   insertCustomerSchema,
@@ -17,13 +18,13 @@ import { analyzeProduct } from "./services/openai.service";
 import { getMarketPricing, calculatePricing } from "./services/ebay.service";
 import SessionService from "./services/session.service";
 import { registerAuthRoutes } from "./routes/auth.routes";
-import insightsRoutes from "./routes/insights";
+import insightsRoutes from "./routes/insights.ts";
 
 // Import route handlers
-import adminRoutes from "./routes/admin.js";
-import dashboardRoutes from "./routes/dashboard";
-import consignorRoutes from "./routes/consignor";
-import mlTrainingRoutes from "./routes/ml-training";
+import adminRoutes from "./routes/admin.ts";
+import dashboardRoutes from "./routes/dashboard.ts";
+import consignorRoutes from "./routes/consignor.ts";
+import mlTrainingRoutes from "./routes/ml-training.ts";
 import { calculateCommission, checkEligibility } from "./utils/commission.ts";
 
 // Generate unique reference ID for new items
@@ -151,13 +152,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ===== INTAKE ROUTES =====
   
-  // Process new intake from Shopify form
+  // Process new intake from form
   app.post("/api/intake", async (req, res) => {
     try {
-      const data = intakeFormSchema.parse(req.body);
+      // Try parsing using the new schema (multiple items)
+      let data;
+      let isLegacyFormat = false;
       
-      // Generate reference ID for the item
-      const referenceId = generateReferenceId();
+      try {
+        data = intakeFormSchema.parse(req.body);
+      } catch (parseError) {
+        // If that fails, try the legacy schema (single item)
+        try {
+          const legacyData = legacyIntakeFormSchema.parse(req.body);
+          // Convert to new format
+          data = {
+            customer: legacyData.customer,
+            items: [legacyData.item]
+          };
+          isLegacyFormat = true;
+        } catch (legacyParseError) {
+          // If both fail, throw the original error
+          throw parseError;
+        }
+      }
       
       // Check if customer exists or create new
       let customer = await storage.getCustomerByEmail(data.customer.email);
@@ -178,102 +196,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customer = await storage.createCustomer(newCustomer);
       }
       
-      // Create new item
-      const newItem = insertItemSchema.parse({
-        customerId: customer.id, 
-        title: data.item.title,
-        description: data.item.description || null,
-        imageUrl: data.item.imageUrl || null,
-        status: ItemStatus.PENDING,
-        referenceId
-      });
+      // Process all items
+      const processedItems = [];
       
-      const item = await storage.createItem(newItem);
-      
-      // If we have an image, analyze the item immediately
-      if (data.item.imageBase64) {
-        try {
-          // Analyze the item with OpenAI
-          const analysisResult = await analyzeProduct(
-            data.item.title,
-            data.item.description || "",
-            data.item.imageBase64
-          );
+      for (const itemData of data.items) {
+        // Generate reference ID for the item
+        const referenceId = generateReferenceId();
+        
+        // Create new item
+        const newItem = insertItemSchema.parse({
+          customerId: customer.id, 
+          title: itemData.title,
+          description: itemData.description || null,
+          imageUrl: itemData.imageUrl || null,
+          status: ItemStatus.PENDING,
+          referenceId
+        });
+        
+        const item = await storage.createItem(newItem);
+        
+        // If we have an image, analyze the item immediately
+        if (itemData.imageBase64) {
+          try {
+            // Analyze the item with OpenAI
+            const analysisResult = await analyzeProduct(
+              itemData.title,
+              itemData.description || "",
+              itemData.imageBase64
+            );
 
-          // Create analysis record
-          const newAnalysis = insertAnalysisSchema.parse({
-            itemId: item.id,
-            brand: analysisResult.brand,
-            productType: analysisResult.productType,
-            model: analysisResult.model,
-            condition: analysisResult.condition,
-            accessories: analysisResult.accessories,
-            additionalNotes: analysisResult.additionalNotes
-          });
-          
-          const analysis = await storage.createAnalysis(newAnalysis);
-          
-          // Get market pricing from eBay
-          const marketData = await getMarketPricing(
-            analysisResult.productType,
-            analysisResult.brand,
-            analysisResult.model,
-            analysisResult.condition
-          );
-          
-          // Calculate suggested pricing based on our sliding scale commission model
-          // Convert from cents to euros for commission calculation
-          const salePrice = marketData.averagePrice / 100;
-          const commissionResult = calculateCommission(salePrice);
-          
-          if (commissionResult.eligible) {
-            // Create pricing record
-            // Convert back to cents for storing in the database
-            const suggestedPayout = commissionResult.payoutAmount !== undefined
-              ? Math.round(commissionResult.payoutAmount * 100)
-              : Math.round(marketData.averagePrice * (1 - (commissionResult.commissionRate || 0) / 100));
-              
-            const newPricing = insertPricingSchema.parse({
+            // Create analysis record
+            const newAnalysis = insertAnalysisSchema.parse({
               itemId: item.id,
-              averageMarketPrice: marketData.averagePrice,
-              suggestedListingPrice: marketData.averagePrice,
-              suggestedPayout: suggestedPayout,
-              commissionRate: commissionResult.commissionRate
+              brand: analysisResult.brand,
+              productType: analysisResult.productType,
+              model: analysisResult.model,
+              condition: analysisResult.condition,
+              accessories: analysisResult.accessories,
+              additionalNotes: analysisResult.additionalNotes
             });
             
-            const pricing = await storage.createPricing(newPricing);
+            const analysis = await storage.createAnalysis(newAnalysis);
+            
+            // Get market pricing from eBay
+            const marketData = await getMarketPricing(
+              analysisResult.productType,
+              analysisResult.brand,
+              analysisResult.model,
+              analysisResult.condition
+            );
+            
+            // Calculate suggested pricing based on our sliding scale commission model
+            // Convert from cents to euros for commission calculation
+            const salePrice = marketData.averagePrice / 100;
+            const commissionResult = calculateCommission(salePrice);
+            
+            if (commissionResult.eligible) {
+              // Create pricing record
+              // Convert back to cents for storing in the database
+              const suggestedPayout = commissionResult.payoutAmount !== undefined
+                ? Math.round(commissionResult.payoutAmount * 100)
+                : Math.round(marketData.averagePrice * (1 - (commissionResult.commissionRate || 0) / 100));
+                
+              const newPricing = insertPricingSchema.parse({
+                itemId: item.id,
+                averageMarketPrice: marketData.averagePrice,
+                suggestedListingPrice: marketData.averagePrice,
+                suggestedPayout: suggestedPayout,
+                commissionRate: commissionResult.commissionRate
+              });
+              
+              const pricing = await storage.createPricing(newPricing);
+            }
+            
+            // Update item status
+            await storage.updateItemStatus(item.id, ItemStatus.ANALYZED);
+          } catch (analysisError) {
+            console.error("Error during automatic analysis:", analysisError);
+            // Continue with the submission even if analysis fails
           }
-          
-          // Update item status
-          await storage.updateItemStatus(item.id, ItemStatus.ANALYZED);
-        } catch (analysisError) {
-          console.error("Error during automatic analysis:", analysisError);
-          // Continue with the submission even if analysis fails
         }
+        
+        // Get complete item details with pricing for response
+        const itemDetails = await storage.getItemWithDetailsByReferenceId(referenceId);
+        
+        // Format response for the frontend
+        const itemResponseData = {
+          referenceId,
+          customerId: customer.id,
+          title: item.title,
+          status: item.status,
+          analysis: itemDetails?.analysis || null,
+          pricing: itemDetails?.pricing ? {
+            estimatedSalePrice: itemDetails.pricing.suggestedListingPrice ? itemDetails.pricing.suggestedListingPrice / 100 : 0,
+            yourPayout: itemDetails.pricing.suggestedPayout ? itemDetails.pricing.suggestedPayout / 100 : 0,
+            commissionRate: itemDetails.pricing.commissionRate || 0
+          } : null
+        };
+        
+        processedItems.push(itemResponseData);
       }
       
-      // Get complete item details with pricing for response
-      const itemDetails = await storage.getItemWithDetailsByReferenceId(referenceId);
-      
-      // Format response for the frontend
-      const responseData = {
-        referenceId,
-        customerId: customer.id,
-        title: item.title,
-        status: item.status,
-        analysis: itemDetails?.analysis || null,
-        pricing: itemDetails?.pricing ? {
-          estimatedSalePrice: itemDetails.pricing.suggestedListingPrice ? itemDetails.pricing.suggestedListingPrice / 100 : 0,
-          yourPayout: itemDetails.pricing.suggestedPayout ? itemDetails.pricing.suggestedPayout / 100 : 0,
-          commissionRate: itemDetails.pricing.commissionRate || 0
-        } : null
-      };
-      
-      res.json({
-        success: true,
-        message: "Item received successfully",
-        data: responseData
-      });
+      // If using legacy format, return single item response
+      if (isLegacyFormat && processedItems.length === 1) {
+        res.json({
+          success: true,
+          message: "Item received successfully",
+          data: processedItems[0]
+        });
+      } else {
+        // Return response with all items
+        res.json({
+          success: true,
+          message: `${processedItems.length} item(s) received successfully`,
+          data: {
+            customer: {
+              id: customer.id,
+              name: customer.name,
+              email: customer.email
+            },
+            items: processedItems
+          }
+        });
+      }
     } catch (err) {
       handleValidationError(err, res);
     }
