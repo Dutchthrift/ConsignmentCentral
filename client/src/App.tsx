@@ -8,7 +8,6 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { UserRole } from "@shared/schema";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import NetworkStatusMonitor from "@/components/NetworkStatusMonitor";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import IntakeForm from "@/pages/IntakeForm";
@@ -202,13 +201,10 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
-            {/* Add network status monitoring */}
-            <NetworkStatusMonitor refetchOnReconnect={true}>
-              {/* Wrap individual routes in their own error boundaries */}
-              <ErrorBoundary>
-                <Router />
-              </ErrorBoundary>
-            </NetworkStatusMonitor>
+            {/* Wrap individual routes in their own error boundaries */}
+            <ErrorBoundary>
+              <Router />
+            </ErrorBoundary>
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>
