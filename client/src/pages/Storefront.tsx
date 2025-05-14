@@ -453,8 +453,8 @@ export default function Storefront() {
                         <div className="flex justify-between">
                           <span className="text-neutral-600">Estimated Sale Price:</span>
                           <span className="font-medium">
-                            {quoteResult.pricing?.suggestedPrice 
-                              ? formatCurrency(quoteResult.pricing.suggestedPrice)
+                            {quoteResult.pricing?.estimatedSalePrice 
+                              ? formatCurrency(quoteResult.pricing.estimatedSalePrice)
                               : '-'}
                           </span>
                         </div>
@@ -462,10 +462,10 @@ export default function Storefront() {
                         <Separator />
                         
                         <div className="flex justify-between">
-                          <span className="text-neutral-600">Your Payout (80%):</span>
+                          <span className="text-neutral-600">Your Payout ({quoteResult.pricing?.commissionRate ? (100 - quoteResult.pricing.commissionRate) : 70}%):</span>
                           <span className="font-medium text-lg text-primary">
-                            {quoteResult.pricing?.suggestedPayout 
-                              ? formatCurrency(quoteResult.pricing.suggestedPayout)
+                            {quoteResult.pricing?.yourPayout 
+                              ? formatCurrency(quoteResult.pricing.yourPayout)
                               : '-'}
                           </span>
                         </div>

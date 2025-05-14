@@ -228,13 +228,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Get complete item details with pricing for response
+      const itemDetails = await storage.getItemWithDetailsByReferenceId(referenceId);
+      
+      // Format response for the frontend
+      const responseData = {
+        referenceId,
+        customerId: customer.id,
+        title: item.title,
+        status: item.status,
+        analysis: itemDetails?.analysis || null,
+        pricing: itemDetails?.pricing ? {
+          estimatedSalePrice: itemDetails.pricing.suggestedListingPrice ? itemDetails.pricing.suggestedListingPrice / 100 : 0,
+          yourPayout: itemDetails.pricing.suggestedPayout ? itemDetails.pricing.suggestedPayout / 100 : 0,
+          commissionRate: itemDetails.pricing.commissionRate || 0
+        } : null
+      };
+      
       res.json({
         success: true,
         message: "Item received successfully",
-        data: {
-          referenceId,
-          customerId: customer.id
-        }
+        data: responseData
       });
     } catch (err) {
       handleValidationError(err, res);
@@ -281,8 +295,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const analysis = await storage.createAnalysis(newAnalysis);
       
       // Get market pricing from eBay
-      const searchTerm = `${analysisResult.brand} ${analysisResult.model} ${analysisResult.productType}`;
-      const marketData = await getMarketPricing(searchTerm, analysisResult.condition);
+      const marketData = await getMarketPricing(
+        analysisResult.productType,
+        analysisResult.brand,
+        analysisResult.model,
+        analysisResult.condition
+      );
       
       // Calculate suggested pricing based on market data
       const pricingResult = calculatePricing(marketData);
