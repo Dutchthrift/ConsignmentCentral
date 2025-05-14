@@ -1,4 +1,5 @@
-import { Router, Request, Response, NextFunction, Express } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import type { Express } from 'express';
 import passport from 'passport';
 import { IStorage } from '../storage';
 import AuthService from '../services/auth.service';
@@ -84,6 +85,9 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
       isAdmin: authService.isAdmin(req)
     });
   });
+  
+  // Mount the router to the app
+  app.use(router);
   
   // Return auth service for other routes to use
   return authService;
