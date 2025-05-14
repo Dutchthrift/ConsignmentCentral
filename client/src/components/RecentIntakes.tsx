@@ -90,9 +90,19 @@ export default function RecentIntakes({
                 <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">
                   Est. Price
                 </th>
+                {customerId && (
+                  <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">
+                    Commission %
+                  </th>
+                )}
                 <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">
                   Payout
                 </th>
+                {customerId && (
+                  <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">
+                    Payout Method
+                  </th>
+                )}
                 <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">
                   Actions
                 </th>
@@ -174,15 +184,49 @@ export default function RecentIntakes({
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-sm font-medium">
-                      {item.pricing?.estimatedPrice
-                        ? `$${item.pricing.estimatedPrice.toFixed(2)}`
+                      {(item.estimatedPrice || item.pricing?.estimatedPrice)
+                        ? `€${(item.estimatedPrice || item.pricing?.estimatedPrice).toFixed(2)}`
                         : "-"}
                     </td>
+                    {customerId && (
+                      <td className="py-3 px-4 text-sm text-neutral-600">
+                        {item.commissionRate 
+                          ? `${(item.commissionRate * 100).toFixed(0)}%` 
+                          : "-"}
+                      </td>
+                    )}
                     <td className="py-3 px-4 text-sm text-neutral-600">
-                      {item.pricing?.payout
-                        ? `$${item.pricing.payout.toFixed(2)}`
+                      {item.payoutAmount || item.pricing?.payout
+                        ? `€${(item.payoutAmount || item.pricing?.payout).toFixed(2)}`
                         : "-"}
                     </td>
+                    {customerId && (
+                      <td className="py-3 px-4 text-sm text-neutral-600">
+                        {item.status === "sold" || item.status === "paid" ? (
+                          <select 
+                            className="block w-full p-1 text-sm border border-gray-300 rounded"
+                            defaultValue={item.payoutType || "cash"}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              // Call API to update payout method
+                              fetch(`/api/dashboard/${customerId}/items/${item.id}/payout`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ payoutType: e.target.value }),
+                              });
+                            }}
+                          >
+                            <option value="cash">Cash</option>
+                            <option value="store_credit">Store Credit (+10%)</option>
+                          </select>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    )}
                     <td className="py-3 px-4">
                       <Button
                         variant="ghost"
