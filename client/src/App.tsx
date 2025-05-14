@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { UserRole } from "@shared/schema";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import NetworkStatusMonitor from "@/components/NetworkStatusMonitor";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import IntakeForm from "@/pages/IntakeForm";
@@ -182,12 +183,32 @@ function Router() {
 // ErrorBoundary is already imported at the top
 
 function App() {
+  // Set up error tracking
+  const handleGlobalError = (error: Error, errorInfo: React.ErrorInfo) => {
+    console.error('Global error caught by ErrorBoundary:', error);
+    console.error('Component stack:', errorInfo.componentStack);
+    
+    // You could add more sophisticated error tracking here
+    // such as sending to a logging service
+  };
+
   return (
-    <ErrorBoundary>
+    <ErrorBoundary 
+      autoReset={true} 
+      resetTimeout={8000} 
+      resetSoft={true}
+      onError={handleGlobalError}
+    >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
-            <Router />
+            {/* Add network status monitoring */}
+            <NetworkStatusMonitor refetchOnReconnect={true}>
+              {/* Wrap individual routes in their own error boundaries */}
+              <ErrorBoundary>
+                <Router />
+              </ErrorBoundary>
+            </NetworkStatusMonitor>
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>
