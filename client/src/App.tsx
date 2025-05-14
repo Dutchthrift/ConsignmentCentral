@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -6,16 +6,43 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import IntakeForm from "@/pages/IntakeForm";
+import Inventory from "@/pages/Inventory";
+import Orders from "@/pages/Orders";
+import Payouts from "@/pages/Payouts";
+import Settings from "@/pages/Settings";
+import Storefront from "@/pages/Storefront";
 import Layout from "@/components/Layout";
+import StorefrontLayout from "@/components/StorefrontLayout";
 
 function Router() {
+  const [location] = useLocation();
+  
+  // Check if the current path is a storefront path
+  const isStorefrontPath = location.startsWith("/storefront");
+  
+  // Use different layouts based on path
+  const AppLayout = isStorefrontPath ? StorefrontLayout : Layout;
+  
   return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/intake" component={IntakeForm} />
-      <Route path="/dashboard/:customerId" component={Dashboard} />
-      <Route component={NotFound} />
-    </Switch>
+    <AppLayout>
+      <Toaster />
+      <Switch>
+        {/* Admin Dashboard Routes */}
+        <Route path="/" component={Dashboard} />
+        <Route path="/intake" component={IntakeForm} />
+        <Route path="/inventory" component={Inventory} />
+        <Route path="/orders" component={Orders} />
+        <Route path="/payouts" component={Payouts} />
+        <Route path="/settings" component={Settings} />
+        <Route path="/dashboard/:customerId" component={Dashboard} />
+        
+        {/* Customer Storefront Routes */}
+        <Route path="/storefront" component={Storefront} />
+        
+        {/* 404 Page */}
+        <Route component={NotFound} />
+      </Switch>
+    </AppLayout>
   );
 }
 
@@ -23,10 +50,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Layout>
-          <Toaster />
-          <Router />
-        </Layout>
+        <Router />
       </TooltipProvider>
     </QueryClientProvider>
   );
