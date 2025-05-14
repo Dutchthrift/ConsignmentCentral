@@ -34,10 +34,12 @@ export async function apiRequest(
       headers: {
         ...(data ? { "Content-Type": "application/json" } : {}),
         "Accept": "application/json",
-        "Cache-Control": "no-cache, no-store"
+        "Cache-Control": "no-cache, no-store",
+        "X-Requested-With": "XMLHttpRequest" // Help server identify this as AJAX request
       },
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
+      mode: "cors" // Enable CORS for cross-domain requests
     });
 
     await throwIfResNotOk(res);
@@ -83,12 +85,14 @@ function getQueryFn<T>({ on401 }: { on401: UnauthorizedBehavior }): QueryFunctio
       
       // Use our improved fetch with timeout
       const res = await fetchWithTimeout(url, {
-        credentials: "include",
+        credentials: "include", // Always include credentials (cookies)
         headers: {
           "Accept": "application/json",
           "Cache-Control": "no-cache, no-store",
-          "Connection": "keep-alive" // Explicitly request connection reuse
-        }
+          "Connection": "keep-alive", // Explicitly request connection reuse
+          "X-Requested-With": "XMLHttpRequest" // Help server identify this as AJAX request
+        },
+        mode: "cors" // Enable CORS for cross-domain requests
       });
 
       if (on401 === "returnNull" && res.status === 401) {

@@ -40,7 +40,7 @@ export class SessionService {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days - shorter maxAge may be more stable
         secure: isReplit || process.env.NODE_ENV === 'production', // Should be true in production and Replit
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none', // Allow cross-site usage for Replit previews
         path: '/'
       },
       // Add unhandled error handling for session store

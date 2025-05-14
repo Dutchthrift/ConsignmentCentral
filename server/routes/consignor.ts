@@ -27,7 +27,19 @@ const ensureConsignor = (req: Request, res: Response, next: Function) => {
 };
 
 // GET /api/consignor/dashboard - get the consignor's dashboard data
-router.get("/dashboard", ensureConsignor, async (req: Request, res: Response) => {
+router.get("/dashboard", (req: Request, res: Response, next: Function) => {
+  // Debug session information
+  console.log("Dashboard route session info:", {
+    hasSession: !!req.session,
+    sessionID: req.sessionID,
+    isAuthenticated: req.isAuthenticated(),
+    userPresent: !!req.user,
+    cookies: req.headers.cookie,
+    auth: req.headers.authorization,
+  });
+  
+  ensureConsignor(req, res, next);
+}, async (req: Request, res: Response) => {
   try {
     // Get logged in user's data
     const userId = req.user?.id;
