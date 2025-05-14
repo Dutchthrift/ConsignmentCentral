@@ -3,6 +3,9 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { UserRole } from "@shared/schema";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import IntakeForm from "@/pages/IntakeForm";
@@ -56,23 +59,83 @@ function Router() {
       <Toaster />
       <Switch>
         {/* Admin Dashboard Routes */}
-        <Route path="/" component={Dashboard} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/intake" component={IntakeForm} />
-        <Route path="/inventory" component={Inventory} />
-        <Route path="/orders" component={Orders} />
-        <Route path="/payouts" component={Payouts} />
-        <Route path="/settings" component={Settings} />
-        <Route path="/model-training" component={ModelTraining} />
-        <Route path="/consignors" component={Consignors} />
-        <Route path="/dashboard/:customerId" component={Dashboard} />
+        <ProtectedRoute 
+          path="/" 
+          component={Dashboard} 
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        <ProtectedRoute 
+          path="/dashboard" 
+          component={Dashboard}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        <ProtectedRoute 
+          path="/intake" 
+          component={IntakeForm}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        <ProtectedRoute 
+          path="/inventory" 
+          component={Inventory}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        <ProtectedRoute 
+          path="/orders" 
+          component={Orders}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        <ProtectedRoute 
+          path="/payouts" 
+          component={Payouts}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        <ProtectedRoute 
+          path="/settings" 
+          component={Settings}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        <ProtectedRoute 
+          path="/model-training" 
+          component={ModelTraining}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        <ProtectedRoute 
+          path="/consignors" 
+          component={Consignors}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        <ProtectedRoute 
+          path="/dashboard/:customerId" 
+          component={Dashboard}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
         
         {/* Consignor Dashboard Routes */}
-        <Route path="/consignor/dashboard" component={ConsignorDashboard} />
-        <Route path="/consignor/submit" component={() => <div>Submit New Item</div>} />
-        <Route path="/consignor/items" component={() => <div>My Items</div>} />
-        <Route path="/consignor/payouts" component={() => <div>My Payouts</div>} />
-        <Route path="/consignor/settings" component={() => <div>Account Settings</div>} />
+        <ProtectedRoute 
+          path="/consignor/dashboard" 
+          component={ConsignorDashboard}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute
+          path="/consignor/submit" 
+          component={() => <div>Submit New Item</div>}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute 
+          path="/consignor/items" 
+          component={() => <div>My Items</div>}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute 
+          path="/consignor/payouts" 
+          component={() => <div>My Payouts</div>}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute 
+          path="/consignor/settings" 
+          component={() => <div>Account Settings</div>}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
         
         {/* Customer Storefront Routes */}
         <Route path="/storefront" component={Storefront} />
@@ -88,7 +151,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router />
+        <AuthProvider>
+          <Router />
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

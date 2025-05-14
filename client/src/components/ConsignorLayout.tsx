@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Separator } from "@/components/ui/separator";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 
 // Import logo
 import logoPath from "../assets/logo.png";
@@ -46,22 +45,15 @@ export default function ConsignorLayout({ children }: LayoutProps) {
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Fetch user data
-  const { data: userData } = useQuery<any>({
-    queryKey: ["/api/auth/user"],
-  });
+  // Get user data from the auth hook
+  const { user, logoutMutation } = useAuth();
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
   
-  const handleLogout = async () => {
-    try {
-      await apiRequest("POST", "/api/auth/logout");
-      window.location.href = "/consignor/login";
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
+  const handleLogout = () => {
+    logoutMutation.mutate();
   };
 
   return (
@@ -109,8 +101,8 @@ export default function ConsignorLayout({ children }: LayoutProps) {
               <User className="h-4 w-4 text-primary" />
             </div>
             <div className="ml-2">
-              <p className="text-sm font-medium">{userData?.name || "Consignor"}</p>
-              <p className="text-xs text-white/70">{userData?.email || ""}</p>
+              <p className="text-sm font-medium">{user?.name || "Consignor"}</p>
+              <p className="text-xs text-white/70">{user?.email || ""}</p>
             </div>
           </div>
         </div>
