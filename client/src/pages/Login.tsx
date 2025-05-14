@@ -107,14 +107,19 @@ export default function Login() {
               </form>
             </Form>
             
-            <div className="text-center mt-6 space-y-2">
+            <div className="text-center mt-6 space-y-4">
               <div>
                 <Link href="/auth" className="text-sm text-primary hover:underline">
                   Go to Consignor Login
                 </Link>
               </div>
-              <div>
-                <Link href="/system-health" className="text-sm text-blue-500 hover:underline">
+              <div className="pt-2">
+                <Link href="/storefront" className="text-sm px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
+                  Visit Storefront
+                </Link>
+              </div>
+              <div className="pt-1">
+                <Link href="/system-health" className="text-xs text-blue-500 hover:underline">
                   Check System Health
                 </Link>
               </div>

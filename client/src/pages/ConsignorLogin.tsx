@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -269,10 +269,17 @@ export default function ConsignorLogin() {
             </Tabs>
           </Card>
           
-          <div className="text-center mt-6">
-            <a href="/login" className="text-sm text-primary hover:underline">
-              Login to Admin Dashboard
-            </a>
+          <div className="text-center mt-6 space-y-4">
+            <div>
+              <a href="/login" className="text-sm text-primary hover:underline">
+                Login to Admin Dashboard
+              </a>
+            </div>
+            <div className="pt-2">
+              <Link href="/storefront" className="text-sm px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
+                Visit Storefront
+              </Link>
+            </div>
           </div>
         </div>
       </div>
