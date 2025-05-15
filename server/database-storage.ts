@@ -8,6 +8,8 @@ import {
   mlModelConfigs, MlModelConfig, InsertMlModelConfig,
   mlTrainingSessions, MlTrainingSession, InsertMlTrainingSession,
   users, User, InsertUser,
+  adminUsers, AdminUser, InsertAdminUser,
+  UserRole, UserType,
   ItemWithDetails, DashboardStats
 } from "@shared/schema";
 import { db } from "./db";

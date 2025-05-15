@@ -623,6 +623,71 @@ export class MemStorage implements IStorage {
       items: itemsList
     };
   }
+
+  // Admin User methods
+  async getAdminUserById(id: number): Promise<AdminUser | undefined> {
+    return this.adminUsers.get(id);
+  }
+  
+  async getAdminUserByEmail(email: string): Promise<AdminUser | undefined> {
+    return Array.from(this.adminUsers.values()).find(
+      (user) => user.email === email
+    );
+  }
+  
+  async getAdminUserByExternalId(externalId: string, provider: string): Promise<AdminUser | undefined> {
+    return Array.from(this.adminUsers.values()).find(
+      (user) => user.externalId === externalId && user.provider === provider
+    );
+  }
+  
+  async createAdminUser(user: InsertAdminUser): Promise<AdminUser> {
+    const id = this.adminUserIdCounter++;
+    const newUser: AdminUser = {
+      ...user,
+      id,
+      createdAt: new Date(),
+      lastLogin: new Date(),
+      externalId: user.externalId || null,
+      password: user.password || null,
+      role: UserRole.ADMIN,
+      provider: user.provider || "local",
+      profileImageUrl: user.profileImageUrl || null
+    };
+    this.adminUsers.set(id, newUser);
+    return newUser;
+  }
+  
+  async updateAdminUserLastLogin(id: number): Promise<AdminUser | undefined> {
+    const user = this.adminUsers.get(id);
+    if (!user) return undefined;
+    
+    const updatedUser: AdminUser = {
+      ...user,
+      lastLogin: new Date()
+    };
+    
+    this.adminUsers.set(id, updatedUser);
+    return updatedUser;
+  }
+  
+  async updateAdminUserExternalId(id: number, externalId: string, provider: string): Promise<AdminUser | undefined> {
+    const user = this.adminUsers.get(id);
+    if (!user) return undefined;
+    
+    const updatedUser: AdminUser = {
+      ...user,
+      externalId,
+      provider
+    };
+    
+    this.adminUsers.set(id, updatedUser);
+    return updatedUser;
+  }
+  
+  async getAllAdminUsers(): Promise<AdminUser[]> {
+    return Array.from(this.adminUsers.values());
+  }
   
   // Composite methods
   async getItemWithDetails(itemId: number): Promise<ItemWithDetails | undefined> {
