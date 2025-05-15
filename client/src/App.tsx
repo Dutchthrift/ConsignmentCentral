@@ -1,5 +1,6 @@
 import React from "react";
 import { Switch, Route, useLocation } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -141,9 +142,12 @@ function Router() {
           path="/consignors" 
           component={() => {
             const [, navigate] = useLocation();
-            useEffect(() => {
+            
+            // Use hook directly without needing to import
+            React.useEffect(() => {
               navigate("/admin/consignors");
             }, [navigate]);
+            
             return null;
           }}
           allowedRoles={[UserRole.ADMIN]} 

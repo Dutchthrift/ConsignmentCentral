@@ -25,7 +25,9 @@ export default function Consignors() {
   
   // Fetch all consignors from admin API
   const { data, isLoading, error } = useQuery<{ success: boolean; data: ConsignorProps[] }>({
-    queryKey: ["/api/admin/consignors"]
+    queryKey: ["/api/admin/consignors"],
+    // Path may be different depending on whether we're using direct or proxied endpoint
+    retry: 1
   });
 
   // Handle authorization errors
