@@ -118,37 +118,40 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     }
   );
   
-  // Customer registration route
+  // Customer registration route (now creates a Customer model directly)
   router.post('/api/auth/register', async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email, password, name } = req.body;
+      const { email, password, name, phone } = req.body;
       
-      // Check if user already exists
+      // Check if user or customer already exists
       const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
+      const existingCustomer = await storage.getCustomerByEmail(email);
+      
+      if (existingUser || existingCustomer) {
         return res.status(400).json({
           success: false,
-          message: 'User already exists'
+          message: 'An account with this email already exists'
         });
       }
       
-      // Hash password and create user
+      // Hash password and create customer
       const hashedPassword = await authService.hashPassword(password);
-      const user = await storage.createUser({
+      const customer = await storage.createCustomer({
         email,
         password: hashedPassword,
-        name,
-        provider: 'local',
+        fullName: name, // Using fullName for Customer model
+        phone: phone || null,
+        payoutMethod: null,
+        iban: null,
+        address: null,
+        city: null,
+        country: null,
         role: UserRole.CONSIGNOR,
-        externalId: null,
-        profileImageUrl: null,
-        customerId: null,
-        // userType field removed as it doesn't exist in database yet
         // createdAt is added automatically by the database schema
       });
       
-      // Log the user in
-      req.login(user, (err) => {
+      // Log the customer in
+      req.login(customer, (err) => {
         if (err) {
           return next(err);
         }
@@ -159,18 +162,18 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         }
         
         console.log('Registration successful:', { 
-          userId: user.id, 
-          role: user.role, 
-          name: user.name,
+          userId: customer.id, 
+          role: customer.role, 
+          name: customer.fullName,
           userType: UserType.CUSTOMER
         });
         
         // Generate token
-        const token = authService.generateToken(user);
+        const token = authService.generateToken(customer);
         
-        // Return user directly with token
+        // Return customer directly with token
         return res.status(201).json({
-          ...user,
+          ...customer,
           token
         });
       });
@@ -179,22 +182,23 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     }
   });
   
-  // Customer login endpoint
+  // Login endpoint for both customers and admin users
   router.post('/api/auth/login', (req: Request, res: Response, next: NextFunction) => {
     // Log the incoming request for debugging
-    console.log('Customer login attempt:', { 
+    console.log('Login attempt:', { 
       email: req.body.email,
       hasSession: !!req.session,
       sessionID: req.sessionID
     });
     
-    passport.authenticate('customer-local', (err: Error | null, user: any, info: { message: string }) => {
+    // Use local strategy which will check both customer and user tables
+    passport.authenticate('local', (err: Error | null, account: any, info: { message: string }) => {
       if (err) {
         console.error('Auth error:', err);
         return next(err);
       }
       
-      if (!user) {
+      if (!account) {
         console.log('Auth failed:', info?.message);
         return res.status(401).json({
           success: false,
@@ -202,7 +206,12 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         });
       }
       
-      req.login(user, (err) => {
+      // Determine user type (customer or admin)
+      const userType = 'role' in account && account.role === UserRole.ADMIN 
+        ? UserType.ADMIN 
+        : UserType.CUSTOMER;
+      
+      req.login(account, (err) => {
         if (err) {
           console.error('Login error:', err);
           return next(err);
@@ -210,11 +219,11 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         
         // Set user type in session
         if (req.session) {
-          req.session.userType = UserType.CUSTOMER;
+          req.session.userType = userType;
         }
         
         // Debug session after login
-        console.log('After customer login session debug:', {
+        console.log('After login session debug:', {
           hasSession: !!req.session,
           sessionID: req.sessionID,
           isAuthenticated: req.isAuthenticated(),
@@ -222,29 +231,37 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
           userType: req.session?.userType
         });
         
-        // Update last login timestamp
-        storage.updateUserLastLogin(user.id).catch(console.error);
+        // Update last login timestamp - use the appropriate method based on user type
+        if (userType === UserType.ADMIN) {
+          storage.updateAdminUserLastLogin(account.id).catch(console.error);
+        } else {
+          storage.updateCustomerByEmail(account.email, { lastLogin: new Date() }).catch(console.error);
+        }
         
-        console.log('Customer login successful:', { 
-          userId: user.id, 
-          role: user.role, 
-          name: user.name,
-          userType: UserType.CUSTOMER
+        console.log('Login successful:', { 
+          userId: account.id, 
+          role: account.role, 
+          name: userType === UserType.CUSTOMER ? account.fullName : account.name,
+          userType: userType
         });
         
         // Generate auth token
         try {
-          const token = authService.generateToken(user);
+          const token = authService.generateToken(account);
           
-          // Return user with token
+          // Return account with token and userType
           return res.json({
-            ...user,
-            token: token
+            ...account,
+            userType,
+            token
           });
         } catch (tokenError) {
           console.error('Token generation error:', tokenError);
-          // If token generation fails, still return the user without token
-          return res.json(user);
+          // If token generation fails, still return the account with userType
+          return res.json({
+            ...account,
+            userType
+          });
         }
       });
     })(req, res, next);
