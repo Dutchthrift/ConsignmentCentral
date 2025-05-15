@@ -1,62 +1,63 @@
 import { Router, Request, Response } from "express";
 import { storage } from "../../storage";
-import { OrderStatus, insertOrderSchema } from "@shared/schema";
-import { ZodError } from "zod";
+import { z } from "zod";
+import {
+  insertOrderSchema,
+  OrderStatus,
+} from "@shared/schema";
 
 const router = Router();
 
-// GET /api/admin/orders
-// Get all orders with summaries
+// Get all orders with summary information
 router.get("/", async (req: Request, res: Response) => {
   try {
-    const orderSummaries = await storage.getOrderSummaries();
+    const summaries = await storage.getOrderSummaries();
     
-    res.json({
+    return res.status(200).json({
       success: true,
-      data: orderSummaries
+      data: summaries
     });
   } catch (error) {
     console.error("Error fetching orders:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Failed to fetch orders"
+      message: "Failed to retrieve orders"
     });
   }
 });
 
-// GET /api/admin/orders/search?q=query
-// Search orders by query
+// Search orders
 router.get("/search", async (req: Request, res: Response) => {
   try {
-    const query = req.query.q as string;
+    const { query } = req.query;
     
-    if (!query || query.trim().length === 0) {
-      return res.json({
-        success: true,
-        data: []
+    if (!query || typeof query !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Search query is required"
       });
     }
     
     const results = await storage.searchOrders(query);
     
-    res.json({
+    return res.status(200).json({
       success: true,
       data: results
     });
   } catch (error) {
     console.error("Error searching orders:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to search orders"
     });
   }
 });
 
-// GET /api/admin/orders/:id
-// Get order details by ID
+// Get order by ID with full details
 router.get("/:id", async (req: Request, res: Response) => {
   try {
-    const orderId = parseInt(req.params.id);
+    const { id } = req.params;
+    const orderId = parseInt(id, 10);
     
     if (isNaN(orderId)) {
       return res.status(400).json({
@@ -74,24 +75,30 @@ router.get("/:id", async (req: Request, res: Response) => {
       });
     }
     
-    res.json({
+    return res.status(200).json({
       success: true,
       data: order
     });
   } catch (error) {
     console.error("Error fetching order details:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Failed to fetch order details"
+      message: "Failed to retrieve order details"
     });
   }
 });
 
-// GET /api/admin/orders/number/:orderNumber
-// Get order details by order number
+// Get order by order number with full details
 router.get("/number/:orderNumber", async (req: Request, res: Response) => {
   try {
-    const orderNumber = req.params.orderNumber;
+    const { orderNumber } = req.params;
+    
+    if (!orderNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Order number is required"
+      });
+    }
     
     const order = await storage.getOrderWithDetailsByNumber(orderNumber);
     
@@ -102,190 +109,73 @@ router.get("/number/:orderNumber", async (req: Request, res: Response) => {
       });
     }
     
-    res.json({
+    return res.status(200).json({
       success: true,
       data: order
     });
   } catch (error) {
-    console.error("Error fetching order details:", error);
-    res.status(500).json({
+    console.error("Error fetching order details by number:", error);
+    return res.status(500).json({
       success: false,
-      message: "Failed to fetch order details"
+      message: "Failed to retrieve order details"
     });
   }
 });
 
-// POST /api/admin/orders
 // Create a new order
 router.post("/", async (req: Request, res: Response) => {
   try {
-    // Generate order number - format: ORD-YYYYMMDD-1234
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    const orderNumber = `ORD-${year}${month}${day}-${random}`;
+    const orderData = req.body;
     
-    // Validate order data
-    const orderData = insertOrderSchema.parse({
-      ...req.body,
-      orderNumber,
-      status: req.body.status || OrderStatus.SUBMITTED,
-      submissionDate: req.body.submissionDate || new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
+    // Validate request data
+    const validationResult = insertOrderSchema.safeParse(orderData);
     
-    // Create the order
-    const newOrder = await storage.createOrder(orderData);
-    
-    // If items are included, add them to the order
-    if (req.body.itemIds && Array.isArray(req.body.itemIds)) {
-      for (const itemId of req.body.itemIds) {
-        await storage.addItemToOrder(newOrder.id, itemId);
-      }
-    }
-    
-    // Get the complete order with details
-    const orderWithDetails = await storage.getOrderWithDetails(newOrder.id);
-    
-    res.status(201).json({
-      success: true,
-      data: orderWithDetails
-    });
-  } catch (error) {
-    console.error("Error creating order:", error);
-    
-    if (error instanceof ZodError) {
+    if (!validationResult.success) {
       return res.status(400).json({
         success: false,
-        message: "Validation error",
-        errors: error.errors
+        message: "Invalid order data",
+        errors: validationResult.error.errors
       });
     }
     
-    res.status(500).json({
+    const newOrder = await storage.createOrder(validationResult.data);
+    
+    return res.status(201).json({
+      success: true,
+      data: newOrder
+    });
+  } catch (error) {
+    console.error("Error creating order:", error);
+    return res.status(500).json({
       success: false,
       message: "Failed to create order"
     });
   }
 });
 
-// POST /api/admin/orders/:id/items
-// Add an item to an order
-router.post("/:id/items", async (req: Request, res: Response) => {
-  try {
-    const orderId = parseInt(req.params.id);
-    const itemId = req.body.itemId;
-    
-    if (isNaN(orderId) || !itemId) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid order ID or item ID"
-      });
-    }
-    
-    // Verify order exists
-    const order = await storage.getOrder(orderId);
-    
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found"
-      });
-    }
-    
-    // Verify item exists
-    const item = await storage.getItem(itemId);
-    
-    if (!item) {
-      return res.status(404).json({
-        success: false,
-        message: "Item not found"
-      });
-    }
-    
-    // Add item to order
-    const orderItem = await storage.addItemToOrder(orderId, itemId);
-    
-    res.status(201).json({
-      success: true,
-      data: orderItem
-    });
-  } catch (error) {
-    console.error("Error adding item to order:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to add item to order"
-    });
-  }
-});
-
-// DELETE /api/admin/orders/:orderId/items/:itemId
-// Remove an item from an order
-router.delete("/:orderId/items/:itemId", async (req: Request, res: Response) => {
-  try {
-    const orderId = parseInt(req.params.orderId);
-    const itemId = parseInt(req.params.itemId);
-    
-    if (isNaN(orderId) || isNaN(itemId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid order ID or item ID"
-      });
-    }
-    
-    // Remove item from order
-    const success = await storage.removeItemFromOrder(orderId, itemId);
-    
-    if (!success) {
-      return res.status(404).json({
-        success: false,
-        message: "Order item not found"
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: "Item removed from order"
-    });
-  } catch (error) {
-    console.error("Error removing item from order:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to remove item from order"
-    });
-  }
-});
-
-// PATCH /api/admin/orders/:id/status
 // Update order status
 router.patch("/:id/status", async (req: Request, res: Response) => {
   try {
-    const orderId = parseInt(req.params.id);
+    const { id } = req.params;
     const { status } = req.body;
+    const orderId = parseInt(id, 10);
     
-    if (isNaN(orderId) || !status) {
+    if (isNaN(orderId)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid order ID or status"
+        message: "Invalid order ID"
       });
     }
     
-    // Verify status is valid
-    if (!Object.values(OrderStatus).includes(status)) {
+    // Validate status
+    if (!status || !Object.values(OrderStatus).includes(status as OrderStatus)) {
       return res.status(400).json({
         success: false,
         message: "Invalid status value"
       });
     }
     
-    // Update order status
-    const updatedOrder = await storage.updateOrder(orderId, { 
-      status,
-      updatedAt: new Date()
-    });
+    const updatedOrder = await storage.updateOrder(orderId, { status: status as OrderStatus });
     
     if (!updatedOrder) {
       return res.status(404).json({
@@ -294,34 +184,40 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
       });
     }
     
-    res.json({
+    return res.status(200).json({
       success: true,
       data: updatedOrder
     });
   } catch (error) {
     console.error("Error updating order status:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to update order status"
     });
   }
 });
 
-// PATCH /api/admin/orders/:id/tracking
 // Update order tracking code
 router.patch("/:id/tracking", async (req: Request, res: Response) => {
   try {
-    const orderId = parseInt(req.params.id);
+    const { id } = req.params;
     const { trackingCode } = req.body;
+    const orderId = parseInt(id, 10);
     
-    if (isNaN(orderId) || !trackingCode) {
+    if (isNaN(orderId)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid order ID or tracking code"
+        message: "Invalid order ID"
       });
     }
     
-    // Update order tracking code
+    if (!trackingCode || typeof trackingCode !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Valid tracking code is required"
+      });
+    }
+    
     const updatedOrder = await storage.updateOrderTrackingCode(orderId, trackingCode);
     
     if (!updatedOrder) {
@@ -331,24 +227,91 @@ router.patch("/:id/tracking", async (req: Request, res: Response) => {
       });
     }
     
-    res.json({
+    return res.status(200).json({
       success: true,
       data: updatedOrder
     });
   } catch (error) {
     console.error("Error updating tracking code:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to update tracking code"
     });
   }
 });
 
-// PATCH /api/admin/orders/:id
-// Update order details
-router.patch("/:id", async (req: Request, res: Response) => {
+// Add item to order
+router.post("/:id/items", async (req: Request, res: Response) => {
   try {
-    const orderId = parseInt(req.params.id);
+    const { id } = req.params;
+    const { itemId } = req.body;
+    const orderId = parseInt(id, 10);
+    const itemIdNum = parseInt(itemId, 10);
+    
+    if (isNaN(orderId) || isNaN(itemIdNum)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order ID or item ID"
+      });
+    }
+    
+    const orderItem = await storage.addItemToOrder(orderId, itemIdNum);
+    
+    return res.status(201).json({
+      success: true,
+      data: orderItem
+    });
+  } catch (error) {
+    console.error("Error adding item to order:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to add item to order"
+    });
+  }
+});
+
+// Remove item from order
+router.delete("/:orderId/items/:itemId", async (req: Request, res: Response) => {
+  try {
+    const { orderId, itemId } = req.params;
+    const orderIdNum = parseInt(orderId, 10);
+    const itemIdNum = parseInt(itemId, 10);
+    
+    if (isNaN(orderIdNum) || isNaN(itemIdNum)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order ID or item ID"
+      });
+    }
+    
+    const result = await storage.removeItemFromOrder(orderIdNum, itemIdNum);
+    
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Order item not found"
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: "Item removed from order successfully"
+    });
+  } catch (error) {
+    console.error("Error removing item from order:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to remove item from order"
+    });
+  }
+});
+
+// Update entire order
+router.put("/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const orderData = req.body;
+    const orderId = parseInt(id, 10);
     
     if (isNaN(orderId)) {
       return res.status(400).json({
@@ -357,38 +320,40 @@ router.patch("/:id", async (req: Request, res: Response) => {
       });
     }
     
-    // Get existing order
-    const existingOrder = await storage.getOrder(orderId);
+    // Partial validation - only validate fields that are present
+    const validationResult = z.object({
+      customerId: z.number().optional(),
+      orderNumber: z.string().optional(),
+      submissionDate: z.date().optional(),
+      status: z.nativeEnum(OrderStatus).optional(),
+      trackingCode: z.string().nullable().optional(),
+      notes: z.string().nullable().optional(),
+    }).safeParse(orderData);
     
-    if (!existingOrder) {
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order data",
+        errors: validationResult.error.errors
+      });
+    }
+    
+    const updatedOrder = await storage.updateOrder(orderId, validationResult.data);
+    
+    if (!updatedOrder) {
       return res.status(404).json({
         success: false,
         message: "Order not found"
       });
     }
     
-    // Update order
-    const updatedOrder = await storage.updateOrder(orderId, { 
-      ...req.body,
-      updatedAt: new Date()
-    });
-    
-    res.json({
+    return res.status(200).json({
       success: true,
       data: updatedOrder
     });
   } catch (error) {
     console.error("Error updating order:", error);
-    
-    if (error instanceof ZodError) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation error",
-        errors: error.errors
-      });
-    }
-    
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to update order"
     });

@@ -23,11 +23,11 @@ import { requireAdmin } from "./middleware/auth.middleware";
 
 // Import route handlers
 import adminRoutes from "./routes/admin.ts";
-import adminOrderRoutes from "./routes/admin/index";
 import adminAddConsignorRoute from "./routes/admin/add-consignor";
 import dashboardRoutes from "./routes/dashboard.ts";
 import consignorRoutes from "./routes/consignor.ts";
-import consignorOrderRoutes from "./routes/consignor/index";
+import adminOrdersRoutes from "./routes/admin/orders";
+import consignorOrdersRoutes from "./routes/consignor/orders";
 import consignorRegistrationRoutes from "./routes/consignor-registration";
 import mlTrainingRoutes from "./routes/ml-training.ts";
 import { calculateCommission, checkEligibility } from "./utils/commission.ts";
@@ -114,10 +114,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/insights', insightsRoutes);
   
   // Register admin orders routes
-  app.use('/api/admin/orders', requireAdmin, adminOrderRoutes);
+  app.use('/api/admin/orders', requireAdmin, adminOrdersRoutes);
   
   // Register consignor orders routes
-  app.use('/api/consignor/orders', consignorOrderRoutes);
+  app.use('/api/consignor/orders', consignorOrdersRoutes);
 
   // ===== ITEM ROUTES =====
   

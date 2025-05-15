@@ -26,6 +26,7 @@ import Login from "@/pages/Login";
 import ConsignorLogin from "@/pages/ConsignorLogin";
 import AdminLoginPage from "@/pages/AdminLoginPage";
 import AdminDashboardPage from "@/pages/AdminDashboardPage";
+import OrderDetail from "@/pages/OrderDetail";
 import ConsignorDashboard from "@/pages/ConsignorDashboard";
 import ConsignorItems from "@/pages/ConsignorItems";
 import ConsignorHistory from "@/pages/ConsignorHistory";
@@ -113,6 +114,11 @@ function Router() {
         <ProtectedRoute 
           path="/orders" 
           component={Orders}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        <ProtectedRoute 
+          path="/orders/:id" 
+          component={OrderDetail}
           allowedRoles={[UserRole.ADMIN]} 
         />
         <ProtectedRoute 
