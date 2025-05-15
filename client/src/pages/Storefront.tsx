@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -65,12 +65,16 @@ export default function Storefront() {
     id: string;
     imagePreview: string | null;
     imageBase64: string | null;
+    imageFile?: File | null; // Keep the actual file reference
   }
   
   // State for managing multiple items with images
   const [items, setItems] = useState<StorefrontItem[]>(
-    [{ id: "1", imagePreview: null, imageBase64: null }]
+    [{ id: "1", imagePreview: null, imageBase64: null, imageFile: null }]
   );
+  
+  // Create a ref to store file inputs
+  const fileInputRefs = useRef<HTMLInputElement[]>([]);
   
   // Define form
   const form = useForm({
@@ -138,10 +142,13 @@ export default function Storefront() {
   // Handle form submission
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
+    console.log("Form submission initiated", data);
+    console.log("Current items state", items);
     
     try {
       // Check if any items have images
       const anyItemHasImage = items.some((item: StorefrontItem) => item.imageBase64);
+      console.log("Any item has image?", anyItemHasImage);
       
       if (!anyItemHasImage) {
         toast({
@@ -157,6 +164,7 @@ export default function Storefront() {
       const itemsWithImages = data.items.map((formItem: any, index: number) => {
         // Make sure the index is valid in our items array
         if (index < items.length) {
+          console.log(`Processing item ${index}`, items[index]);
           return {
             ...formItem,
             imageBase64: items[index]?.imageBase64 || null,
@@ -358,100 +366,146 @@ export default function Storefront() {
                             <div>
                               <FormLabel>Item Image (Required)</FormLabel>
                               <div className="mt-1">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  className="w-full"
-                                  onClick={() => {
-                                    // Create and trigger a file input element
-                                    const fileInput = document.createElement('input');
-                                    fileInput.type = 'file';
-                                    fileInput.accept = 'image/*';
-                                    fileInput.onchange = (e) => {
-                                      // @ts-ignore
-                                      const file = e.target.files?.[0];
-                                      if (!file) return;
-                                      
-                                      // Check file size (max 5MB)
-                                      if (file.size > 5 * 1024 * 1024) {
-                                        toast({
-                                          title: "File too large",
-                                          description: "Image must be less than 5MB",
-                                          variant: "destructive",
-                                        });
-                                        return;
-                                      }
-                                      
-                                      // Create preview URL
-                                      const previewUrl = URL.createObjectURL(file);
-                                      
-                                      // Show loading state
-                                      toast({
-                                        title: "Processing image",
-                                        description: "Please wait while we prepare your image...",
-                                      });
-                                      
-                                      // Update the specific item's image preview
-                                      const updatedItems = [...items];
-                                      updatedItems[index] = {
-                                        ...updatedItems[index],
-                                        imagePreview: previewUrl
-                                      };
-                                      setItems(updatedItems);
-                                      
-                                      // Convert to base64
-                                      const reader = new FileReader();
-                                      reader.onloadend = () => {
-                                        const base64String = reader.result as string;
-                                        // Remove data URL prefix
-                                        const base64 = base64String.split(",")[1];
+                                <div className="border border-gray-300 rounded-md p-4 bg-white">
+                                  {/* Use a visible input with styling */}
+                                  <div className="flex flex-col items-center justify-center gap-2">
+                                    <Camera className="h-8 w-8 text-gray-400" />
+                                    <p className="text-sm text-center font-medium">
+                                      {item.imagePreview ? "Change Image" : "Upload Image"}
+                                    </p>
+                                    
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      key={`file-input-${index}`}
+                                      id={`file-input-${index}`}
+                                      ref={el => {
+                                        if (el) fileInputRefs.current[index] = el;
+                                      }}
+                                      className="w-full text-sm text-slate-500 cursor-pointer
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-full file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-primary file:text-white
+                                        hover:file:bg-primary/80"
+                                      onChange={(e) => {
+                                        console.log("File input change detected");
+                                        const file = e.target.files?.[0];
+                                        if (!file) {
+                                          console.log("No file selected");
+                                          return;
+                                        }
                                         
-                                        // Update the specific item's base64 data
-                                        const itemsWithBase64 = [...items];
-                                        itemsWithBase64[index] = {
-                                          ...itemsWithBase64[index],
-                                          imageBase64: base64
-                                        };
-                                        setItems(itemsWithBase64);
+                                        console.log("Selected file:", file.name, file.size);
                                         
-                                        // Show success message
+                                        // Check file size (max 5MB)
+                                        if (file.size > 5 * 1024 * 1024) {
+                                          toast({
+                                            title: "File too large",
+                                            description: "Image must be less than 5MB",
+                                            variant: "destructive",
+                                          });
+                                          return;
+                                        }
+                                        
+                                        // Create preview URL
+                                        const previewUrl = URL.createObjectURL(file);
+                                        console.log("Created preview URL:", previewUrl);
+                                        
+                                        // Show loading state
                                         toast({
-                                          title: "Image ready",
-                                          description: "Image has been prepared for submission",
+                                          title: "Processing image",
+                                          description: "Please wait while we prepare your image...",
                                         });
-                                      };
-                                      
-                                      reader.onerror = () => {
-                                        toast({
-                                          title: "Image upload failed",
-                                          description: "There was a problem processing your image. Please try again.",
-                                          variant: "destructive",
-                                        });
-                                      };
-                                      
-                                      reader.readAsDataURL(file);
-                                    };
-                                    fileInput.click();
-                                  }}
-                                >
-                                  <Camera className="h-4 w-4 mr-2" />
-                                  {item.imagePreview ? "Change Image" : "Upload Image"}
-                                </Button>
+                                        
+                                        try {
+                                          // Create a fresh copy of items
+                                          let updatedItems = items.map((item, idx) => {
+                                            if (idx === index) {
+                                              return {
+                                                ...item,
+                                                imagePreview: previewUrl,
+                                                imageFile: file // Store the actual file object
+                                              };
+                                            }
+                                            return item;
+                                          });
+                                          console.log("Setting updated items with preview", updatedItems);
+                                          setItems(updatedItems);
+                                          
+                                          // Convert to base64
+                                          const reader = new FileReader();
+                                          reader.onloadend = () => {
+                                            console.log("FileReader completed");
+                                            try {
+                                              const base64String = reader.result as string;
+                                              // Remove data URL prefix
+                                              const base64 = base64String.split(",")[1];
+                                              
+                                              // Create a fresh copy with the base64 data
+                                              let itemsWithBase64 = items.map((item, idx) => {
+                                                if (idx === index) {
+                                                  return {
+                                                    ...item,
+                                                    imagePreview: previewUrl,
+                                                    imageBase64: base64,
+                                                    imageFile: file
+                                                  };
+                                                }
+                                                return item;
+                                              });
+                                              console.log("Setting items with base64");
+                                              setItems(itemsWithBase64);
+                                              
+                                              // Show success message
+                                              toast({
+                                                title: "Image ready",
+                                                description: "Image has been prepared for submission",
+                                              });
+                                            } catch (err) {
+                                              console.error("Error in reader.onloadend:", err);
+                                            }
+                                          };
+                                          
+                                          reader.onerror = (error) => {
+                                            console.error("FileReader error:", error);
+                                            toast({
+                                              title: "Image upload failed",
+                                              description: "There was a problem processing your image. Please try again.",
+                                              variant: "destructive",
+                                            });
+                                          };
+                                          
+                                          reader.readAsDataURL(file);
+                                        } catch (err) {
+                                          console.error("Error in file processing:", err);
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                </div>
                                 <p className="text-xs text-gray-500 mt-1 text-center">
                                   Upload a clear photo to help us analyze your item accurately
                                 </p>
                               </div>
                               
-                              {item.imagePreview && (
-                                <div className="mt-4">
-                                  <p className="text-sm font-medium text-gray-700 mb-2">Image Preview</p>
-                                  <img
-                                    src={item.imagePreview}
-                                    alt={`Item ${index + 1} Preview`}
-                                    className="h-32 object-contain border rounded-md mx-auto"
-                                  />
-                                </div>
-                              )}
+                              {/* Always render the image container but conditionally show image */}
+                              <div className="mt-4">
+                                {item.imagePreview ? (
+                                  <>
+                                    <p className="text-sm font-medium text-gray-700 mb-2">Image Preview</p>
+                                    <img
+                                      src={item.imagePreview}
+                                      alt={`Item ${index + 1} Preview`}
+                                      className="h-32 object-contain border rounded-md mx-auto"
+                                    />
+                                  </>
+                                ) : (
+                                  <div className="h-32 flex items-center justify-center text-gray-400 border border-dashed rounded-md">
+                                    <p className="text-sm">Image preview will appear here</p>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
