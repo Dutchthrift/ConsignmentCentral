@@ -113,6 +113,53 @@ export const insertShippingSchema = createInsertSchema(shipping).omit({
   createdAt: true,
 });
 
+// Define order status enum
+export const OrderStatus = {
+  SUBMITTED: "submitted",
+  PROCESSING: "processing", 
+  SHIPPED_TO_WAREHOUSE: "shipped_to_warehouse",
+  RECEIVED: "received",
+  IN_ANALYSIS: "in_analysis",
+  READY_FOR_SALE: "ready_for_sale",
+  PARTIALLY_SOLD: "partially_sold",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+} as const;
+
+// Orders table (for grouping items from the same submission)
+export const orders = pgTable("orders", {
+  id: serial("id").primaryKey(),
+  orderNumber: text("order_number").notNull().unique(), // Format: ORD-YYMMDD-XXX
+  customerId: integer("customer_id").notNull().references(() => customers.id),
+  submissionDate: timestamp("submission_date").defaultNow().notNull(),
+  status: text("status").notNull().default(OrderStatus.SUBMITTED),
+  trackingCode: text("tracking_code"),
+  totalValue: integer("total_value"), // Sum of all item values (in cents)
+  totalPayout: integer("total_payout"), // Sum of all item payouts (in cents)
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOrderSchema = createInsertSchema(orders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Add OrderItem relation column to items table
+export const orderItems = pgTable("order_items", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull().references(() => orders.id),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Export types
 export type Customer = typeof customers.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
@@ -129,12 +176,43 @@ export type InsertPricing = z.infer<typeof insertPricingSchema>;
 export type Shipping = typeof shipping.$inferSelect;
 export type InsertShipping = z.infer<typeof insertShippingSchema>;
 
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+
+export type OrderItem = typeof orderItems.$inferSelect;
+export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
+
 // Enhanced Types for API Responses
 export type ItemWithDetails = Item & {
   customer: Customer;
   analysis?: Analysis;
   pricing?: Pricing;
   shipping?: Shipping;
+};
+
+// Enhanced Type for Order with all related items and details
+export type OrderWithDetails = Order & {
+  customer: Customer;
+  items: (Item & {
+    pricing?: Pricing;
+    shipping?: Shipping;
+    analysis?: Analysis;
+  })[];
+};
+
+// Type for grouped orders display in admin panel
+export type OrderSummary = {
+  id: number;
+  orderNumber: string;
+  customerId: number;
+  customerName: string;
+  customerEmail: string;
+  submissionDate: string;
+  status: string;
+  trackingCode?: string;
+  totalValue: number;
+  totalPayout: number;
+  itemCount: number;
 };
 
 // Schema for a single item in the intake form
@@ -431,6 +509,7 @@ export const usersRelations = relations(users, ({ one }) => ({
 export const customersRelations = relations(customers, ({ many }) => ({
   users: many(users),
   items: many(items),
+  orders: many(orders),
 }));
 
 export const itemsRelations = relations(items, ({ one, many }) => ({
@@ -449,6 +528,26 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   shipping: one(shipping, {
     fields: [items.id],
     references: [shipping.itemId],
+  }),
+  orderItems: many(orderItems),
+}));
+
+export const ordersRelations = relations(orders, ({ one, many }) => ({
+  customer: one(customers, {
+    fields: [orders.customerId],
+    references: [customers.id],
+  }),
+  orderItems: many(orderItems),
+}));
+
+export const orderItemsRelations = relations(orderItems, ({ one }) => ({
+  order: one(orders, {
+    fields: [orderItems.orderId],
+    references: [orders.id],
+  }),
+  item: one(items, {
+    fields: [orderItems.itemId],
+    references: [items.id],
   }),
 }));
 
