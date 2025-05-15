@@ -42,6 +42,7 @@ function Router() {
   const isLoginPath = location === "/login" || location === "/auth";
   const isConsignorLoginPath = location === "/consignor/login";
   const isStorefrontPath = location.startsWith("/storefront");
+  const isSetupPath = location.startsWith("/setup-account") || location.startsWith("/setup-complete");
   const isConsignorPath = location.startsWith("/consignor") && !isConsignorLoginPath;
   
   // If we're on a login page, don't use the standard layout
@@ -61,7 +62,7 @@ function Router() {
   // Use different layouts based on path
   let AppLayout = Layout; // Default admin layout
   
-  if (isStorefrontPath) {
+  if (isStorefrontPath || isSetupPath) {
     AppLayout = StorefrontLayout;
   } else if (isConsignorPath) {
     AppLayout = ConsignorLayout;
@@ -176,6 +177,8 @@ function Router() {
         
         {/* Customer Storefront Routes */}
         <Route path="/storefront" component={Storefront} />
+        
+        {/* Consignor Registration Flow - public routes */}
         <Route path="/setup-account" component={SetupAccount} />
         <Route path="/setup-complete" component={SetupComplete} />
         
