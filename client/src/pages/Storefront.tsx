@@ -27,8 +27,17 @@ import {
   Brain,
   DollarSign,
   PackageCheck,
-  AlertTriangle
+  AlertTriangle,
+  ArrowLeft,
+  Facebook,
+  Image,
+  Package,
+  Search,
+  ShoppingBag,
+  CreditCard,
+  Recycle
 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // Form schema
 // Single item schema
@@ -58,6 +67,7 @@ export default function Storefront() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [quoteResult, setQuoteResult] = useState<any>(null);
   const [activeStep, setActiveStep] = useState(1);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
 
   // Define item state interface
   interface StorefrontItem {
