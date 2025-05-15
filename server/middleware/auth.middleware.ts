@@ -27,25 +27,50 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     const decoded = authService.verifyToken(token);
     if (decoded) {
       try {
-        // If token is valid, find the admin user
-        storage.getUserById(decoded.id).then(user => {
-          if (user && user.role === 'admin') {
-            // Set the user in the request
-            req.user = user;
-            return next();
-          } else {
-            return res.status(403).json({
+        // Check if this is an admin token
+        if (decoded.isAdmin) {
+          // If token is valid, find the admin user
+          storage.getAdminUserById(decoded.id).then(adminUser => {
+            if (adminUser && adminUser.role === 'admin') {
+              // Set the user in the request
+              req.user = adminUser;
+              console.log('Admin authenticated via token:', { id: adminUser.id, email: adminUser.email });
+              return next();
+            } else {
+              return res.status(403).json({
+                success: false,
+                message: "Access denied. Admin role required."
+              });
+            }
+          }).catch(error => {
+            console.error("Error verifying JWT admin user:", error);
+            return res.status(500).json({
               success: false,
-              message: "Access denied. Admin role required.",
+              message: "Authentication error"
             });
-          }
-        }).catch(error => {
-          console.error("Error verifying JWT admin user:", error);
-          return res.status(500).json({
-            success: false,
-            message: "Authentication error"
           });
-        });
+        } else {
+          // Not an admin token, try regular user
+          storage.getUserById(decoded.id).then(user => {
+            if (user && user.role === 'admin') {
+              // Set the user in the request
+              req.user = user;
+              console.log('Admin authenticated via regular user token:', { id: user.id, email: user.email });
+              return next();
+            } else {
+              return res.status(403).json({
+                success: false,
+                message: "Access denied. Admin role required."
+              });
+            }
+          }).catch(error => {
+            console.error("Error verifying JWT user:", error);
+            return res.status(500).json({
+              success: false,
+              message: "Authentication error"
+            });
+          });
+        }
       } catch (error) {
         console.error("Error verifying JWT admin:", error);
         return res.status(401).json({
@@ -91,34 +116,66 @@ export function requireConsignorOwnership(req: Request, res: Response, next: Nex
     const decoded = authService.verifyToken(token);
     if (decoded) {
       try {
-        // If token is valid, find the user
-        storage.getUserById(decoded.id).then(user => {
-          if (user) {
-            // Set the user in the request
-            req.user = user;
-            
-            // For now just check if they're a consignor
-            if (user.role !== 'consignor') {
-              return res.status(403).json({
+        // First check if this is an admin token (admins should have access to consignor stuff)
+        if (decoded.isAdmin) {
+          storage.getAdminUserById(decoded.id).then(adminUser => {
+            if (adminUser) {
+              // Admin users can access consignor routes
+              req.user = adminUser;
+              console.log('Admin accessing consignor resources:', { id: adminUser.id, email: adminUser.email });
+              return next();
+            } else {
+              return res.status(404).json({
                 success: false,
-                message: "Access denied. Consignor role required.",
+                message: "Admin user not found"
               });
             }
-            
-            return next();
-          } else {
-            return res.status(404).json({
+          }).catch(error => {
+            console.error("Error verifying JWT admin for consignor access:", error);
+            return res.status(500).json({
               success: false,
-              message: "User not found"
+              message: "Authentication error"
             });
-          }
-        }).catch(error => {
-          console.error("Error verifying JWT consignor user:", error);
-          return res.status(500).json({
-            success: false,
-            message: "Authentication error"
           });
-        });
+        } else {
+          // Not an admin token, try regular user or customer
+          // First check for consignor in users table
+          storage.getUserById(decoded.id).then(user => {
+            if (user && user.role === 'consignor') {
+              // Regular user with consignor role
+              req.user = user;
+              console.log('Consignor authenticated via user token:', { id: user.id, email: user.email });
+              return next();
+            } else {
+              // Now check for customer
+              storage.getCustomer(decoded.id).then(customer => {
+                if (customer && customer.role === 'consignor') {
+                  // Set the user in the request
+                  req.user = customer;
+                  console.log('Consignor authenticated via customer token:', { id: customer.id, email: customer.email });
+                  return next();
+                } else {
+                  return res.status(403).json({
+                    success: false,
+                    message: "Access denied. Consignor role required."
+                  });
+                }
+              }).catch(error => {
+                console.error("Error verifying JWT customer:", error);
+                return res.status(500).json({
+                  success: false,
+                  message: "Authentication error"
+                });
+              });
+            }
+          }).catch(error => {
+            console.error("Error verifying JWT user for consignor access:", error);
+            return res.status(500).json({
+              success: false,
+              message: "Authentication error"
+            });
+          });
+        }
       } catch (error) {
         console.error("Error verifying JWT consignor:", error);
         return res.status(401).json({
