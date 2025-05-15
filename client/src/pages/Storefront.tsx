@@ -60,12 +60,17 @@ export default function Storefront() {
   const [quoteResult, setQuoteResult] = useState<any>(null);
   const [activeStep, setActiveStep] = useState(1);
 
-  // State for managing multiple items with images
-  const [items, setItems] = useState<{ 
+  // Define item state interface
+  interface StorefrontItem {
     id: string;
     imagePreview: string | null;
     imageBase64: string | null;
-  }[]>([{ id: "1", imagePreview: null, imageBase64: null }]);
+  }
+  
+  // State for managing multiple items with images
+  const [items, setItems] = useState<StorefrontItem[]>(
+    [{ id: "1", imagePreview: null, imageBase64: null }]
+  );
   
   // Define form
   const form = useForm({
@@ -146,6 +151,12 @@ export default function Storefront() {
     // Create preview URL
     const previewUrl = URL.createObjectURL(file);
     
+    // Show loading state
+    toast({
+      title: "Processing image",
+      description: "Please wait while we prepare your image...",
+    });
+    
     // Update the specific item's image preview
     const updatedItems = [...items];
     updatedItems[index] = {
@@ -168,7 +179,22 @@ export default function Storefront() {
         imageBase64: base64
       };
       setItems(itemsWithBase64);
+      
+      // Show success message
+      toast({
+        title: "Image ready",
+        description: "Image has been prepared for submission",
+      });
     };
+    
+    reader.onerror = () => {
+      toast({
+        title: "Image upload failed",
+        description: "There was a problem processing your image. Please try again.",
+        variant: "destructive",
+      });
+    };
+    
     reader.readAsDataURL(file);
   };
 
@@ -177,16 +203,37 @@ export default function Storefront() {
     setIsSubmitting(true);
     
     try {
+      // Check if any items have images
+      const anyItemHasImage = items.some((item: StorefrontItem) => item.imageBase64);
+      
+      if (!anyItemHasImage) {
+        toast({
+          title: "Image required",
+          description: "Please upload at least one image for your items",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Add image base64 data to each item in the payload
-      const itemsWithImages = data.items.map((item: any, index: number) => ({
-        ...item,
-        imageBase64: items[index]?.imageBase64 || null,
-      }));
+      const itemsWithImages = data.items.map((formItem: any, index: number) => {
+        // Make sure the index is valid in our items array
+        if (index < items.length) {
+          return {
+            ...formItem,
+            imageBase64: items[index]?.imageBase64 || null,
+          };
+        }
+        return formItem;
+      });
       
       const payload = {
         ...data,
         items: itemsWithImages
       };
+      
+      console.log("Submitting payload with images", payload);
       
       const response = await apiRequest("POST", "/api/intake", payload);
       const result = await response.json();
@@ -199,6 +246,8 @@ export default function Storefront() {
           title: "Analysis complete!",
           description: `We've analyzed your ${result.data.items?.length || 1} item(s) and prepared quotes`,
         });
+      } else {
+        throw new Error(result.message || "Failed to process your items");
       }
     } catch (error) {
       console.error("Error submitting intake:", error);
