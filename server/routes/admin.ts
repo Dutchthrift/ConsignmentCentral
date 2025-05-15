@@ -1,16 +1,30 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
 import { 
   commissionSettingsSchema, 
   commissionTierSchema,
   Item,
   ItemWithDetails,
-  Customer
+  Customer,
+  UserRole
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { calculateCommission, checkEligibility } from "../utils/commission.ts";
+import { requireAdmin } from "../middleware/auth.middleware";
 
 const router = Router();
+
+// Add admin check middleware to all routes
+router.use((req: Request, res: Response, next: NextFunction) => {
+  console.log("Admin route access:", {
+    path: req.path,
+    method: req.method,
+    isAuthenticated: req.isAuthenticated(),
+    userType: req.session?.userType,
+    role: req.user?.role
+  });
+  next();
+});
 
 // Default commission settings
 const DEFAULT_COMMISSION_SETTINGS = {

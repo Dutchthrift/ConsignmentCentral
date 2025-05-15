@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Eye, Search, User } from "lucide-react";
+import { Eye, Search, User, Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface ConsignorProps {
   id: number;
@@ -17,30 +18,69 @@ interface ConsignorProps {
 
 export default function Consignors() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [location, navigate] = useLocation();
+  const { toast } = useToast();
   
-  // Fetch all consignors
-  const { data, isLoading } = useQuery<{ success: boolean; data: ConsignorProps[] }>({
-    queryKey: ["/api/admin/consignors"],
+  // Fetch all consignors from admin API
+  const { data, isLoading, error } = useQuery<{ success: boolean; data: ConsignorProps[] }>({
+    queryKey: ["/api/admin/consignors"]
   });
+
+  // Handle authorization errors
+  if (error) {
+    const err = error as any;
+    if (err.response?.status === 403) {
+      toast({
+        title: "Access denied",
+        description: "You don't have permission to view this page",
+        variant: "destructive"
+      });
+      navigate("/");
+    }
+  }
   
   // Filter consignors based on search query
-  const filteredConsignors = data?.data?.filter(consignor => 
+  const filteredConsignors = data?.data?.filter((consignor: ConsignorProps) => 
     consignor.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     consignor.email.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
   
+  // Handler for useEffect to check for errors
+  useEffect(() => {
+    if (error) {
+      const err = error as any;
+      if (err.response?.status === 403) {
+        toast({
+          title: "Access denied",
+          description: "You don't have permission to view this page. Admin access required.",
+          variant: "destructive"
+        });
+        navigate("/");
+      }
+    }
+  }, [error, navigate, toast]);
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Consignors</h1>
-        <div className="relative w-64">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-neutral-500" />
-          <Input
-            placeholder="Search consignors..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div>
+          <h1 className="text-2xl font-bold">Consignors Management</h1>
+          <p className="text-muted-foreground">View and manage all consignors in the system</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative w-64">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-neutral-500" />
+            <Input
+              placeholder="Search consignors..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <Button className="flex items-center gap-1">
+            <Plus className="h-4 w-4 mr-1" />
+            Add Consignor
+          </Button>
         </div>
       </div>
       
@@ -99,12 +139,10 @@ export default function Consignors() {
                           variant="outline"
                           size="sm"
                           className="flex items-center gap-1"
-                          asChild
+                          onClick={() => navigate(`/dashboard/${consignor.id}`)}
                         >
-                          <Link to={`/dashboard/${consignor.id}`}>
-                            <Eye className="h-4 w-4" />
-                            View Dashboard
-                          </Link>
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Dashboard
                         </Button>
                       </td>
                     </tr>
