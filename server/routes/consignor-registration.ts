@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { z } from "zod";
 import { UserRole, AuthProvider } from "@shared/schema";
 import AuthService from "../services/auth.service";
+import { pool } from "../db";
 
 // Create an instance of AuthService
 const authService = new AuthService(storage);
@@ -77,19 +78,55 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
     // Create a new customer record (now handles their own authentication)
     console.log("Creating new customer record for:", consignorData.email);
     
-    // The field names need to exactly match the database columns
-    const customer = await storage.createCustomer({
-      name: consignorData.fullName, 
-      email: consignorData.email,
-      password: hashedPassword,
-      phone: consignorData.phone || null,
-      address: null,
-      city: null,
-      state: consignorData.payoutMethod, // Payout method stored in state field
-      postal_code: consignorData.iban || null, // IBAN stored in postal_code field
-      country: "NL", // Default to Netherlands  
-      role: UserRole.CONSIGNOR,
-    });
+    // Use direct SQL query instead of ORM with a try-catch block
+    let customer;
+    try {
+      const insertQuery = `
+        INSERT INTO customers (
+          name, 
+          email, 
+          password, 
+          phone, 
+          address, 
+          city, 
+          state, 
+          postal_code, 
+          country, 
+          role
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+        ) RETURNING *
+      `;
+      
+      const params = [
+        consignorData.fullName,
+        consignorData.email,
+        hashedPassword,
+        consignorData.phone || null,
+        null, // address
+        null, // city
+        consignorData.payoutMethod, // state = payout method
+        consignorData.iban || null, // postal_code = IBAN
+        "NL", // Default to Netherlands
+        UserRole.CONSIGNOR
+      ];
+      
+      console.log("Executing SQL query with params:", params);
+      const client = await pool.connect();
+      try {
+        const result = await client.query(insertQuery, params);
+        customer = result.rows[0];
+        console.log("Successfully created customer:", customer.id);
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error("SQL Error in customer creation:", error);
+      return res.status(500).json({
+        success: false,
+        message: `Database error: ${error.message}`
+      });
+    }
     console.log("Customer created with ID:", customer.id);
     
     // Auto-login the customer (create a session)
