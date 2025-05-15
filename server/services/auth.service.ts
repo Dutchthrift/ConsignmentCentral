@@ -249,35 +249,59 @@ export class AuthService {
       }
     }));
     
-    // Serialize user to session
+    // Serialize user to session - store user type along with ID
     passport.serializeUser((user: any, done) => {
-      done(null, user.id);
+      // Determine if this is a customer or admin/user
+      // Check for properties specific to the Customer model
+      const userType = 'fullName' in user ? 'customer' : 'user';
+      done(null, { id: user.id, type: userType });
     });
 
     // Deserialize user from session with enhanced error handling
-    passport.deserializeUser(async (id: number, done) => {
+    passport.deserializeUser(async (serialized: { id: number, type: string } | number, done) => {
       try {
+        // Handle both new format (object with type) and legacy format (just ID)
+        let id: number;
+        let type: string = 'user'; // Default to user for backward compatibility
+        
+        if (typeof serialized === 'object' && serialized !== null) {
+          id = serialized.id;
+          type = serialized.type;
+        } else {
+          id = serialized as number;
+        }
+        
         // Add timeouts to prevent hanging
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Database timeout')), 5000);
         });
         
+        // Choose the right storage method based on user type
+        let userPromise;
+        if (type === 'customer') {
+          userPromise = this.storage.getCustomer(id);
+        } else {
+          userPromise = this.storage.getUserById(id);
+        }
+        
         // Race the database query with a timeout
         const user = await Promise.race([
-          this.storage.getUserById(id),
+          userPromise,
           timeoutPromise
         ]) as any;
         
         if (!user) {
-          console.warn(`User not found during session deserialization: ${id}`);
+          console.warn(`${type.charAt(0).toUpperCase() + type.slice(1)} not found during session deserialization: ${id}`);
           // Instead of throwing an error, just return null to force re-login
           return done(null, null);
         }
         
         // Try to update last login, but don't block if it fails
-        this.storage.updateUserLastLogin(id).catch(err => {
-          console.warn('Failed to update last login time:', err);
-        });
+        if (type === 'user') {
+          this.storage.updateUserLastLogin(id).catch(err => {
+            console.warn('Failed to update last login time:', err);
+          });
+        }
         
         done(null, user);
       } catch (error) {
@@ -298,7 +322,18 @@ export class AuthService {
           },
           async (accessToken, refreshToken, profile, done) => {
             try {
-              // Check if user exists by their Google ID
+              const email = profile.emails && profile.emails[0] ? profile.emails[0].value : '';
+              
+              // First check if a customer exists with this email
+              let customer = await this.storage.getCustomerByEmail(email);
+              
+              if (customer) {
+                // If the customer exists, but doesn't have the google ID associated yet, update it
+                // This would typically be skipped in the current implementation
+                return done(null, customer);
+              }
+              
+              // If no customer, check if an existing user exists by their Google ID
               let user = await this.storage.getUserByExternalId(
                 profile.id,
                 'google'
@@ -308,7 +343,7 @@ export class AuthService {
                 // Create new user if they don't exist
                 user = await this.storage.createUser({
                   name: profile.displayName,
-                  email: profile.emails && profile.emails[0] ? profile.emails[0].value : '',
+                  email: email,
                   provider: 'google',
                   externalId: profile.id,
                   role: 'user', // Default role
@@ -343,6 +378,16 @@ export class AuthService {
               // Use data from the initial request if available
               let email = profile.email;
               let name = profile.name ? `${profile.name.firstName} ${profile.name.lastName}` : '';
+              
+              // First check if a customer exists with this email
+              if (email) {
+                let customer = await this.storage.getCustomerByEmail(email);
+                
+                if (customer) {
+                  // Found customer with this email, use it
+                  return done(null, customer);
+                }
+              }
               
               // Check if user exists by their Apple ID
               let user = await this.storage.getUserByExternalId(
