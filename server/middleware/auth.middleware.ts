@@ -1,12 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
 import { UserType, UserRole } from '@shared/schema';
+import 'express-session';
 
-// Custom type to augment Express.Request
+// Custom type to augment Express.Request and Session
 declare global {
   namespace Express {
     interface Request {
       userType?: string;
     }
+    
+    interface User {
+      role?: string;
+      customerId?: number;
+    }
+  }
+}
+
+// Add userType to session
+declare module 'express-session' {
+  interface SessionData {
+    userType?: string;
   }
 }
 

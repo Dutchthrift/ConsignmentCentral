@@ -520,4 +520,52 @@ export class DatabaseStorage implements IStorage {
       items: itemsList
     };
   }
+
+  // Admin User methods
+  async getAdminUserById(id: number): Promise<AdminUser | undefined> {
+    const [adminUser] = await db.select().from(adminUsers).where(eq(adminUsers.id, id));
+    return adminUser;
+  }
+  
+  async getAdminUserByEmail(email: string): Promise<AdminUser | undefined> {
+    const [adminUser] = await db.select().from(adminUsers).where(eq(adminUsers.email, email));
+    return adminUser;
+  }
+  
+  async getAdminUserByExternalId(externalId: string, provider: string): Promise<AdminUser | undefined> {
+    const [adminUser] = await db.select().from(adminUsers)
+      .where(and(
+        eq(adminUsers.externalId, externalId),
+        eq(adminUsers.provider, provider)
+      ));
+    return adminUser;
+  }
+  
+  async createAdminUser(user: InsertAdminUser): Promise<AdminUser> {
+    const [newAdminUser] = await db.insert(adminUsers).values({
+      ...user,
+      role: UserRole.ADMIN
+    }).returning();
+    return newAdminUser;
+  }
+  
+  async updateAdminUserLastLogin(id: number): Promise<AdminUser | undefined> {
+    const [updatedAdminUser] = await db.update(adminUsers)
+      .set({ lastLogin: new Date() })
+      .where(eq(adminUsers.id, id))
+      .returning();
+    return updatedAdminUser;
+  }
+  
+  async updateAdminUserExternalId(id: number, externalId: string, provider: string): Promise<AdminUser | undefined> {
+    const [updatedAdminUser] = await db.update(adminUsers)
+      .set({ externalId, provider })
+      .where(eq(adminUsers.id, id))
+      .returning();
+    return updatedAdminUser;
+  }
+  
+  async getAllAdminUsers(): Promise<AdminUser[]> {
+    return await db.select().from(adminUsers);
+  }
 }

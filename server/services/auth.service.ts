@@ -4,7 +4,7 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as AppleStrategy } from 'passport-apple';
 import { IStorage } from '../storage';
 import { Request, Response, NextFunction } from 'express';
-import { User } from '@shared/schema';
+import { User, AdminUser, UserType, UserRole } from '@shared/schema';
 import SessionService from './session.service';
 import { scrypt, randomBytes, timingSafeEqual, createHmac } from 'crypto';
 import { promisify } from 'util';
@@ -35,6 +35,19 @@ export class AuthService {
     return jwt.sign(payload, this.JWT_SECRET, { expiresIn: this.TOKEN_EXPIRY });
   }
   
+  // Generate a JWT token for an admin user
+  generateAdminToken(adminUser: AdminUser): string {
+    const payload = {
+      id: adminUser.id,
+      email: adminUser.email,
+      role: adminUser.role,
+      name: adminUser.name,
+      isAdmin: true
+    };
+    
+    return jwt.sign(payload, this.JWT_SECRET, { expiresIn: this.TOKEN_EXPIRY });
+  }
+
   // Verify a JWT token
   verifyToken(token: string): any {
     try {
@@ -54,12 +67,30 @@ export class AuthService {
       if (token) {
         const decoded = this.verifyToken(token);
         if (decoded) {
-          // If token is valid, find the user
-          const user = await this.storage.getUserById(decoded.id);
-          if (user) {
-            // Set the user in the request
-            req.user = user;
-            return next();
+          // Check if this is an admin token
+          if (decoded.isAdmin) {
+            const adminUser = await this.storage.getAdminUserById(decoded.id);
+            if (adminUser) {
+              // Set the admin user in the request
+              req.user = adminUser;
+              // Set admin user type in session
+              if (req.session) {
+                req.session.userType = UserType.ADMIN;
+              }
+              return next();
+            }
+          } else {
+            // Regular user token
+            const user = await this.storage.getUserById(decoded.id);
+            if (user) {
+              // Set the user in the request
+              req.user = user;
+              // Set customer user type in session
+              if (req.session) {
+                req.session.userType = UserType.CUSTOMER;
+              }
+              return next();
+            }
           }
         }
       }
@@ -107,11 +138,11 @@ export class AuthService {
 
   private initializePassport() {
     // Configure Local Strategy for email/password login
-    passport.use(new LocalStrategy({
+    passport.use('customer-local', new LocalStrategy({
       usernameField: 'email',
       passwordField: 'password'
     }, async (email, password, done) => {
-      console.log('Local strategy call:', { email });
+      console.log('Customer local strategy call:', { email });
       try {
         // Find user by email
         const user = await this.storage.getUserByEmail(email);
@@ -134,7 +165,45 @@ export class AuthService {
           return done(null, false, { message: 'Incorrect email or password' });
         }
         
+        // Set user type in session
+        if (done.req && done.req.session) {
+          done.req.session.userType = UserType.CUSTOMER;
+        }
+        
         return done(null, user);
+      } catch (error) {
+        return done(error);
+      }
+    }));
+    
+    // Configure Admin Local Strategy
+    passport.use('admin-local', new LocalStrategy({
+      usernameField: 'email',
+      passwordField: 'password',
+      passReqToCallback: true
+    }, async (req, email, password, done) => {
+      console.log('Admin local strategy call:', { email });
+      try {
+        // Find admin user by email
+        const adminUser = await this.storage.getAdminUserByEmail(email);
+        
+        if (!adminUser) {
+          return done(null, false, { message: 'Incorrect admin credentials' });
+        }
+        
+        // Verify password
+        const isValid = await this.verifyPassword(password, adminUser.password || '');
+        
+        if (!isValid) {
+          return done(null, false, { message: 'Incorrect admin credentials' });
+        }
+        
+        // Set admin type in session
+        if (req.session) {
+          req.session.userType = UserType.ADMIN;
+        }
+        
+        return done(null, adminUser);
       } catch (error) {
         return done(error);
       }
