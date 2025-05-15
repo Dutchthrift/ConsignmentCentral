@@ -28,10 +28,19 @@ declare module 'express-session' {
  * This checks if the user is authenticated and has admin role
  */
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  // Extended debugging to understand session and user state
   console.log('Admin check:', {
     isAuthenticated: req.isAuthenticated(),
     userType: req.session?.userType,
-    role: req.user?.role
+    role: req.user?.role,
+    hasUser: !!req.user,
+    sessionID: req.sessionID,
+    user: req.user ? {
+      id: req.user.id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role
+    } : null
   });
 
   // Check if user is authenticated first

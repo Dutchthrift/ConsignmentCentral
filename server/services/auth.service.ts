@@ -165,9 +165,15 @@ export class AuthService {
           return done(null, false, { message: 'Incorrect email or password' });
         }
         
-        // Set user type in session
+        // Set user type in session based on role
         if (done.req && done.req.session) {
-          done.req.session.userType = UserType.CUSTOMER;
+          // If user has admin role, set userType to ADMIN, otherwise use CUSTOMER
+          if (user.role === UserRole.ADMIN) {
+            done.req.session.userType = UserType.ADMIN;
+            console.log("Admin user detected, setting session userType to ADMIN");
+          } else {
+            done.req.session.userType = UserType.CUSTOMER;
+          }
         }
         
         return done(null, user);
