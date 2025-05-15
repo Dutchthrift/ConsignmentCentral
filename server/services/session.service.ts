@@ -13,8 +13,17 @@ export class SessionService {
       tableName: 'sessions',
       // Use the same schema as the one specified in drizzle schema
       schemaName: 'public',
-      // Clean up expired sessions (default is 24h)
-      pruneSessionInterval: 60 * 15 // 15 minutes
+      // Clean up expired sessions less frequently to reduce connections
+      pruneSessionInterval: 60 * 60, // 60 minutes
+      // Add additional options for connection stability
+      createTableIfMissing: true,
+      errorLog: (error) => console.error('PgSession connection error:', error),
+      // Retry options
+      conObject: {
+        connectionTimeoutMillis: 10000,
+        query_timeout: 10000,
+        statement_timeout: 10000
+      }
     });
 
     // Replit is behind a proxy, so we need to trust it

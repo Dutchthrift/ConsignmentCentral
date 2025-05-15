@@ -15,10 +15,10 @@ if (!process.env.DATABASE_URL) {
 // Enhanced pool configuration for better stability
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 10, // Reduced maximum connections in the pool to prevent overloading
+  max: 5, // Further reduced maximum connections to prevent exceeding Neon's limits
   idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
-  connectionTimeoutMillis: 8000, // Increased timeout to establish a connection
-  maxUses: 5000, // Close connections after this many uses to prevent memory issues
+  connectionTimeoutMillis: 10000, // Increased timeout to establish a connection
+  maxUses: 3000, // Close connections after this many uses to prevent memory issues
   allowExitOnIdle: true // Allow pool to exit on idle (helpful for serverless environments)
 });
 

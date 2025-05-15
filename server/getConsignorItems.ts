@@ -19,22 +19,31 @@ export async function getConsignorItems(customerId: number) {
     const itemIds = customerItems.map(item => item.id);
     
     // Get pricing data for all items
-    const pricingData = await db.select().from(pricing)
-      .where(itemIds.length > 0
-        ? pricing.itemId.in(itemIds)
-        : eq(pricing.itemId, -1)); // If no items, use an impossible condition
+    let pricingData: typeof pricing.$inferSelect[] = [];
+    if (itemIds.length > 0) {
+      for (const itemId of itemIds) {
+        const data = await db.select().from(pricing).where(eq(pricing.itemId, itemId));
+        pricingData = [...pricingData, ...data];
+      }
+    }
         
     // Get analysis data for all items
-    const analysisData = await db.select().from(analyses)
-      .where(itemIds.length > 0
-        ? analyses.itemId.in(itemIds)
-        : eq(analyses.itemId, -1));
+    let analysisData: typeof analyses.$inferSelect[] = [];
+    if (itemIds.length > 0) {
+      for (const itemId of itemIds) {
+        const data = await db.select().from(analyses).where(eq(analyses.itemId, itemId));
+        analysisData = [...analysisData, ...data];
+      }
+    }
         
     // Get shipping data for all items
-    const shippingData = await db.select().from(shipping)
-      .where(itemIds.length > 0
-        ? shipping.itemId.in(itemIds)
-        : eq(shipping.itemId, -1));
+    let shippingData: typeof shipping.$inferSelect[] = [];
+    if (itemIds.length > 0) {
+      for (const itemId of itemIds) {
+        const data = await db.select().from(shipping).where(eq(shipping.itemId, itemId));
+        shippingData = [...shippingData, ...data];
+      }
+    }
     
     // Create lookup maps for quick access
     const pricingMap = pricingData.reduce((map, price) => {
@@ -81,7 +90,8 @@ export async function getConsignorItems(customerId: number) {
         // Analysis summary if available
         analysis: itemAnalysis ? {
           id: itemAnalysis.id,
-          category: itemAnalysis.category,
+          // Using item's category if analysis doesn't have it
+          category: item.category,
           brand: itemAnalysis.brand,
           condition: itemAnalysis.condition,
           productType: itemAnalysis.productType,

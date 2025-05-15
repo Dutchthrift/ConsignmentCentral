@@ -58,8 +58,11 @@ export class AuthService {
   // Verify a JWT token
   verifyToken(token: string): any {
     try {
-      return jwt.verify(token, this.JWT_SECRET);
+      const decoded = jwt.verify(token, this.JWT_SECRET);
+      console.log('JWT token verification successful:', decoded);
+      return decoded;
     } catch (error) {
+      console.error('JWT token verification failed:', error instanceof Error ? error.message : String(error));
       return null;
     }
   }

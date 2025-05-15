@@ -1,34 +1,70 @@
 import { Router, Request, Response } from "express";
 import { storage } from "../../storage";
-import { requireConsignorOwnership } from "../../middleware/auth.middleware";
+import { getConsignorItems } from "../../getConsignorItems";
+import AuthService from "../../services/auth.service";
 
 const router = Router();
+const authService = new AuthService(storage);
 
-// Get all items for the current consignor
-router.get("/", requireConsignorOwnership, async (req: Request, res: Response) => {
+// Middleware to check if user is authenticated and is a consignor
+const requireConsignorAuth = async (req: Request, res: Response, next: Function) => {
   try {
-    // Debug the user info
-    console.log("Consignor items route - user info:", {
-      user: req.user,
-      userId: req.user?.id,
-      customerId: req.user?.customerId,
-      isAuthenticated: req.isAuthenticated()
-    });
+    // First try JWT token authentication
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
     
-    // Try to get the customerId from the user object or by looking up the customer
-    let customerId: number | undefined;
+    console.log('JWT Auth attempt - token present:', !!token);
     
-    if (req.user?.customerId) {
-      // If customerId is directly on the user object
-      customerId = req.user.customerId;
-    } else if (req.user?.id) {
-      // Try to get the customer by user ID
-      const customer = await storage.getCustomerByUserId(req.user.id);
-      if (customer) {
-        customerId = customer.id;
+    if (token) {
+      try {
+        const decoded = authService.verifyToken(token);
+        console.log('JWT decoded:', decoded);
+        
+        if (decoded && decoded.id) {
+          // If token is valid, find the customer
+          const customer = await storage.getCustomer(decoded.id);
+          console.log('Found customer by JWT token:', !!customer);
+          
+          if (customer) {
+            // Set the customer in the request
+            req.user = customer;
+            return next();
+          }
+        }
+      } catch (error) {
+        console.error("Error in consignor JWT auth:", error);
       }
     }
     
+    // If JWT auth failed, try session authentication
+    console.log('Session auth check:', {
+      isAuthenticated: req.isAuthenticated(),
+      hasUser: !!req.user
+    });
+    
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Authentication required" 
+      });
+    }
+    
+    next();
+  } catch (error) {
+    console.error("Authentication middleware error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Authentication error",
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+};
+
+// Get all items for the current consignor
+router.get("/", requireConsignorAuth, async (req: Request, res: Response) => {
+  try {
+    // Get the customerId directly from the user object
+    const customerId = req.user?.id;
     if (!customerId) {
       return res.status(403).json({
         success: false,
@@ -36,76 +72,23 @@ router.get("/", requireConsignorOwnership, async (req: Request, res: Response) =
       });
     }
     
-    // Get all items for this specific consignor only
-    const itemsWithDetails = await storage.getItemsWithDetailsByCustomerId(customerId);
-    
-    // Format the items for response
-    const formattedItems = itemsWithDetails.map(item => {
-      const pricing = item.pricing || {};
-      
-      return {
-        id: item.id,
-        referenceId: item.referenceId,
-        title: item.title,
-        brand: item.brand,
-        productType: item.productType,
-        description: item.description,
-        condition: item.condition,
-        status: item.status,
-        imageUrl: item.imageUrl,
-        customerId: item.customerId,
-        createdAt: item.createdAt.toISOString(),
-        updatedAt: item.updatedAt?.toISOString(),
-        submissionSessionId: item.submissionSessionId,
-        
-        // Pricing details
-        suggestedListingPrice: pricing.suggestedListingPrice,
-        commissionRate: pricing.commissionRate,
-        suggestedPayout: pricing.suggestedPayout,
-        finalSalePrice: pricing.finalSalePrice,
-        finalPayout: pricing.finalPayout,
-        payoutType: pricing.payoutType,
-        
-        // Analysis summary if available
-        analysis: item.analysis ? {
-          id: item.analysis.id,
-          category: item.analysis.category,
-          brand: item.analysis.brand,
-          condition: item.analysis.condition,
-          estimatedValue: item.analysis.estimatedValue,
-          completedAt: item.analysis.completedAt?.toISOString()
-        } : null,
-        
-        // Shipping info if available
-        shipping: item.shipping ? {
-          id: item.shipping.id,
-          trackingCode: item.shipping.trackingCode,
-          carrier: item.shipping.carrier,
-          shippedAt: item.shipping.shippedAt?.toISOString(),
-          estimatedDelivery: item.shipping.estimatedDelivery?.toISOString()
-        } : null
-      };
-    });
-    
-    return res.status(200).json({
-      success: true,
-      data: formattedItems
-    });
+    // Use our direct SQL function to get items
+    const result = await getConsignorItems(customerId);
+    return res.json(result);
   } catch (error) {
     console.error("Error fetching consignor items:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to retrieve items"
+      message: "Error fetching items",
+      error: error instanceof Error ? error.message : String(error)
     });
   }
 });
 
-// Get a specific item's details
-router.get("/:id", requireConsignorOwnership, async (req: Request, res: Response) => {
+// Get single item by ID
+router.get("/:itemId", requireConsignorAuth, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const itemId = parseInt(id, 10);
-    
+    const itemId = parseInt(req.params.itemId, 10);
     if (isNaN(itemId)) {
       return res.status(400).json({
         success: false,
@@ -113,28 +96,8 @@ router.get("/:id", requireConsignorOwnership, async (req: Request, res: Response
       });
     }
     
-    // Debug the user info
-    console.log("Consignor single item route - user info:", {
-      user: req.user,
-      userId: req.user?.id,
-      customerId: req.user?.customerId,
-      isAuthenticated: req.isAuthenticated()
-    });
-    
-    // Try to get the customerId from the user object or by looking up the customer
-    let customerId: number | undefined;
-    
-    if (req.user?.customerId) {
-      // If customerId is directly on the user object
-      customerId = req.user.customerId;
-    } else if (req.user?.id) {
-      // Try to get the customer by user ID
-      const customer = await storage.getCustomerByUserId(req.user.id);
-      if (customer) {
-        customerId = customer.id;
-      }
-    }
-    
+    // Get the customerId directly from the user object
+    const customerId = req.user?.id;
     if (!customerId) {
       return res.status(403).json({
         success: false,
@@ -142,7 +105,7 @@ router.get("/:id", requireConsignorOwnership, async (req: Request, res: Response
       });
     }
     
-    // Get the item details
+    // Get the item with details
     const item = await storage.getItemWithDetails(itemId);
     
     if (!item) {
@@ -152,7 +115,7 @@ router.get("/:id", requireConsignorOwnership, async (req: Request, res: Response
       });
     }
     
-    // Verify the item belongs to this consignor
+    // Check if this item belongs to the current consignor
     if (item.customerId !== customerId) {
       return res.status(403).json({
         success: false,
@@ -160,15 +123,16 @@ router.get("/:id", requireConsignorOwnership, async (req: Request, res: Response
       });
     }
     
-    return res.status(200).json({
+    return res.json({
       success: true,
       data: item
     });
   } catch (error) {
-    console.error("Error fetching consignor item details:", error);
+    console.error("Error fetching item:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to retrieve item details"
+      message: "Error fetching item",
+      error: error instanceof Error ? error.message : String(error)
     });
   }
 });
