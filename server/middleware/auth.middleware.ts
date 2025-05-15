@@ -1,154 +1,153 @@
-import { Request, Response, NextFunction } from 'express';
-import { UserType, UserRole } from '@shared/schema';
-import 'express-session';
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { storage } from "../storage";
+import AuthService from "../services/auth.service";
 
-// Custom type to augment Express.Request and Session
-declare global {
-  namespace Express {
-    interface Request {
-      userType?: string;
-    }
-    
-    interface User {
-      role?: string;
-      customerId?: number;
-    }
-  }
-}
-
-// Add userType to session
-declare module 'express-session' {
-  interface SessionData {
-    userType?: string;
-  }
-}
+const authService = new AuthService(storage);
 
 /**
  * Middleware to require admin access
- * This checks if the user is authenticated and has admin role
  */
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  // Extended debugging to understand session and user state
-  console.log('Admin check:', {
-    isAuthenticated: req.isAuthenticated(),
-    userType: req.session?.userType,
-    role: req.user?.role,
-    hasUser: !!req.user,
+  // Debug session information
+  console.log("Admin middleware session info:", {
+    hasSession: !!req.session,
     sessionID: req.sessionID,
-    user: req.user ? {
-      id: req.user.id,
-      name: req.user.name,
-      email: req.user.email,
-      role: req.user.role
-    } : null
+    isAuthenticated: req.isAuthenticated(),
+    userPresent: !!req.user,
+    userType: req.user?.role,
+    cookies: req.headers.cookie
   });
 
-  // TEMPORARY DEV BYPASS: For development purposes, always allow admin access
-  // IMPORTANT: Remove this in production
-  console.log('TEMPORARY: Bypassing admin authentication check for development');
-  return next();
-
-  // The original code is commented out for normal production behavior
-  /*
-  if (!req.isAuthenticated()) {
-    // Try to load authentication for this specific request using credentials
-    if (req.headers.authorization) {
-      console.log('Trying authentication via Authorization header', {
-        authHeader: 'present',
-        method: req.method,
-        url: req.originalUrl
-      });
-      
-      // Auth token verification logic would go here
-
-      // For now, we're bypassing this check
-      if (req.session) {
-        req.session.userType = UserType.ADMIN;
-        return next();
+  // First try JWT token authentication
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
+  
+  if (token) {
+    const decoded = authService.verifyToken(token);
+    if (decoded) {
+      try {
+        // If token is valid, find the admin user
+        storage.getUserById(decoded.id).then(user => {
+          if (user && user.role === 'admin') {
+            // Set the user in the request
+            req.user = user;
+            return next();
+          } else {
+            return res.status(403).json({
+              success: false,
+              message: "Access denied. Admin role required.",
+            });
+          }
+        }).catch(error => {
+          console.error("Error verifying JWT admin user:", error);
+          return res.status(500).json({
+            success: false,
+            message: "Authentication error"
+          });
+        });
+      } catch (error) {
+        console.error("Error verifying JWT admin:", error);
+        return res.status(401).json({
+          success: false,
+          message: "Invalid token"
+        });
       }
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token"
+      });
+    }
+  } else {
+    // Fallback to session-based authentication
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
     }
     
-    return res.status(401).json({
-      success: false,
-      message: 'Authentication required'
-    });
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Admin role required.",
+      });
+    }
+    
+    next();
   }
-
-  // Check if user has admin role
-  if (req.user && req.user.role === UserRole.ADMIN) {
-    return next();
-  }
-
-  return res.status(403).json({
-    success: false,
-    message: 'Admin access required'
-  });
-  */
 }
 
 /**
- * Middleware to require consignor access
- * This checks if the user is authenticated and has consignor role
- */
-export function requireConsignor(req: Request, res: Response, next: NextFunction) {
-  console.log('Consignor check:', {
-    isAuthenticated: req.isAuthenticated(),
-    userType: req.session?.userType,
-    role: req.user?.role
-  });
-  
-  if (!req.isAuthenticated() || 
-      req.session?.userType !== UserType.CUSTOMER || 
-      req.user?.role !== UserRole.CONSIGNOR) {
-    return res.status(403).json({
-      success: false,
-      message: 'Consignor access required'
-    });
-  }
-  
-  next();
-}
-
-/**
- * Middleware to require consignor access to specific resources
- * Ensures a consignor can only access their own data
+ * Middleware to require authentication and check if the requested resource belongs to the current consignor
  */
 export function requireConsignorOwnership(req: Request, res: Response, next: NextFunction) {
-  // First check if the user is a consignor
-  if (!req.isAuthenticated() || 
-      req.session?.userType !== UserType.CUSTOMER || 
-      req.user?.role !== UserRole.CONSIGNOR) {
-    return res.status(403).json({
-      success: false,
-      message: 'Consignor access required'
-    });
-  }
+  // First try JWT token authentication
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
   
-  // Get the requested resource ID - this can be from params or query
-  const requestedId = req.params.id || req.query.id;
-  
-  // For API endpoints that don't have an ID parameter
-  if (!requestedId) {
-    return next();
-  }
-  
-  // Check if the user is accessing their own customer data
-  if (req.user && 'customerId' in req.user) {
-    const userCustomerId = (req.user as any).customerId;
-    
-    // Check if the user has a customerId and if it matches the requested ID
-    // Or if the user is an admin (admins can access any customer data)
-    if (
-      (userCustomerId && userCustomerId.toString() === requestedId.toString()) ||
-      req.user.role === UserRole.ADMIN
-    ) {
-      return next();
+  if (token) {
+    const decoded = authService.verifyToken(token);
+    if (decoded) {
+      try {
+        // If token is valid, find the user
+        storage.getUserById(decoded.id).then(user => {
+          if (user) {
+            // Set the user in the request
+            req.user = user;
+            
+            // For now just check if they're a consignor
+            if (user.role !== 'consignor') {
+              return res.status(403).json({
+                success: false,
+                message: "Access denied. Consignor role required.",
+              });
+            }
+            
+            return next();
+          } else {
+            return res.status(404).json({
+              success: false,
+              message: "User not found"
+            });
+          }
+        }).catch(error => {
+          console.error("Error verifying JWT consignor user:", error);
+          return res.status(500).json({
+            success: false,
+            message: "Authentication error"
+          });
+        });
+      } catch (error) {
+        console.error("Error verifying JWT consignor:", error);
+        return res.status(401).json({
+          success: false,
+          message: "Invalid token"
+        });
+      }
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token"
+      });
     }
+  } else {
+    // Fallback to session-based authentication
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+    
+    if (req.user.role !== 'consignor') {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Consignor role required.",
+      });
+    }
+    
+    next();
   }
-  
-  // If we get here, the user is trying to access another customer's data
-  return res.status(403).json({
-    success: false,
-    message: 'You do not have permission to access this resource'
-  });
 }

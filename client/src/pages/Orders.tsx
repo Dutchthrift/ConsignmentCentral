@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -64,6 +65,12 @@ export default function OrdersPage() {
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
 
+  // Import useAuth for role-based access
+  const { user } = useAuth();
+  
+  // Determine the appropriate endpoint based on user role
+  const ordersEndpoint = user?.role === 'admin' ? '/api/admin/orders' : '/api/consignor/orders';
+
   // Fetch orders
   const {
     data: orders,
@@ -71,7 +78,7 @@ export default function OrdersPage() {
     error,
     refetch
   } = useQuery<{ success: boolean; data: OrderSummary[] }>({
-    queryKey: ["/api/admin/orders"],
+    queryKey: [ordersEndpoint],
     gcTime: 5 * 60 * 1000,
     staleTime: 1 * 60 * 1000,
     retry: 2,
