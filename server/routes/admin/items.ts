@@ -23,18 +23,23 @@ const requireAdminAuth = async (req: Request, res: Response, next: Function) => 
         console.log('Admin JWT decoded:', decoded);
         
         if (decoded && decoded.id && decoded.role === 'admin') {
-          // If token is valid, find the admin user
-          const user = await storage.getAdminUserById(decoded.id);
-          console.log('Found admin by JWT token:', !!user);
-          
-          if (user) {
-            // Set the admin in the request
-            req.user = user;
-            return next();
+          try {
+            // If token is valid, find the admin user using direct SQL (to avoid ORM issues)
+            const user = await getAdminById(decoded.id);
+            console.log('Found admin by JWT token:', !!user);
+            
+            if (user) {
+              // Set the admin in the request
+              req.user = user;
+              return next();
+            }
+          } catch (sqlError) {
+            console.error("SQL error in admin authentication:", sqlError);
+            // Continue to other auth methods if SQL fails
           }
         }
-      } catch (error) {
-        console.error("Error in admin JWT auth:", error);
+      } catch (jwtError) {
+        console.error("Error in admin JWT auth:", jwtError);
       }
     }
     
@@ -57,145 +62,120 @@ const requireAdminAuth = async (req: Request, res: Response, next: Function) => 
     console.error("Admin authentication middleware error:", error);
     return res.status(500).json({
       success: false,
-      message: "Authentication error",
-      error: error instanceof Error ? error.message : String(error)
+      message: "Authentication error"
     });
   }
 };
 
+// Direct SQL query method to fetch admin by ID - bypassing Drizzle ORM issues
+async function getAdminById(adminId: number) {
+  try {
+    const query = `
+      SELECT * FROM admin_users
+      WHERE id = $1
+    `;
+    
+    const result = await db.query.raw(query, [adminId]);
+    
+    if (!result || !result.rows || result.rows.length === 0) {
+      return null;
+    }
+    
+    return result.rows[0];
+  } catch (error) {
+    console.error("Error in direct SQL getAdminById:", error);
+    return null;
+  }
+}
+
 // Direct SQL query to get all items with related data for admin
 async function getAllItems() {
   try {
-    // Get all items
-    const allItems = await db.select().from(items);
+    // SQL query to get all items with related pricing, analysis, shipping, and customer data
+    const query = `
+      SELECT 
+        i.id, i.reference_id, i.title, i.description, i.category, i.status, i.image_url, 
+        i.created_at, i.updated_at, i.customer_id,
+        c.email AS customer_email, c.full_name AS customer_full_name, c.phone AS customer_phone, 
+        c.country AS customer_country,
+        p.id AS pricing_id, p.suggested_listing_price, p.commission_rate, p.suggested_payout, 
+        p.final_sale_price, p.final_payout, p.payout_type,
+        a.id AS analysis_id, a.brand, a.condition, a.product_type, a.model, 
+        a.accessories, a.additional_notes, a.created_at AS analysis_created_at,
+        s.id AS shipping_id, s.tracking_number, s.carrier, s.label_url, s.created_at AS shipping_created_at
+      FROM items i
+      LEFT JOIN customers c ON i.customer_id = c.id
+      LEFT JOIN pricing p ON i.id = p.item_id
+      LEFT JOIN analyses a ON i.id = a.item_id
+      LEFT JOIN shipping s ON i.id = s.item_id
+      ORDER BY i.created_at DESC
+    `;
     
-    if (!allItems || allItems.length === 0) {
+    // Execute query
+    const result = await db.query.raw(query);
+    
+    if (!result || !result.rows || result.rows.length === 0) {
       return {
         success: true,
         data: []
       };
     }
     
-    // Get all related data in bulk to minimize database queries
-    const itemIds = allItems.map(item => item.id);
-    
-    // Get pricing data for all items
-    let pricingData: typeof pricing.$inferSelect[] = [];
-    if (itemIds.length > 0) {
-      for (const itemId of itemIds) {
-        const data = await db.select().from(pricing).where(eq(pricing.itemId, itemId));
-        pricingData = [...pricingData, ...data];
-      }
-    }
-        
-    // Get analysis data for all items
-    let analysisData: typeof analyses.$inferSelect[] = [];
-    if (itemIds.length > 0) {
-      for (const itemId of itemIds) {
-        const data = await db.select().from(analyses).where(eq(analyses.itemId, itemId));
-        analysisData = [...analysisData, ...data];
-      }
-    }
-        
-    // Get shipping data for all items
-    let shippingData: typeof shipping.$inferSelect[] = [];
-    if (itemIds.length > 0) {
-      for (const itemId of itemIds) {
-        const data = await db.select().from(shipping).where(eq(shipping.itemId, itemId));
-        shippingData = [...shippingData, ...data];
-      }
-    }
-    
-    // Get all customers for consignor info
-    const customerIds = [...new Set(allItems.map(item => item.customerId))];
-    let customersData: typeof customers.$inferSelect[] = [];
-    if (customerIds.length > 0) {
-      for (const customerId of customerIds) {
-        const data = await db.select().from(customers).where(eq(customers.id, customerId));
-        customersData = [...customersData, ...data];
-      }
-    }
-    
-    // Create lookup maps for quick access
-    const pricingMap = pricingData.reduce((map, price) => {
-      map[price.itemId] = price;
-      return map;
-    }, {} as Record<number, typeof pricing.$inferSelect>);
-    
-    const analysisMap = analysisData.reduce((map, analysis) => {
-      map[analysis.itemId] = analysis;
-      return map;
-    }, {} as Record<number, typeof analyses.$inferSelect>);
-    
-    const shippingMap = shippingData.reduce((map, ship) => {
-      map[ship.itemId] = ship;
-      return map;
-    }, {} as Record<number, typeof shipping.$inferSelect>);
-    
-    const customerMap = customersData.reduce((map, customer) => {
-      map[customer.id] = customer;
-      return map;
-    }, {} as Record<number, typeof customers.$inferSelect>);
-    
-    // Format the items with all their relations
-    const formattedItems = allItems.map(item => {
-      const itemPricing = pricingMap[item.id];
-      const itemAnalysis = analysisMap[item.id];
-      const itemShipping = shippingMap[item.id];
-      const itemCustomer = customerMap[item.customerId];
-      
+    // Map the SQL results to the expected response format
+    const formattedItems = result.rows.map(row => {
       return {
-        id: item.id,
-        referenceId: item.referenceId,
-        title: item.title,
-        description: item.description,
-        category: item.category,
-        status: item.status,
-        imageUrl: item.imageUrl,
-        customerId: item.customerId,
-        createdAt: item.createdAt ? item.createdAt.toISOString() : null,
-        updatedAt: item.updatedAt ? item.updatedAt.toISOString() : null,
+        // Item basic fields
+        id: row.id,
+        referenceId: row.reference_id,
+        title: row.title,
+        description: row.description,
+        category: row.category,
+        status: row.status,
+        imageUrl: row.image_url,
+        customerId: row.customer_id,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
         
         // Customer info
-        customer: itemCustomer ? {
-          id: itemCustomer.id,
-          email: itemCustomer.email,
-          fullName: itemCustomer.fullName,
-          phone: itemCustomer.phone,
+        customer: row.customer_email ? {
+          id: row.customer_id,
+          email: row.customer_email,
+          fullName: row.customer_full_name,
+          phone: row.customer_phone,
+          country: row.customer_country
         } : null,
         
         // Pricing details
-        pricing: itemPricing ? {
-          id: itemPricing.id,
-          suggestedListingPrice: itemPricing.suggestedListingPrice,
-          commissionRate: itemPricing.commissionRate,
-          suggestedPayout: itemPricing.suggestedPayout,
-          finalSalePrice: itemPricing.finalSalePrice,
-          finalPayout: itemPricing.finalPayout,
-          payoutType: itemPricing.payoutType,
+        pricing: row.pricing_id ? {
+          id: row.pricing_id,
+          suggestedListingPrice: row.suggested_listing_price,
+          commissionRate: row.commission_rate,
+          suggestedPayout: row.suggested_payout,
+          finalSalePrice: row.final_sale_price,
+          finalPayout: row.final_payout,
+          payoutType: row.payout_type
         } : null,
         
         // Analysis summary
-        analysis: itemAnalysis ? {
-          id: itemAnalysis.id,
-          // Using item's category if analysis doesn't have it
-          category: item.category,
-          brand: itemAnalysis.brand,
-          condition: itemAnalysis.condition,
-          productType: itemAnalysis.productType,
-          model: itemAnalysis.model,
-          accessories: itemAnalysis.accessories,
-          additionalNotes: itemAnalysis.additionalNotes,
-          createdAt: itemAnalysis.createdAt ? itemAnalysis.createdAt.toISOString() : null
+        analysis: row.analysis_id ? {
+          id: row.analysis_id,
+          category: row.category, // Using item's category
+          brand: row.brand,
+          condition: row.condition,
+          productType: row.product_type,
+          model: row.model,
+          accessories: row.accessories,
+          additionalNotes: row.additional_notes,
+          createdAt: row.analysis_created_at ? new Date(row.analysis_created_at).toISOString() : null
         } : null,
         
         // Shipping info
-        shipping: itemShipping ? {
-          id: itemShipping.id,
-          trackingNumber: itemShipping.trackingNumber,
-          carrier: itemShipping.carrier,
-          labelUrl: itemShipping.labelUrl,
-          createdAt: itemShipping.createdAt ? itemShipping.createdAt.toISOString() : null
+        shipping: row.shipping_id ? {
+          id: row.shipping_id,
+          trackingNumber: row.tracking_number,
+          carrier: row.carrier,
+          labelUrl: row.label_url,
+          createdAt: row.shipping_created_at ? new Date(row.shipping_created_at).toISOString() : null
         } : null
       };
     });
@@ -229,6 +209,98 @@ router.get("/", requireAdminAuth, async (req: Request, res: Response) => {
   }
 });
 
+// Get a single item by ID using direct SQL (bypassing ORM issues)
+async function getItemById(itemId: number) {
+  try {
+    const query = `
+      SELECT 
+        i.id, i.reference_id, i.title, i.description, i.category, i.status, i.image_url, 
+        i.created_at, i.updated_at, i.customer_id,
+        c.email AS customer_email, c.full_name AS customer_full_name, c.phone AS customer_phone, 
+        c.country AS customer_country,
+        p.id AS pricing_id, p.suggested_listing_price, p.commission_rate, p.suggested_payout, 
+        p.final_sale_price, p.final_payout, p.payout_type,
+        a.id AS analysis_id, a.brand, a.condition, a.product_type, a.model, 
+        a.accessories, a.additional_notes, a.created_at AS analysis_created_at,
+        s.id AS shipping_id, s.tracking_number, s.carrier, s.label_url, s.created_at AS shipping_created_at
+      FROM items i
+      LEFT JOIN customers c ON i.customer_id = c.id
+      LEFT JOIN pricing p ON i.id = p.item_id
+      LEFT JOIN analyses a ON i.id = a.item_id
+      LEFT JOIN shipping s ON i.id = s.item_id
+      WHERE i.id = $1
+    `;
+    
+    const result = await db.query.raw(query, [itemId]);
+    
+    if (!result || !result.rows || result.rows.length === 0) {
+      return null;
+    }
+    
+    const row = result.rows[0];
+    
+    // Format single item with related data
+    return {
+      // Item basic fields
+      id: row.id,
+      referenceId: row.reference_id,
+      title: row.title,
+      description: row.description,
+      category: row.category,
+      status: row.status,
+      imageUrl: row.image_url,
+      customerId: row.customer_id,
+      createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
+      
+      // Customer info
+      customer: row.customer_email ? {
+        id: row.customer_id,
+        email: row.customer_email,
+        fullName: row.customer_full_name,
+        phone: row.customer_phone,
+        country: row.customer_country
+      } : null,
+      
+      // Pricing details
+      pricing: row.pricing_id ? {
+        id: row.pricing_id,
+        suggestedListingPrice: row.suggested_listing_price,
+        commissionRate: row.commission_rate,
+        suggestedPayout: row.suggested_payout,
+        finalSalePrice: row.final_sale_price,
+        finalPayout: row.final_payout,
+        payoutType: row.payout_type
+      } : null,
+      
+      // Analysis summary
+      analysis: row.analysis_id ? {
+        id: row.analysis_id,
+        category: row.category, // Using item's category
+        brand: row.brand,
+        condition: row.condition,
+        productType: row.product_type,
+        model: row.model,
+        accessories: row.accessories,
+        additionalNotes: row.additional_notes,
+        createdAt: row.analysis_created_at ? new Date(row.analysis_created_at).toISOString() : null
+      } : null,
+      
+      // Shipping info
+      shipping: row.shipping_id ? {
+        id: row.shipping_id,
+        trackingNumber: row.tracking_number,
+        carrier: row.carrier,
+        labelUrl: row.label_url,
+        createdAt: row.shipping_created_at ? new Date(row.shipping_created_at).toISOString() : null
+      } : null
+    };
+  } catch (error) {
+    console.error("Error in direct SQL getItemById:", error);
+    return null;
+  }
+}
+
 // Get single item by ID (for admin)
 router.get("/:itemId", requireAdminAuth, async (req: Request, res: Response) => {
   try {
@@ -240,8 +312,8 @@ router.get("/:itemId", requireAdminAuth, async (req: Request, res: Response) => 
       });
     }
     
-    // Get the item with details
-    const item = await storage.getItemWithDetails(itemId);
+    // Get the item with details using direct SQL
+    const item = await getItemById(itemId);
     
     if (!item) {
       return res.status(404).json({
