@@ -24,6 +24,7 @@ import Consignors from "@/pages/Consignors";
 import Login from "@/pages/Login";
 import ConsignorLogin from "@/pages/ConsignorLogin";
 import AdminLoginPage from "@/pages/AdminLoginPage";
+import AdminDashboardPage from "@/pages/AdminDashboardPage";
 import ConsignorDashboard from "@/pages/ConsignorDashboard";
 import ConsignorItems from "@/pages/ConsignorItems";
 import ConsignorHistory from "@/pages/ConsignorHistory";
@@ -86,6 +87,11 @@ function Router() {
         <ProtectedRoute 
           path="/dashboard" 
           component={Dashboard}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        <ProtectedRoute 
+          path="/admin/dashboard" 
+          component={AdminDashboardPage}
           allowedRoles={[UserRole.ADMIN]} 
         />
         <ProtectedRoute 
