@@ -47,7 +47,7 @@ function Router() {
   const isSetupPath = location.startsWith("/setup-account") || location.startsWith("/setup-complete");
   // Explicitly exclude /consignors from consignor paths - it should use admin layout
   const isConsignorPath = location.startsWith("/consignor") && !isConsignorLoginPath;
-  // Ensure admin paths always use admin layout
+  // Ensure admin paths always use admin layout - NOTE: /consignors is an admin path
   const isAdminPath = location === "/consignors" || location.startsWith("/admin");
   
   // Check if we're on admin login path
@@ -129,9 +129,23 @@ function Router() {
           component={ModelTraining}
           allowedRoles={[UserRole.ADMIN]} 
         />
+        {/* Move consignors route to admin routes section */}
+        <ProtectedRoute 
+          path="/admin/consignors" 
+          component={Consignors}
+          allowedRoles={[UserRole.ADMIN]} 
+        />
+        
+        {/* Keep old route for backward compatibility, but redirect to new one */}
         <ProtectedRoute 
           path="/consignors" 
-          component={Consignors}
+          component={() => {
+            const [, navigate] = useLocation();
+            useEffect(() => {
+              navigate("/admin/consignors");
+            }, [navigate]);
+            return null;
+          }}
           allowedRoles={[UserRole.ADMIN]} 
         />
         <ProtectedRoute 
