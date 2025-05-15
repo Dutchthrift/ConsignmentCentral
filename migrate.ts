@@ -93,6 +93,39 @@ async function main() {
     `);
     console.log('Created shipping table');
     
+    // Create orders table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        order_number TEXT NOT NULL UNIQUE,
+        customer_id INTEGER NOT NULL,
+        submission_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        status TEXT NOT NULL DEFAULT 'submitted',
+        tracking_code TEXT,
+        total_value INTEGER,
+        total_payout INTEGER,
+        notes TEXT,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        FOREIGN KEY (customer_id) REFERENCES customers (id)
+      );
+    `);
+    console.log('Created orders table');
+    
+    // Create order_items junction table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS order_items (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER NOT NULL,
+        item_id INTEGER NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        FOREIGN KEY (order_id) REFERENCES orders (id),
+        FOREIGN KEY (item_id) REFERENCES items (id),
+        UNIQUE(order_id, item_id)
+      );
+    `);
+    console.log('Created order_items table');
+    
     // Create ml_training_examples table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS ml_training_examples (

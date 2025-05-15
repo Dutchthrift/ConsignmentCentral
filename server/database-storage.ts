@@ -4,6 +4,9 @@ import {
   analyses, Analysis, InsertAnalysis,
   pricing, Pricing, InsertPricing,
   shipping, Shipping, InsertShipping,
+  orders, Order, InsertOrder,
+  orderItems, OrderItem, InsertOrderItem,
+  OrderWithDetails, OrderSummary,
   mlTrainingExamples, MlTrainingExample, InsertMlTrainingExample,
   mlModelConfigs, MlModelConfig, InsertMlModelConfig,
   mlTrainingSessions, MlTrainingSession, InsertMlTrainingSession,
@@ -104,6 +107,179 @@ export class DatabaseStorage implements IStorage {
   async createShipping(shippingData: InsertShipping): Promise<Shipping> {
     const [newShipping] = await db.insert(shipping).values(shippingData).returning();
     return newShipping;
+  }
+
+  // Order methods
+  async getOrder(id: number): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    return order;
+  }
+
+  async getOrderByNumber(orderNumber: string): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.orderNumber, orderNumber));
+    return order;
+  }
+
+  async getOrdersByCustomerId(customerId: number): Promise<Order[]> {
+    return await db.select().from(orders).where(eq(orders.customerId, customerId));
+  }
+
+  async createOrder(order: InsertOrder): Promise<Order> {
+    const [newOrder] = await db.insert(orders).values(order).returning();
+    return newOrder;
+  }
+
+  async updateOrder(id: number, updates: Partial<Order>): Promise<Order | undefined> {
+    const [updatedOrder] = await db
+      .update(orders)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, id))
+      .returning();
+    return updatedOrder;
+  }
+
+  async getAllOrders(): Promise<Order[]> {
+    return await db.select().from(orders);
+  }
+
+  async getOrderItems(orderId: number): Promise<OrderItem[]> {
+    return await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+  }
+
+  async addItemToOrder(orderId: number, itemId: number): Promise<OrderItem> {
+    const [newOrderItem] = await db
+      .insert(orderItems)
+      .values({ orderId, itemId })
+      .returning();
+    return newOrderItem;
+  }
+
+  async removeItemFromOrder(orderId: number, itemId: number): Promise<boolean> {
+    const result = await db
+      .delete(orderItems)
+      .where(
+        and(
+          eq(orderItems.orderId, orderId),
+          eq(orderItems.itemId, itemId)
+        )
+      );
+    return result.rowCount > 0;
+  }
+
+  async getOrderWithDetails(orderId: number): Promise<OrderWithDetails | undefined> {
+    // Get the order
+    const order = await this.getOrder(orderId);
+    if (!order) return undefined;
+
+    // Get the customer
+    const customer = await this.getCustomer(order.customerId);
+    if (!customer) return undefined;
+
+    // Get the order items
+    const orderItemsList = await this.getOrderItems(orderId);
+    
+    // Get the items with details
+    const items = await Promise.all(
+      orderItemsList.map(async (orderItem) => {
+        const item = await this.getItem(orderItem.itemId);
+        if (!item) return null;
+
+        const analysis = await this.getAnalysisByItemId(item.id);
+        const pricing = await this.getPricingByItemId(item.id);
+        const shipping = await this.getShippingByItemId(item.id);
+
+        return {
+          ...item,
+          analysis,
+          pricing,
+          shipping
+        };
+      })
+    );
+
+    // Filter out null items
+    const validItems = items.filter(Boolean) as (Item & {
+      analysis?: Analysis;
+      pricing?: Pricing;
+      shipping?: Shipping;
+    })[];
+
+    return {
+      ...order,
+      customer,
+      items: validItems
+    };
+  }
+
+  async getOrderWithDetailsByNumber(orderNumber: string): Promise<OrderWithDetails | undefined> {
+    const order = await this.getOrderByNumber(orderNumber);
+    if (!order) return undefined;
+    return this.getOrderWithDetails(order.id);
+  }
+
+  async getAllOrdersWithDetails(): Promise<OrderWithDetails[]> {
+    const orders = await this.getAllOrders();
+    return Promise.all(
+      orders.map(order => this.getOrderWithDetails(order.id))
+    ).then(results => results.filter(Boolean) as OrderWithDetails[]);
+  }
+
+  async getOrdersWithDetailsByCustomerId(customerId: number): Promise<OrderWithDetails[]> {
+    const orders = await this.getOrdersByCustomerId(customerId);
+    return Promise.all(
+      orders.map(order => this.getOrderWithDetails(order.id))
+    ).then(results => results.filter(Boolean) as OrderWithDetails[]);
+  }
+
+  async getOrderSummaries(): Promise<OrderSummary[]> {
+    // Get all orders with their details
+    const ordersWithDetails = await this.getAllOrdersWithDetails();
+
+    // Map to order summaries
+    return ordersWithDetails.map(order => {
+      const totalValue = order.totalValue || 
+        order.items.reduce((sum, item) => sum + (item.pricing?.suggestedListingPrice || 0), 0);
+      
+      const totalPayout = order.totalPayout || 
+        order.items.reduce((sum, item) => sum + (item.pricing?.suggestedPayout || 0), 0);
+
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        customerId: order.customerId,
+        customerName: order.customer.name,
+        customerEmail: order.customer.email,
+        submissionDate: order.submissionDate.toISOString(),
+        status: order.status,
+        trackingCode: order.trackingCode || undefined,
+        totalValue,
+        totalPayout,
+        itemCount: order.items.length
+      };
+    });
+  }
+
+  async searchOrders(query: string): Promise<OrderSummary[]> {
+    // Get all order summaries
+    const allSummaries = await this.getOrderSummaries();
+    
+    // Normalize the query
+    const normalizedQuery = query.toLowerCase().trim();
+    
+    // Filter based on the query
+    return allSummaries.filter(summary => 
+      summary.orderNumber.toLowerCase().includes(normalizedQuery) ||
+      summary.customerName.toLowerCase().includes(normalizedQuery) ||
+      summary.customerEmail.toLowerCase().includes(normalizedQuery) ||
+      (summary.trackingCode && summary.trackingCode.toLowerCase().includes(normalizedQuery))
+    );
+  }
+
+  async updateOrderTrackingCode(orderId: number, trackingCode: string): Promise<Order | undefined> {
+    return this.updateOrder(orderId, { trackingCode });
   }
 
   // ML Training Example methods
