@@ -76,27 +76,51 @@ router.get("/dashboard", (req: Request, res: Response, next: Function) => {
   ensureConsignor(req, res, next);
 }, async (req: Request, res: Response) => {
   try {
-    // Get logged in user's data
-    const userId = req.user?.id;
-    if (!userId) {
+    // Get logged in customer's data directly
+    const customerId = req.user?.id;
+    if (!customerId) {
       return res.status(401).json({
         success: false,
-        message: "User not found",
+        message: "Customer not found",
       });
     }
     
-    // Get the consignor details
-    const consignorDetails = await storage.getConsignorDetails(userId);
+    console.log("Found customer ID:", customerId);
     
-    if (!consignorDetails || !consignorDetails.customer) {
+    // Get customer data and items
+    const customer = await storage.getCustomer(customerId);
+    if (!customer) {
       return res.status(404).json({
         success: false,
-        message: "Consignor profile not found",
+        message: "Customer not found",
       });
     }
     
+    const items = await storage.getItemsWithDetailsByCustomerId(customerId);
+    
+    // Calculate stats ourselves instead of using getConsignorDetails
+    const itemStatusCount = {};
+    let totalSales = 0;
+    
+    // Loop through items to calculate stats
+    items.forEach(item => {
+      // Count items by status
+      itemStatusCount[item.status] = (itemStatusCount[item.status] || 0) + 1;
+      
+      // Add up sales from sold items
+      if (item.status === 'sold' && item.pricing && item.pricing.finalSalePrice) {
+        totalSales += item.pricing.finalSalePrice;
+      }
+    });
+    
+    const stats = {
+      totalItems: items.length,
+      totalSales: totalSales / 100, // Convert cents to euros
+      itemsPerStatus: itemStatusCount
+    };
+    
     // Calculate pending payout amount
-    const pendingPayout = consignorDetails.items.reduce((total, item) => {
+    const pendingPayout = items.reduce((total, item) => {
       // Only include sold items that haven't been paid yet
       if (item.status === "sold" && item.pricing && item.pricing.finalPayout) {
         return total + (item.pricing.finalPayout / 100);
@@ -105,16 +129,17 @@ router.get("/dashboard", (req: Request, res: Response, next: Function) => {
     }, 0);
     
     // Format the data for the dashboard
-    const formattedItems = consignorDetails.items.map((item) => {
+    const formattedItems = items.map((item) => {
       const pricing = item.pricing || { suggestedListingPrice: 0, commissionRate: 0 };
+      const imageUrl = item.imageUrls && item.imageUrls.length > 0 ? item.imageUrls[0] : null;
       
       return {
         id: item.id,
         referenceId: item.referenceId,
         title: item.title,
-        imageUrl: item.imageUrl,
+        imageUrl: imageUrl,
         status: item.status,
-        createdAt: item.createdAt,
+        createdAt: item.updatedAt || new Date(), // Using updatedAt as fallback
         estimatedPrice: pricing.suggestedListingPrice ? pricing.suggestedListingPrice / 100 : undefined,
         commissionRate: pricing.commissionRate,
         payoutAmount: pricing.finalPayout ? pricing.finalPayout / 100 : undefined,
@@ -127,13 +152,22 @@ router.get("/dashboard", (req: Request, res: Response, next: Function) => {
       success: true,
       data: {
         consignor: {
-          id: consignorDetails.customer.id,
-          name: consignorDetails.customer.name,
-          email: consignorDetails.customer.email,
-          totalItems: consignorDetails.stats.totalItems,
-          totalSales: consignorDetails.stats.totalSales,
+          id: customer.id,
+          name: customer.fullName, // Use fullName instead of name
+          email: customer.email,
+          totalItems: stats.totalItems,
+          totalSales: stats.totalSales,
         },
-        stats: consignorDetails.stats,
+        stats: {
+          totalItems: stats.totalItems,
+          pendingItems: itemStatusCount["pending"] || 0,
+          approvedItems: itemStatusCount["approved"] || 0,
+          listedItems: itemStatusCount["listed"] || 0,
+          soldItems: itemStatusCount["sold"] || 0,
+          rejectedItems: itemStatusCount["rejected"] || 0,
+          itemsPerStatus: itemStatusCount,
+          totalSales: stats.totalSales,
+        },
         items: formattedItems,
         pendingPayout: pendingPayout,
       },
