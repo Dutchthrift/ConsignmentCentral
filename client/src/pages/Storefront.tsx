@@ -419,14 +419,14 @@ export default function Storefront() {
                             />
                             
                             <div>
-                              <FormLabel>Item Image</FormLabel>
+                              <FormLabel>Item Image (Required)</FormLabel>
                               <div className="mt-1">
                                 <label
                                   htmlFor={`file-upload-${index}`}
                                   className="cursor-pointer bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center justify-center w-full"
                                 >
                                   <Camera className="h-4 w-4 mr-2" />
-                                  Upload Image
+                                  {item.imagePreview ? "Change Image" : "Upload Image"}
                                 </label>
                                 <input
                                   id={`file-upload-${index}`}
@@ -437,7 +437,7 @@ export default function Storefront() {
                                   onChange={handleFileChange(index)}
                                 />
                                 <p className="text-xs text-gray-500 mt-1 text-center">
-                                  Clear image helps our AI analyze better
+                                  Upload a clear photo to help us analyze your item accurately
                                 </p>
                               </div>
                               
@@ -549,7 +549,7 @@ export default function Storefront() {
                     We've analyzed your {quoteResult.items.length} items and prepared estimates
                   </p>
                   
-                  {quoteResult.items.map((item, index) => (
+                  {quoteResult.items.map((item: any, index: number) => (
                     <div key={item.referenceId} className="mb-8 border-b pb-8 last:border-b-0">
                       <h3 className="text-xl font-semibold mb-4">Item {index + 1}: {item.title}</h3>
                       
