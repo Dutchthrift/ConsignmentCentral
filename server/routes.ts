@@ -27,6 +27,7 @@ import dashboardRoutes from "./routes/dashboard.ts";
 import consignorRoutes from "./routes/consignor.ts";
 import consignorRegistrationRoutes from "./routes/consignor-registration";
 import mlTrainingRoutes from "./routes/ml-training.ts";
+import adminAddConsignorRoute from "./routes/admin/add-consignor";
 import { calculateCommission, checkEligibility } from "./utils/commission.ts";
 
 // Generate unique reference ID for new items
@@ -90,6 +91,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register admin routes - protected with admin middleware
   app.use("/api/admin", requireAdmin, adminRoutes);
+  
+  // Register additional admin routes
+  app.use("/api/admin", requireAdmin, adminAddConsignorRoute);
   
   // Register dashboard routes
   app.use("/api/dashboard", dashboardRoutes);
