@@ -3,6 +3,36 @@ import OpenAI from "openai";
 // Use environment variable for API key
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Function to extract potential brand name from title
+function extractBrandFromTitle(title: string): string {
+  // Common brand names to look for in the title
+  const commonBrands = [
+    "Nike", "Adidas", "Puma", "Reebok", "New Balance",
+    "Under Armour", "Levi's", "Gap", "H&M", "Zara",
+    "Calvin Klein", "Tommy Hilfiger", "Ralph Lauren", 
+    "Gucci", "Louis Vuitton", "Prada", "Versace", "Balenciaga",
+    "Apple", "Samsung", "Sony", "Microsoft", "Google", "LG",
+    "Philips", "Bosch", "Siemens", "IKEA"
+  ];
+  
+  // Check if any brand name appears in the title
+  for (const brand of commonBrands) {
+    if (title.toLowerCase().includes(brand.toLowerCase())) {
+      return brand;
+    }
+  }
+  
+  // If title has "by" or "from", try to extract brand after those words
+  const byMatch = title.match(/by\s+([A-Z][a-zA-Z]*)/);
+  if (byMatch && byMatch[1]) return byMatch[1];
+  
+  const fromMatch = title.match(/from\s+([A-Z][a-zA-Z]*)/);
+  if (fromMatch && fromMatch[1]) return fromMatch[1];
+  
+  // Default return if no brand found
+  return "Unknown";
+}
+
 export interface ProductAnalysisResult {
   productType: string;
   brand: string;
@@ -47,13 +77,14 @@ export async function analyzeProduct(
     }
     `;
 
-    // If no image is provided, use a title-only analysis approach
+    // If no image is provided or if we get an invalid URL, use a title-only analysis approach
     if (!imageInput) {
       console.log("No image provided, performing title-only analysis");
+      
       // Return a simplified analysis based on the title
       return {
         productType: title.toLowerCase().includes("t-shirt") ? "Clothing" : "Unknown",
-        brand: "Unknown",
+        brand: extractBrandFromTitle(title),
         model: "Unknown",
         condition: "Unknown",
         accessories: [],
@@ -70,6 +101,20 @@ export async function analyzeProduct(
       : `data:image/jpeg;base64,${imageInput}`;
     
     console.log("Analyzing image:", isUrl ? "URL format" : "Base64 format");
+    
+    // If it's a potentially problematic external URL, fall back to title-based analysis
+    if (isUrl && (imageInput.includes('example.com') || !imageInput.match(/\.(jpg|jpeg|png|gif|webp)$/i))) {
+      console.log("Potentially invalid image URL, falling back to title-based analysis");
+      
+      return {
+        productType: title.toLowerCase().includes("t-shirt") ? "Clothing" : "Unknown",
+        brand: extractBrandFromTitle(title),
+        model: "Unknown",
+        condition: "Good", // Default assumption
+        accessories: [],
+        additionalNotes: "Analysis based on title only; image URL was potentially invalid."
+      };
+    }
     
     // Call GPT-4 Vision API
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user

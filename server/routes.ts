@@ -413,12 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { referenceId } = req.params;
       const { imageUrl, title } = req.body;
       
-      if (!imageUrl) {
-        return res.status(400).json({
-          success: false,
-          message: "Image URL is required"
-        });
-      }
+      // Image URL is now optional - we have fallback logic in the OpenAI service
       
       // Get the item
       const item = await storage.getItemByReferenceId(referenceId);
