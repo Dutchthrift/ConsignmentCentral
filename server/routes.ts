@@ -121,6 +121,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register admin items routes
   app.use('/api/admin/items', requireAdmin, adminItemsRoutes);
   
+  // Register admin test routes - direct implementation without admin middleware
+  import adminTestRoutes from "./routes/admin/test";
+  app.use('/api/admin/test', adminTestRoutes);
+  
   // Register consignor orders routes
   app.use('/api/consignor/orders', consignorOrdersRoutes);
 
