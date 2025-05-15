@@ -960,24 +960,21 @@ export default function Storefront() {
         aria-describedby="decline-dialog-description"
       >
         <DialogContent 
-          className="sm:max-w-4xl max-h-screen overflow-y-auto p-0 rounded-xl shadow-xl"
-          style={{
-            animation: "fadeIn 0.3s ease-out"
-          }}
+          className="sm:max-w-4xl max-h-screen overflow-y-auto p-0 rounded-xl shadow-xl animate-in fade-in zoom-in-95 duration-300"
         >
-          <div className="bg-gradient-to-br from-[#FF5E85] to-[#8441A4] text-white min-h-[85vh] flex flex-col relative rounded-xl overflow-hidden">
-            {/* Close button with proper aria-label */}
+          <div className="bg-gradient-to-r from-purple-600 to-pink-500 text-white min-h-[85vh] flex flex-col relative rounded-xl overflow-hidden">
+            {/* Single close button in top right */}
             <button 
-              className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+              className="absolute top-3 right-3 text-white/70 hover:text-white hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all z-10"
               onClick={() => setShowDeclineModal(false)}
               aria-label="Close dialog"
             >
-              <span aria-hidden="true">×</span>
+              ×
             </button>
 
             <div className="p-6 sm:p-10 flex-1 flex flex-col items-center justify-center text-center space-y-6">
               <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mx-auto">
-                <Recycle className="h-10 w-10 animate-pulse" />
+                <Recycle className="h-10 w-10" />
               </div>
               
               <h2 id="decline-dialog-title" className="text-3xl sm:text-4xl font-extrabold tracking-tight">
@@ -989,29 +986,28 @@ export default function Storefront() {
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-3xl mt-8">
-                <div className="bg-white/10 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:bg-white/15 transition-colors">
+                <div className="bg-white/10 rounded-xl p-6 flex flex-col items-center text-center shadow-md">
                   <DollarSign className="h-10 w-10 mb-4 text-yellow-300" />
                   <h3 className="font-bold text-lg">Missed Earnings</h3>
                   <p className="opacity-90 mt-2">You could earn up to €{quoteResult?.suggestedPayout || 0} with almost zero effort</p>
                 </div>
                 
-                <div className="bg-white/10 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:bg-white/15 transition-colors">
+                <div className="bg-white/10 rounded-xl p-6 flex flex-col items-center text-center shadow-md">
                   <PackageCheck className="h-10 w-10 mb-4 text-green-300" />
                   <h3 className="font-bold text-lg">Eco-Friendly Choice</h3>
                   <p className="opacity-90 mt-2">Give your items a second life instead of adding to landfill</p>
                 </div>
                 
-                <div className="bg-white/10 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:bg-white/15 transition-colors">
+                <div className="bg-white/10 rounded-xl p-6 flex flex-col items-center text-center shadow-md">
                   <ShoppingBag className="h-10 w-10 mb-4 text-blue-300" />
                   <h3 className="font-bold text-lg">Free Up Space</h3>
                   <p className="opacity-90 mt-2">Declutter your home while making money</p>
                 </div>
               </div>
               
-              <div className="flex flex-col md:flex-row gap-4 mt-8 w-full max-w-md">
+              <div className="flex flex-col sm:flex-row gap-4 mt-8 w-full sm:w-auto">
                 <Button
-                  className="bg-white text-[#8441A4] hover:bg-white/90 hover:text-[#6B3486] font-bold py-6 transition-all duration-200 shadow-lg"
-                  size="lg"
+                  className="bg-white text-purple-600 hover:bg-white/90 hover:text-purple-700 font-bold py-3 px-6 min-w-[200px]"
                   onClick={() => setShowDeclineModal(false)}
                   aria-label="Accept and return to quotes"
                 >
@@ -1020,7 +1016,7 @@ export default function Storefront() {
                 
                 <Button
                   variant="outline"
-                  className="text-white border-white/30 hover:bg-white/10 transition-all duration-200"
+                  className="text-white border-white border-opacity-50 hover:bg-white/10 py-3 px-6 min-w-[200px]"
                   onClick={() => {
                     setShowDeclineModal(false);
                     navigate("/");
@@ -1035,13 +1031,7 @@ export default function Storefront() {
         </DialogContent>
       </Dialog>
 
-      {/* Add global CSS for modal animation */}
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
+      {/* Modal animation is handled in style attribute */}
     </div>
   );
 }
