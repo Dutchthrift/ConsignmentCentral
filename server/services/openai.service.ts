@@ -116,42 +116,56 @@ export async function analyzeProduct(
       };
     }
     
-    // Call GPT-4 Vision API
-    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: prompt
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: imageUrl
+    try {
+      // Call GPT-4 Vision API
+      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: prompt
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: imageUrl
+                }
               }
-            }
-          ],
-        },
-      ],
-      response_format: { type: "json_object" },
-      max_tokens: 800,
-    });
+            ],
+          },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 800,
+      });
 
-    // Parse the response JSON
-    const result = JSON.parse(response.choices[0].message.content) as ProductAnalysisResult;
-    
-    return {
-      productType: result.productType || "Unknown",
-      brand: result.brand || "Unknown",
-      model: result.model || "Unknown",
-      condition: result.condition || "Unknown",
-      accessories: Array.isArray(result.accessories) ? result.accessories : [],
-      additionalNotes: result.additionalNotes || ""
-    };
+      // Parse the response JSON
+      const result = JSON.parse(response.choices[0].message.content) as ProductAnalysisResult;
+      
+      return {
+        productType: result.productType || "Unknown",
+        brand: result.brand || "Unknown",
+        model: result.model || "Unknown",
+        condition: result.condition || "Unknown",
+        accessories: Array.isArray(result.accessories) ? result.accessories : [],
+        additionalNotes: result.additionalNotes || ""
+      };
+    } catch (error) {
+      console.error("Error in OpenAI image analysis:", error);
+      
+      // If OpenAI API call fails, fall back to title-only analysis
+      return {
+        productType: title.toLowerCase().includes("t-shirt") ? "Clothing" : "Unknown",
+        brand: extractBrandFromTitle(title),
+        model: "Unknown",
+        condition: "Unknown",
+        accessories: [],
+        additionalNotes: "Analysis based on title only; OpenAI image analysis failed."
+      };
+    }
   } catch (error) {
     console.error("Error analyzing product with OpenAI:", error);
     throw new Error(`Failed to analyze product: ${(error as Error).message}`);
