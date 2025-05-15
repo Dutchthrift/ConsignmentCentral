@@ -54,8 +54,6 @@ const storeFrontSchema = z.object({
 export default function Storefront() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [quoteResult, setQuoteResult] = useState<any>(null);
   const [activeStep, setActiveStep] = useState(1);
@@ -564,7 +562,7 @@ export default function Storefront() {
                     <div className="pt-4">
                       <Button 
                         type="submit" 
-                        disabled={isSubmitting || !imageBase64} 
+                        disabled={isSubmitting || !items.some(item => item.imageBase64)} 
                         className="w-full btn-gradient"
                       >
                         {isSubmitting ? (
