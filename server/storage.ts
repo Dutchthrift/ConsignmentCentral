@@ -9,7 +9,9 @@ import {
   MlTrainingExample, InsertMlTrainingExample,
   MlModelConfig, InsertMlModelConfig,
   MlTrainingSession, InsertMlTrainingSession,
-  User, InsertUser
+  User, InsertUser,
+  AdminUser, InsertAdminUser,
+  UserType
 } from "@shared/schema";
 
 // Storage interface
@@ -105,6 +107,15 @@ export interface IStorage {
     };
     items: ItemWithDetails[];
   } | undefined>;
+
+  // Admin User methods
+  getAdminUserById(id: number): Promise<AdminUser | undefined>;
+  getAdminUserByEmail(email: string): Promise<AdminUser | undefined>;
+  getAdminUserByExternalId(externalId: string, provider: string): Promise<AdminUser | undefined>;
+  createAdminUser(user: InsertAdminUser): Promise<AdminUser>;
+  updateAdminUserLastLogin(id: number): Promise<AdminUser | undefined>;
+  updateAdminUserExternalId(id: number, externalId: string, provider: string): Promise<AdminUser | undefined>; 
+  getAllAdminUsers(): Promise<AdminUser[]>;
 }
 
 // Memory Storage implementation
@@ -118,6 +129,7 @@ export class MemStorage implements IStorage {
   private mlModelConfigs: Map<number, MlModelConfig>;
   private mlTrainingSessions: Map<number, MlTrainingSession>;
   private users: Map<number, User>;
+  private adminUsers: Map<number, AdminUser>;
   
   private customerIdCounter: number;
   private itemIdCounter: number;
@@ -128,6 +140,7 @@ export class MemStorage implements IStorage {
   private mlModelConfigIdCounter: number;
   private mlTrainingSessionIdCounter: number;
   private userIdCounter: number;
+  private adminUserIdCounter: number;
   
   constructor() {
     this.customers = new Map();
@@ -139,6 +152,7 @@ export class MemStorage implements IStorage {
     this.mlModelConfigs = new Map();
     this.mlTrainingSessions = new Map();
     this.users = new Map();
+    this.adminUsers = new Map();
     
     this.customerIdCounter = 1;
     this.itemIdCounter = 1;
@@ -149,6 +163,7 @@ export class MemStorage implements IStorage {
     this.mlModelConfigIdCounter = 1;
     this.mlTrainingSessionIdCounter = 1;
     this.userIdCounter = 1;
+    this.adminUserIdCounter = 1;
   }
   
   // Customer methods
