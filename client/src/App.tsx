@@ -23,6 +23,7 @@ import ModelTraining from "@/pages/ModelTraining";
 import Consignors from "@/pages/Consignors";
 import Login from "@/pages/Login";
 import ConsignorLogin from "@/pages/ConsignorLogin";
+import AdminLoginPage from "@/pages/AdminLoginPage";
 import ConsignorDashboard from "@/pages/ConsignorDashboard";
 import ConsignorItems from "@/pages/ConsignorItems";
 import ConsignorHistory from "@/pages/ConsignorHistory";
@@ -45,8 +46,11 @@ function Router() {
   const isSetupPath = location.startsWith("/setup-account") || location.startsWith("/setup-complete");
   const isConsignorPath = location.startsWith("/consignor") && !isConsignorLoginPath;
   
+  // Check if we're on admin login path
+  const isAdminLoginPath = location === "/admin/login";
+
   // If we're on a login page, don't use the standard layout
-  if (isLoginPath || isConsignorLoginPath) {
+  if (isLoginPath || isConsignorLoginPath || isAdminLoginPath) {
     return (
       <>
         <Toaster />
@@ -54,6 +58,7 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/auth" component={ConsignorLogin} />
           <Route path="/consignor/login" component={ConsignorLogin} />
+          <Route path="/admin/login" component={AdminLoginPage} />
         </Switch>
       </>
     );

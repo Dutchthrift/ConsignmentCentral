@@ -15,9 +15,12 @@ type AuthContextType = {
   error: Error | null;
   isAdmin: boolean;
   isConsignor: boolean;
+  userType: string | null;
   loginMutation: UseMutationResult<User, Error, LoginData>;
+  adminLoginMutation: UseMutationResult<User, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<User, Error, RegisterData>;
+  adminRegisterMutation: UseMutationResult<User, Error, RegisterData>;
 };
 
 type LoginData = {
@@ -52,9 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staleTime: 5 * 60 * 1000 // 5 minutes
   });
 
-  // Determine user roles
+  // Determine user roles and type
   const isAdmin = user?.role === UserRole.ADMIN;
   const isConsignor = user?.role === UserRole.CONSIGNOR;
+  const userType = user?.userType || null;
 
   // Login mutation
   const loginMutation = useMutation({
@@ -209,6 +213,157 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Admin Login mutation
+  const adminLoginMutation = useMutation({
+    mutationFn: async (credentials: LoginData) => {
+      // Rename username to email for the server
+      const loginData = {
+        email: credentials.username, 
+        password: credentials.password
+      };
+      
+      const res = await apiRequest("POST", "/api/auth/admin/login", loginData);
+      console.log("Admin login response status:", res.status);
+      
+      if (!res.ok) {
+        let errorMessage = "Invalid admin credentials";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        throw new Error(errorMessage);
+      }
+      
+      try {
+        const responseData = await res.json();
+        console.log("Admin login response data:", responseData);
+        
+        // Handle both direct user object and wrapped data formats
+        if (responseData.success && responseData.data) {
+          return responseData.data;
+        }
+        
+        return responseData;
+      } catch (e) {
+        console.error("Error parsing success response:", e);
+        throw new Error("Could not parse server response");
+      }
+    },
+    onSuccess: (userData: User & { token?: string }) => {
+      console.log("Admin login successful, received user data:", userData);
+      
+      // Store the token if it was returned
+      if (userData.token) {
+        console.log("Admin token received in login response, saving it");
+        setAuthToken(userData.token);
+        
+        // Remove token from user data before storing in cache
+        const { token, ...userWithoutToken } = userData;
+        queryClient.setQueryData(["/api/auth/user"], userWithoutToken);
+      } else {
+        console.log("No admin token received in login response");
+        queryClient.setQueryData(["/api/auth/user"], userData);
+      }
+      
+      // Navigate to admin dashboard
+      setTimeout(() => {
+        console.log("Redirecting to admin dashboard");
+        navigate("/admin/dashboard");
+      }, 100);
+      
+      toast({
+        title: "Admin login successful",
+        description: `Welcome back, ${userData.name || "admin"}!`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Admin login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Admin Registration mutation
+  const adminRegisterMutation = useMutation({
+    mutationFn: async (data: RegisterData) => {
+      // Ensure field names match server expectations
+      const registerData = {
+        email: data.email,
+        password: data.password,
+        name: data.name,
+        role: UserRole.ADMIN,
+        provider: data.provider || 'local'
+      };
+      
+      const res = await apiRequest("POST", "/api/auth/admin/register", registerData);
+      console.log("Admin register response status:", res.status);
+      
+      if (!res.ok) {
+        let errorMessage = "Admin registration failed";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        throw new Error(errorMessage);
+      }
+      
+      try {
+        const responseData = await res.json();
+        console.log("Admin registration response data:", responseData);
+        
+        // Handle both direct user object and wrapped data formats
+        if (responseData.success && responseData.data) {
+          return responseData.data;
+        }
+        
+        return responseData;
+      } catch (e) {
+        console.error("Error parsing success response:", e);
+        throw new Error("Could not parse server response");
+      }
+    },
+    onSuccess: (userData: User & { token?: string }) => {
+      console.log("Admin registration successful, received user data:", userData);
+      
+      // Store the token if it was returned
+      if (userData.token) {
+        console.log("Admin token received in registration response, saving it");
+        setAuthToken(userData.token);
+        
+        // Remove token from user data before storing in cache
+        const { token, ...userWithoutToken } = userData;
+        queryClient.setQueryData(["/api/auth/user"], userWithoutToken);
+      } else {
+        console.log("No admin token received in registration response");
+        queryClient.setQueryData(["/api/auth/user"], userData);
+      }
+      
+      // Navigate to admin dashboard
+      setTimeout(() => {
+        console.log("Redirecting to admin dashboard");
+        navigate("/admin/dashboard");
+      }, 100);
+      
+      toast({
+        title: "Admin registration successful",
+        description: `Welcome, ${userData.name || "admin"}!`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Admin registration failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -245,9 +400,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         isAdmin,
         isConsignor,
+        userType,
         loginMutation,
+        adminLoginMutation,
         logoutMutation,
         registerMutation,
+        adminRegisterMutation,
       }}
     >
       {children}
