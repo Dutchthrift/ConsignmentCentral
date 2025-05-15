@@ -82,3 +82,17 @@ process.on('SIGINT', () => {
 
 // Initialize connection
 export const db = drizzle(pool, { schema });
+
+// Add a direct SQL query function for cases where ORM causes issues
+export async function executeRawQuery<T = any>(query: string, params: any[] = []): Promise<T[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(query, params);
+    return result.rows as T[];
+  } catch (error) {
+    console.error('Error executing raw query:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}

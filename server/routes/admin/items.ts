@@ -70,18 +70,37 @@ const requireAdminAuth = async (req: Request, res: Response, next: Function) => 
 // Direct SQL query method to fetch admin by ID - bypassing Drizzle ORM issues
 async function getAdminById(adminId: number) {
   try {
+    console.log(`Attempting to fetch admin with ID ${adminId} using direct SQL`);
+    
+    // Use the new executeRawQuery function for more reliable results
     const query = `
-      SELECT * FROM admin_users
+      SELECT id, email, name, role, provider, profile_image_url, last_login, created_at
+      FROM admin_users
       WHERE id = $1
     `;
     
-    const result = await db.query.raw(query, [adminId]);
+    const result = await executeRawQuery(query, [adminId]);
+    console.log('SQL query result:', JSON.stringify(result, null, 2));
     
-    if (!result || !result.rows || result.rows.length === 0) {
+    if (!result || result.length === 0) {
+      console.log(`No admin found with ID ${adminId}`);
       return null;
     }
     
-    return result.rows[0];
+    // Map the result to expected format
+    const admin = {
+      id: result[0].id,
+      email: result[0].email,
+      name: result[0].name,
+      role: result[0].role,
+      provider: result[0].provider,
+      profileImageUrl: result[0].profile_image_url,
+      lastLogin: result[0].last_login,
+      createdAt: result[0].created_at
+    };
+    
+    console.log('Found admin:', JSON.stringify(admin, null, 2));
+    return admin;
   } catch (error) {
     console.error("Error in direct SQL getAdminById:", error);
     return null;
@@ -91,6 +110,8 @@ async function getAdminById(adminId: number) {
 // Direct SQL query to get all items with related data for admin
 async function getAllItems() {
   try {
+    console.log('Fetching all items for admin with direct SQL');
+    
     // SQL query to get all items with related pricing, analysis, shipping, and customer data
     const query = `
       SELECT 
@@ -111,10 +132,11 @@ async function getAllItems() {
       ORDER BY i.created_at DESC
     `;
     
-    // Execute query
-    const result = await db.query.raw(query);
+    // Execute query using db.execute for better compatibility
+    const result = await db.execute(query);
+    console.log(`SQL query returned ${result?.length || 0} items`);
     
-    if (!result || !result.rows || result.rows.length === 0) {
+    if (!result || result.length === 0) {
       return {
         success: true,
         data: []
@@ -122,7 +144,7 @@ async function getAllItems() {
     }
     
     // Map the SQL results to the expected response format
-    const formattedItems = result.rows.map(row => {
+    const formattedItems = result.map(row => {
       return {
         // Item basic fields
         id: row.id,
@@ -212,6 +234,9 @@ router.get("/", requireAdminAuth, async (req: Request, res: Response) => {
 // Get a single item by ID using direct SQL (bypassing ORM issues)
 async function getItemById(itemId: number) {
   try {
+    console.log(`Fetching item with ID ${itemId} using direct SQL`);
+    
+    // Use db.execute for direct SQL queries - safer approach
     const query = `
       SELECT 
         i.id, i.reference_id, i.title, i.description, i.category, i.status, i.image_url, 
@@ -231,13 +256,16 @@ async function getItemById(itemId: number) {
       WHERE i.id = $1
     `;
     
-    const result = await db.query.raw(query, [itemId]);
+    const result = await db.execute(query, [itemId]);
+    console.log(`Item query result found ${result?.length || 0} items`);
     
-    if (!result || !result.rows || result.rows.length === 0) {
+    if (!result || result.length === 0) {
+      console.log(`No item found with ID ${itemId}`);
       return null;
     }
     
-    const row = result.rows[0];
+    const row = result[0];
+    console.log(`Found item with title: ${row.title}`);
     
     // Format single item with related data
     return {
