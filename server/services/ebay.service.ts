@@ -40,17 +40,22 @@ export async function getMarketPricing(
     const productTypeLower = productType.toLowerCase();
     
     // Camera accessories should be priced lower than cameras
-    if (productTypeLower.includes("camera accessory") || 
-        (productTypeLower.includes("accessory") && productTypeLower.includes("camera")) ||
+    if (productTypeLower.includes("accessory") || 
         productTypeLower.includes("flash") || 
         productTypeLower.includes("lens cap") || 
-        productTypeLower.includes("lens filter")) {
+        productTypeLower.includes("lens filter") ||
+        productTypeLower.includes("adapter") ||
+        productTypeLower.includes("battery") || 
+        productTypeLower.includes("charger") ||
+        productTypeLower.includes("strap") || 
+        productTypeLower.includes("manual")) {
       basePrice = Math.floor(Math.random() * 5000) + 2000; // $20-$70 for camera accessories
     }
     // Full cameras should be priced higher
-    else if (productTypeLower === "camera" || 
-            (productTypeLower.includes("camera") && 
-            !productTypeLower.includes("accessory"))) {
+    else if (productTypeLower.includes("camera") || 
+             productTypeLower.includes("dslr") ||
+             productTypeLower.includes("slr") ||
+             productTypeLower.includes("mirrorless")) {
       basePrice = Math.floor(Math.random() * 30000) + 10000; // $100-$400 for cameras
     } 
     // Camera lenses in a middle range
