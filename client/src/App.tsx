@@ -45,7 +45,10 @@ function Router() {
   const isConsignorLoginPath = location === "/consignor/login";
   const isStorefrontPath = location.startsWith("/storefront");
   const isSetupPath = location.startsWith("/setup-account") || location.startsWith("/setup-complete");
+  // Explicitly exclude /consignors from consignor paths - it should use admin layout
   const isConsignorPath = location.startsWith("/consignor") && !isConsignorLoginPath;
+  // Ensure admin paths always use admin layout
+  const isAdminPath = location === "/consignors" || location.startsWith("/admin");
   
   // Check if we're on admin login path
   const isAdminLoginPath = location === "/admin/login";
@@ -72,6 +75,8 @@ function Router() {
     AppLayout = StorefrontLayout;
   } else if (isConsignorPath) {
     AppLayout = ConsignorLayout;
+  } else if (isAdminPath) {
+    AppLayout = Layout; // Ensure admin routes use admin layout explicitly
   }
   
   return (

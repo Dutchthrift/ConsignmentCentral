@@ -19,6 +19,7 @@ import { getMarketPricing, calculatePricing } from "./services/ebay.service";
 import SessionService from "./services/session.service";
 import { registerAuthRoutes } from "./routes/auth.routes";
 import insightsRoutes from "./routes/insights.ts";
+import { requireAdmin } from "./middleware/auth.middleware";
 
 // Import route handlers
 import adminRoutes from "./routes/admin.ts";
@@ -87,8 +88,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Register admin routes
-  app.use("/api/admin", adminRoutes);
+  // Register admin routes - protected with admin middleware
+  app.use("/api/admin", requireAdmin, adminRoutes);
   
   // Register dashboard routes
   app.use("/api/dashboard", dashboardRoutes);
@@ -96,8 +97,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register consignor routes
   app.use("/api/consignor", consignorRoutes);
   
-  // Register consignor registration routes
-  app.use("/api/consignors", consignorRegistrationRoutes);
+  // Move consignor listing to admin routes for better organization
+  app.use("/api/admin/consignors", requireAdmin, consignorRegistrationRoutes);
+  
+  // Keep the registration endpoint available at the original path for backward compatibility
+  // but only allow access to the register endpoint
+  app.post("/api/consignors/register", consignorRegistrationRoutes);
   
   // Register ML training routes
   app.use("/api/ml", mlTrainingRoutes);
