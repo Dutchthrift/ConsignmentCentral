@@ -447,7 +447,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const [newUser] = await db.insert(users).values(user).returning();
+    // Create a new object without userType to prevent database errors
+    const { userType, ...userWithoutType } = user;
+    
+    const [newUser] = await db.insert(users).values(userWithoutType).returning({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      password: users.password,
+      role: users.role,
+      provider: users.provider,
+      externalId: users.externalId,
+      profileImageUrl: users.profileImageUrl,
+      lastLogin: users.lastLogin,
+      createdAt: users.createdAt,
+      customerId: users.customerId,
+    });
+    
     return newUser;
   }
 
