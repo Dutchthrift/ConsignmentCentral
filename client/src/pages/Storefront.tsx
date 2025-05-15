@@ -219,9 +219,10 @@ export default function Storefront() {
   const handleAcceptQuote = () => {
     toast({
       title: "Quote accepted!",
-      description: "We'll send you a shipping label by email soon",
+      description: "Let's set up your consignor account",
     });
-    setActiveStep(3);
+    // Redirect to the setup-account page
+    navigate("/setup-account");
   };
 
   // Format currency

@@ -17,6 +17,8 @@ import Orders from "@/pages/Orders";
 import Payouts from "@/pages/Payouts";
 import Settings from "@/pages/Settings";
 import Storefront from "@/pages/Storefront";
+import SetupAccount from "@/pages/SetupAccount";
+import SetupComplete from "@/pages/SetupComplete";
 import ModelTraining from "@/pages/ModelTraining";
 import Consignors from "@/pages/Consignors";
 import Login from "@/pages/Login";
@@ -174,6 +176,8 @@ function Router() {
         
         {/* Customer Storefront Routes */}
         <Route path="/storefront" component={Storefront} />
+        <Route path="/setup-account" component={SetupAccount} />
+        <Route path="/setup-complete" component={SetupComplete} />
         
         {/* System Health Check - publicly accessible */}
         <Route path="/system-health" component={SystemHealth} />
