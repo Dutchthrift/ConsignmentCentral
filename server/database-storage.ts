@@ -20,6 +20,40 @@ import { IStorage } from "./storage";
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
+  // Direct method for consignor dashboard
+  async getItemsForConsignorDashboard(customerId: number): Promise<any[]> {
+    try {
+      // This uses our getItemsWithDetailsByCustomerId method to fetch all data
+      const customerItems = await this.getItemsWithDetailsByCustomerId(customerId);
+      
+      // Format for dashboard view
+      return customerItems.map(item => ({
+        id: item.id,
+        referenceId: item.referenceId,
+        title: item.title,
+        status: item.status,
+        createdAt: item.createdAt,
+        imageUrl: item.imageUrl,
+        analysis: item.analysis ? {
+          brand: item.analysis.brand,
+          condition: item.analysis.condition,
+          productType: item.analysis.productType
+        } : null,
+        pricing: item.pricing ? {
+          averageMarketPrice: item.pricing.averageMarketPrice,
+          suggestedListingPrice: item.pricing.suggestedListingPrice,
+          suggestedPayout: item.pricing.suggestedPayout,
+          commissionRate: item.pricing.commissionRate,
+          finalSalePrice: item.pricing.finalSalePrice,
+          finalPayout: item.pricing.finalPayout
+        } : null
+      }));
+    } catch (error) {
+      console.error("Error fetching items for consignor dashboard:", error);
+      return [];
+    }
+  }
+  
   // Customer methods
   async getCustomer(id: number): Promise<Customer | undefined> {
     const [customer] = await db.select().from(customers).where(eq(customers.id, id));
