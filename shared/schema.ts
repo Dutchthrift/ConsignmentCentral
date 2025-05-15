@@ -104,13 +104,16 @@ export const insertAnalysisSchema = createInsertSchema(analyses).omit({
 export const pricing = pgTable("pricing", {
   id: serial("id").primaryKey(),
   itemId: integer("item_id").notNull().references(() => items.id),
+  averageMarketPrice: integer("average_market_price"),
   suggestedListingPrice: integer("suggested_listing_price"),
   commissionRate: integer("commission_rate"),
   suggestedPayout: integer("suggested_payout"),
   finalSalePrice: integer("final_sale_price"),
   finalPayout: integer("final_payout"),
   payoutType: text("payout_type"),
+  storeCreditAmount: integer("store_credit_amount"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at"),
 });
 
 export const insertPricingSchema = createInsertSchema(pricing).omit({

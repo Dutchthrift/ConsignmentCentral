@@ -326,7 +326,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 averageMarketPrice: marketData.averagePrice,
                 suggestedListingPrice: marketData.averagePrice,
                 suggestedPayout: suggestedPayout,
-                commissionRate: commissionRate
+                commissionRate: commissionRate,
+                payoutType: "cash" // Default to cash payout
               });
               
               const pricing = await storage.createPricing(newPricing);
