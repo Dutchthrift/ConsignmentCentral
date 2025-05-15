@@ -7,6 +7,7 @@ import { relations } from "drizzle-orm";
 export const ItemStatus = {
   PENDING: "pending",
   ANALYZED: "analyzed",
+  REJECTED: "rejected", // For items that are below minimum value
   SHIPPED: "shipped",
   RECEIVED: "received",
   TESTED: "tested",

@@ -651,31 +651,56 @@ export default function Storefront() {
                         
                         <div className="flex flex-col justify-between">
                           <div>
-                            <div className="bg-primary-light/10 rounded-lg p-6 mb-6">
-                              <h3 className="text-lg font-medium mb-4">Your Estimate</h3>
-                              
-                              <div className="space-y-4">
-                                <div className="flex justify-between">
-                                  <span className="text-neutral-600">Estimated Sale Price:</span>
-                                  <span className="font-medium">
-                                    {item.pricing?.estimatedSalePrice 
-                                      ? formatCurrency(item.pricing.estimatedSalePrice)
-                                      : '-'}
-                                  </span>
-                                </div>
-                                
-                                <Separator />
-                                
-                                <div className="flex justify-between">
-                                  <span className="text-neutral-600">Your Payout ({item.pricing?.commissionRate ? (100 - item.pricing.commissionRate) : 70}%):</span>
-                                  <span className="font-medium text-lg text-primary">
-                                    {item.pricing?.yourPayout 
-                                      ? formatCurrency(item.pricing.yourPayout)
-                                      : '-'}
-                                  </span>
+                            {/* Check if the item is rejected (commissionRate of 100%) */}
+                            {item.pricing?.commissionRate === 100 ? (
+                              <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+                                <div className="flex items-start">
+                                  <AlertTriangle className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
+                                  <div>
+                                    <h3 className="text-lg font-medium text-red-800 mb-2">Item Not Eligible</h3>
+                                    <p className="text-sm text-red-700 mb-3">
+                                      We are not able to accept this item because the estimated resale value is below €50. 
+                                      Unfortunately, items under this threshold are not viable for consignment due to limited 
+                                      margins, higher handling costs, and lower resale reliability.
+                                    </p>
+                                    <div className="mt-4">
+                                      <p className="text-sm font-medium text-neutral-700">Estimated Value:</p>
+                                      <p className="text-lg font-medium">
+                                        {item.pricing?.estimatedSalePrice 
+                                          ? formatCurrency(item.pricing.estimatedSalePrice)
+                                          : '-'}
+                                      </p>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
+                            ) : (
+                              <div className="bg-primary-light/10 rounded-lg p-6 mb-6">
+                                <h3 className="text-lg font-medium mb-4">Your Estimate</h3>
+                                
+                                <div className="space-y-4">
+                                  <div className="flex justify-between">
+                                    <span className="text-neutral-600">Estimated Sale Price:</span>
+                                    <span className="font-medium">
+                                      {item.pricing?.estimatedSalePrice 
+                                        ? formatCurrency(item.pricing.estimatedSalePrice)
+                                        : '-'}
+                                    </span>
+                                  </div>
+                                  
+                                  <Separator />
+                                  
+                                  <div className="flex justify-between">
+                                    <span className="text-neutral-600">Your Payout ({item.pricing?.commissionRate ? (100 - item.pricing.commissionRate) : 70}%):</span>
+                                    <span className="font-medium text-lg text-primary">
+                                      {item.pricing?.yourPayout 
+                                        ? formatCurrency(item.pricing.yourPayout)
+                                        : '-'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

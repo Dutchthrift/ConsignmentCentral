@@ -252,15 +252,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const salePrice = marketData.averagePrice / 100;
               const commissionResult = calculateCommission(salePrice);
               
-              // Set default commission rate if not eligible
-              const commissionRate = commissionResult.eligible ? commissionResult.commissionRate : 30;
-              
               // Create pricing record regardless of eligibility
-              // For non-eligible items, we'll still show pricing but with a note
-              const suggestedPayout = commissionResult.payoutAmount !== undefined
-                ? Math.round(commissionResult.payoutAmount * 100)
-                : Math.round(marketData.averagePrice * (1 - (commissionRate || 30) / 100));
+              let commissionRate = 30; // Default
+              let suggestedPayout = 0;
+              
+              // If eligible (value €50 or more), calculate regular commission/payout
+              if (commissionResult.eligible) {
+                commissionRate = commissionResult.commissionRate || 30;
+                suggestedPayout = commissionResult.payoutAmount !== undefined
+                  ? Math.round(commissionResult.payoutAmount * 100)
+                  : Math.round(marketData.averagePrice * (1 - (commissionRate || 30) / 100));
+                  
+                // For eligible items, keep normal analyzed status
+                await storage.updateItemStatus(item.id, ItemStatus.ANALYZED);
+              } else {
+                // For items below minimum value (€50), mark as rejected
+                commissionRate = 100; // 100% commission = no payout
+                suggestedPayout = 0;
                 
+                // Update status to rejected
+                await storage.updateItemStatus(item.id, "rejected");
+              }
+              
               const newPricing = insertPricingSchema.parse({
                 itemId: item.id,
                 averageMarketPrice: marketData.averagePrice,
@@ -403,18 +416,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let suggestedListingPrice = marketData.averagePrice;
       let suggestedPayout = 0;
       let commissionRate = 30; // Default
+      let status = ItemStatus.ANALYZED; // Default status
       
       if (commissionResult.eligible) {
+        // For items €50 or above
         commissionRate = commissionResult.commissionRate || 30;
         suggestedPayout = commissionResult.payoutAmount !== undefined
           ? Math.round(commissionResult.payoutAmount * 100)
           : Math.round(marketData.averagePrice * (1 - commissionRate / 100));
+        
+        status = ItemStatus.ANALYZED;
       } else {
-        // Use the default eBay-based calculation as fallback
-        const pricingResult = calculatePricing(marketData);
-        suggestedListingPrice = pricingResult.suggestedListingPrice;
-        suggestedPayout = pricingResult.suggestedPayout;
-        commissionRate = pricingResult.commissionRate;
+        // For items below €50
+        // Set commission to 100% and no payout
+        commissionRate = 100;
+        suggestedPayout = 0;
+        
+        // Mark as rejected
+        status = "rejected";
       }
       
       // Create pricing record
@@ -429,7 +448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pricing = await storage.createPricing(newPricing);
       
       // Update item status
-      await storage.updateItemStatus(item.id, ItemStatus.ANALYZED);
+      await storage.updateItemStatus(item.id, status);
       
       res.json({
         success: true,
