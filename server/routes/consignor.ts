@@ -96,7 +96,8 @@ router.get("/dashboard", (req: Request, res: Response, next: Function) => {
       });
     }
     
-    const items = await storage.getItemsWithDetailsByCustomerId(customerId);
+    // Use direct SQL instead of going through broken routes
+    const items = await storage.getItemsForConsignorDashboard(customerId);
     
     // Calculate stats ourselves instead of using getConsignorDetails
     const itemStatusCount = {};

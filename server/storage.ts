@@ -74,6 +74,9 @@ export interface IStorage {
   getAllItemsWithDetails(): Promise<ItemWithDetails[]>;
   getItemsWithDetailsByCustomerId(customerId: number): Promise<ItemWithDetails[]>;
   
+  // New direct method for consignor dashboard
+  getItemsForConsignorDashboard(customerId: number): Promise<any[]>;
+  
   // Dashboard methods
   getDashboardStats(): Promise<DashboardStats>;
   getConsignorStats(consignorId: number): Promise<{
