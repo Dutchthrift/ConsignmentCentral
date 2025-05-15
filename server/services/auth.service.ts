@@ -165,26 +165,7 @@ export class AuthService {
     }, async (req, email, password, done) => {
       console.log('Unified local strategy call:', { email });
       try {
-        // First try to find a customer by email (preferred)
-        const customer = await this.storage.getCustomerByEmail(email);
-        
-        if (customer) {
-          // Verify password for customer
-          const isValid = await this.verifyPassword(password, customer.password || '');
-          
-          if (isValid) {
-            // Set customer type in session
-            if (req.session) {
-              req.session.userType = UserType.CUSTOMER;
-              console.log("Customer login, setting session userType to CUSTOMER");
-            }
-            return done(null, customer);
-          } else {
-            return done(null, false, { message: 'Incorrect email or password' });
-          }
-        }
-        
-        // If no customer found, try to find an admin user
+        // For now, only try to find admin users since customers don't have password field in the DB yet
         const adminUser = await this.storage.getAdminUserByEmail(email);
         
         if (!adminUser) {
