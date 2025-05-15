@@ -178,7 +178,7 @@ export default function ConsignorItems() {
                 </TableHeader>
                 <TableBody>
                   {filteredItems.map((item: any) => {
-                    const isRejected = item.status === "rejected";
+                    const isRejected = item.status === "rejected"; // Using ItemStatus.REJECTED value
                     
                     return (
                       <TableRow 

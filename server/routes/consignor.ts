@@ -251,7 +251,7 @@ router.delete("/items/:itemId", ensureConsignor, async (req: Request, res: Respo
     }
     
     // Verify item is in rejected status
-    if (item.status !== "rejected") {
+    if (item.status !== ItemStatus.REJECTED) {
       return res.status(400).json({
         success: false,
         message: "Only rejected items can be deleted"

@@ -271,7 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 suggestedPayout = 0;
                 
                 // Update status to rejected
-                await storage.updateItemStatus(item.id, "rejected");
+                await storage.updateItemStatus(item.id, ItemStatus.REJECTED);
               }
               
               const newPricing = insertPricingSchema.parse({
@@ -433,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         suggestedPayout = 0;
         
         // Mark as rejected
-        status = "rejected";
+        status = ItemStatus.REJECTED;
       }
       
       // Create pricing record
