@@ -28,6 +28,7 @@ import dashboardRoutes from "./routes/dashboard.ts";
 import consignorRoutes from "./routes/consignor.ts";
 import adminOrdersRoutes from "./routes/admin/orders";
 import consignorOrdersRoutes from "./routes/consignor/orders";
+import consignorItemsRoutes from "./routes/consignor/items";
 import consignorRegistrationRoutes from "./routes/consignor-registration";
 import mlTrainingRoutes from "./routes/ml-training.ts";
 import { calculateCommission, checkEligibility } from "./utils/commission.ts";
@@ -118,6 +119,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register consignor orders routes
   app.use('/api/consignor/orders', consignorOrdersRoutes);
+
+  // Register consignor items routes
+  app.use('/api/consignor/items', consignorItemsRoutes);
 
   // ===== ITEM ROUTES =====
   
