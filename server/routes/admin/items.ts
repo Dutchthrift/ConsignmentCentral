@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { storage } from "../../storage";
-import { db } from "../../db";
+import { db, executeRawQuery } from "../../db";
 import { items, pricing, analyses, shipping, customers } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
 import AuthService from "../../services/auth.service";
@@ -132,8 +132,8 @@ async function getAllItems() {
       ORDER BY i.created_at DESC
     `;
     
-    // Execute query using db.execute for better compatibility
-    const result = await db.execute(query);
+    // Execute query using executeRawQuery for better reliability
+    const result = await executeRawQuery(query);
     console.log(`SQL query returned ${result?.length || 0} items`);
     
     if (!result || result.length === 0) {
@@ -236,7 +236,7 @@ async function getItemById(itemId: number) {
   try {
     console.log(`Fetching item with ID ${itemId} using direct SQL`);
     
-    // Use db.execute for direct SQL queries - safer approach
+    // Use executeRawQuery for direct SQL queries - safer approach
     const query = `
       SELECT 
         i.id, i.reference_id, i.title, i.description, i.category, i.status, i.image_url, 
@@ -256,7 +256,7 @@ async function getItemById(itemId: number) {
       WHERE i.id = $1
     `;
     
-    const result = await db.execute(query, [itemId]);
+    const result = await executeRawQuery(query, [itemId]);
     console.log(`Item query result found ${result?.length || 0} items`);
     
     if (!result || result.length === 0) {
