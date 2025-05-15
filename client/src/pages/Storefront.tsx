@@ -26,7 +26,8 @@ import {
   Sparkles,
   Brain,
   DollarSign,
-  PackageCheck
+  PackageCheck,
+  AlertTriangle
 } from "lucide-react";
 
 // Form schema
