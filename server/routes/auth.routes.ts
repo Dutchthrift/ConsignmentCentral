@@ -267,22 +267,23 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     })(req, res, next);
   });
   
-  // Admin login endpoint
+  // Admin login endpoint - now uses the unified auth strategy
   router.post('/api/auth/admin/login', (req: Request, res: Response, next: NextFunction) => {
     // Log the incoming request for debugging
-    console.log('Admin login attempt:', { 
+    console.log('Admin login attempt via unified strategy:', { 
       email: req.body.email,
       hasSession: !!req.session,
       sessionID: req.sessionID
     });
     
-    passport.authenticate('admin-local', (err: Error | null, adminUser: any, info: { message: string }) => {
+    // Use the same unified strategy as regular login
+    passport.authenticate('local', (err: Error | null, account: any, info: { message: string }) => {
       if (err) {
         console.error('Admin auth error:', err);
         return next(err);
       }
       
-      if (!adminUser) {
+      if (!account) {
         console.log('Admin auth failed:', info?.message);
         return res.status(401).json({
           success: false,
@@ -290,7 +291,15 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         });
       }
       
-      req.login(adminUser, (err) => {
+      // Check if the account is an admin
+      if (!('role' in account) || account.role !== UserRole.ADMIN) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: Admin privileges required'
+        });
+      }
+      
+      req.login(account, (err) => {
         if (err) {
           console.error('Admin login error:', err);
           return next(err);
@@ -310,29 +319,33 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
           userType: req.session?.userType
         });
         
-        // Update last login timestamp
-        storage.updateAdminUserLastLogin(adminUser.id).catch(console.error);
+        // Update last login timestamp for admin
+        storage.updateAdminUserLastLogin(account.id).catch(console.error);
         
         console.log('Admin login successful:', { 
-          adminId: adminUser.id, 
-          role: adminUser.role, 
-          name: adminUser.name,
+          adminId: account.id, 
+          role: account.role, 
+          name: account.name,
           userType: UserType.ADMIN
         });
         
         // Generate admin token
         try {
-          const token = authService.generateAdminToken(adminUser);
+          const token = authService.generateAdminToken(account);
           
           // Return admin user with token
           return res.json({
-            ...adminUser,
+            ...account,
+            userType: UserType.ADMIN,
             token: token
           });
         } catch (tokenError) {
           console.error('Admin token generation error:', tokenError);
           // If token generation fails, still return the admin user without token
-          return res.json(adminUser);
+          return res.json({
+            ...account,
+            userType: UserType.ADMIN
+          });
         }
       });
     })(req, res, next);
@@ -352,6 +365,15 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         });
       }
       
+      // Check if a customer with this email exists
+      const existingCustomer = await storage.getCustomerByEmail(email);
+      if (existingCustomer) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email is already used by a customer account'
+        });
+      }
+      
       // Hash password and create admin user
       const hashedPassword = await authService.hashPassword(password);
       const adminUser = await storage.createAdminUser({
@@ -360,9 +382,7 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         name,
         provider: 'local',
         role: UserRole.ADMIN,
-        externalId: null,
-        profileImageUrl: null,
-        // createdAt is added automatically by the database schema
+        // Other properties will be handled by the storage implementation
       });
       
       // Log the admin in
@@ -379,19 +399,22 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         console.log('Admin registration successful:', { 
           adminId: adminUser.id, 
           role: adminUser.role, 
-          name: adminUser.name 
+          name: adminUser.name,
+          userType: UserType.ADMIN
         });
         
         // Generate admin token
         const token = authService.generateAdminToken(adminUser);
         
-        // Return admin user directly with token
+        // Return admin user directly with token and userType
         return res.status(201).json({
           ...adminUser,
+          userType: UserType.ADMIN,
           token
         });
       });
     } catch (error) {
+      console.error('Admin registration error:', error);
       next(error);
     }
   });
