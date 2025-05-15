@@ -26,6 +26,7 @@ import adminRoutes from "./routes/admin.ts";
 import adminAddConsignorRoute from "./routes/admin/add-consignor";
 import adminOrdersRoutes from "./routes/admin/orders";
 import adminItemsRoutes from "./routes/admin/items"; // Added import for admin items
+import adminAuthTestRoutes from "./routes/admin-auth-test"; // Added import for admin auth test
 import dashboardRoutes from "./routes/dashboard.ts";
 import consignorRoutes from "./routes/consignor.ts";
 import consignorOrdersRoutes from "./routes/consignor/orders";
@@ -121,9 +122,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register admin items routes
   app.use('/api/admin/items', requireAdmin, adminItemsRoutes);
   
-  // Register admin test routes - direct implementation without admin middleware
-  import adminTestRoutes from "./routes/admin/test";
-  app.use('/api/admin/test', adminTestRoutes);
+  // Register admin auth test routes (no authentication middleware)
+  app.use('/api/admin-auth-test', adminAuthTestRoutes);
   
   // Register consignor orders routes
   app.use('/api/consignor/orders', consignorOrdersRoutes);
