@@ -42,8 +42,9 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
     
     const consignorData = validationResult.data;
     
-    // Check if a user with this email already exists
+    // Check if a user or customer with this email already exists
     const existingUser = await storage.getUserByEmail(consignorData.email);
+    const existingCustomer = await storage.getCustomerByEmail(consignorData.email);
     
     if (existingUser) {
       return res.status(400).json({
@@ -53,21 +54,41 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
       });
     }
     
-    // Create a new customer record with the consignor information
-    const newCustomer = await storage.createCustomer({
-      name: consignorData.fullName,
-      email: consignorData.email,
-      phone: consignorData.phone || null,
-      // Store payout details in proper fields
-      address: null,
-      city: null,
-      state: consignorData.payoutMethod, // Store payment method in state field temporarily
-      postalCode: null,
-      country: "NL", // Default to Netherlands
-    });
+    // Create or get existing customer record
+    let customer;
+    
+    if (existingCustomer) {
+      // Use the existing customer
+      customer = existingCustomer;
+      console.log(`Using existing customer with ID ${customer.id} for registration`);
+    } else {
+      // Create a new customer record
+      customer = await storage.createCustomer({
+        name: consignorData.fullName,
+        email: consignorData.email,
+        phone: consignorData.phone || null,
+        // Store payout details in proper fields
+        address: null,
+        city: null,
+        state: consignorData.payoutMethod, // Store payment method in state field temporarily
+        postalCode: null,
+        country: "NL", // Default to Netherlands
+      });
+    }
     
     // Hash the password
     const hashedPassword = await authService.hashPassword(consignorData.password);
+    
+    // Double check if a user with this email exists (race condition protection)
+    const userWithEmail = await storage.getUserByEmail(consignorData.email);
+    
+    if (userWithEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "A user with this email already exists. Please log in instead.",
+        isExistingUser: true,
+      });
+    }
     
     // Create a new user account linked to this customer
     const newUser = await storage.createUser({
@@ -78,7 +99,7 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
       role: UserRole.CONSIGNOR,
       externalId: null,
       profileImageUrl: null,
-      customerId: newCustomer.id,
+      customerId: customer.id,
     });
     
     // Auto-login the user (create a session)
