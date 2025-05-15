@@ -32,6 +32,8 @@ const setupAccountSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  passwordConfirm: z.string().min(6, "Password confirmation is required"),
   payoutMethod: z.enum(["bank", "credit"]),
   iban: z.string().optional().refine(
     (val) => {
@@ -44,6 +46,9 @@ const setupAccountSchema = z.object({
   termsAccepted: z.boolean().refine(val => val === true, {
     message: "You must accept the terms and conditions",
   }),
+}).refine((data) => data.password === data.passwordConfirm, {
+  message: "Passwords do not match",
+  path: ["passwordConfirm"],
 });
 
 type FormValues = z.infer<typeof setupAccountSchema>;
@@ -59,6 +64,8 @@ export default function SetupAccount() {
       fullName: "",
       email: "",
       phone: "",
+      password: "",
+      passwordConfirm: "",
       payoutMethod: "bank",
       iban: "",
       termsAccepted: false,
@@ -154,6 +161,42 @@ export default function SetupAccount() {
                     <FormLabel>Mobile Phone Number (optional)</FormLabel>
                     <FormControl>
                       <Input placeholder="+31 6 12345678" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="password" 
+                        placeholder="At least 6 characters"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="passwordConfirm"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="password" 
+                        placeholder="Confirm your password"
+                        {...field} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
