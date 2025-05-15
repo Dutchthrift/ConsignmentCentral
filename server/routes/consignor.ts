@@ -1,7 +1,9 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
-import { UserRole } from "@shared/schema";
+import { UserRole, items, analyses, pricing, shipping } from "@shared/schema";
 import AuthService from "../services/auth.service";
+import { db } from "../db";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 const authService = new AuthService(storage);
@@ -207,6 +209,83 @@ router.post("/items/:itemId/payout", ensureConsignor, async (req: Request, res: 
     res.status(500).json({
       success: false,
       message: "Error updating payout preference",
+    });
+  }
+});
+
+// DELETE /api/consignor/items/:itemId - delete a rejected item
+router.delete("/items/:itemId", ensureConsignor, async (req: Request, res: Response) => {
+  try {
+    const itemId = parseInt(req.params.itemId, 10);
+    
+    if (isNaN(itemId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid item ID"
+      });
+    }
+    
+    // Verify the item exists and belongs to this consignor
+    const item = await storage.getItem(itemId);
+    
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Item not found"
+      });
+    }
+    
+    // Get customer associated with this user
+    if (!req.user?.customerId) {
+      return res.status(403).json({
+        success: false,
+        message: "No linked customer account found"
+      });
+    }
+    
+    if (item.customerId !== req.user.customerId) {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have permission to delete this item"
+      });
+    }
+    
+    // Verify item is in rejected status
+    if (item.status !== "rejected") {
+      return res.status(400).json({
+        success: false,
+        message: "Only rejected items can be deleted"
+      });
+    }
+    
+    // Delete associated records first (pricing, analysis, shipping)
+    const pricingRecord = await storage.getPricingByItemId(item.id);
+    if (pricingRecord) {
+      await db.delete(pricing).where(eq(pricing.id, pricingRecord.id)).execute();
+    }
+    
+    const analysisRecord = await storage.getAnalysisByItemId(item.id);
+    if (analysisRecord) {
+      await db.delete(analyses).where(eq(analyses.id, analysisRecord.id)).execute();
+    }
+    
+    const shippingRecord = await storage.getShippingByItemId(item.id);
+    if (shippingRecord) {
+      await db.delete(shipping).where(eq(shipping.id, shippingRecord.id)).execute();
+    }
+    
+    // Finally delete the item
+    await db.delete(items).where(eq(items.id, item.id)).execute();
+    
+    res.json({
+      success: true,
+      message: "Item successfully deleted"
+    });
+  } catch (error) {
+    console.error("Error deleting rejected item:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete item"
     });
   }
 });

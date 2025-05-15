@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Trash2, AlertTriangle } from "lucide-react";
+import { Search, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import ItemDetailModal from "@/components/ItemDetailModal";
 import { apiRequest } from "@/lib/queryClient";
