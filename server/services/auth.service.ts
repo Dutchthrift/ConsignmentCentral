@@ -23,14 +23,21 @@ export class AuthService {
     this.initializePassport();
   }
   
-  // Generate a JWT token for a user
-  generateToken(user: User): string {
-    const payload = {
+  // Generate a JWT token for a user or customer
+  generateToken(user: User | Customer): string {
+    // Create a generic payload with common fields
+    const payload: any = {
       id: user.id,
       email: user.email,
-      role: user.role,
-      name: user.name
+      role: user.role
     };
+    
+    // Add name or fullName depending on the user type
+    if ('name' in user) {
+      payload.name = user.name;
+    } else if ('fullName' in user) {
+      payload.name = user.fullName; // Use fullName but store as name for consistency
+    }
     
     return jwt.sign(payload, this.JWT_SECRET, { expiresIn: this.TOKEN_EXPIRY });
   }
@@ -80,7 +87,20 @@ export class AuthService {
               return next();
             }
           } else {
-            // Regular user token
+            // For regular tokens, we need to check if it's a user or customer
+            // First try to get a customer with this ID
+            const customer = await this.storage.getCustomer(decoded.id);
+            if (customer) {
+              // Set the customer in the request
+              req.user = customer;
+              // Set customer user type in session
+              if (req.session) {
+                req.session.userType = UserType.CUSTOMER;
+              }
+              return next();
+            }
+            
+            // If not a customer, try a regular user
             const user = await this.storage.getUserById(decoded.id);
             if (user) {
               // Set the user in the request
@@ -144,7 +164,21 @@ export class AuthService {
     }, async (email, password, done) => {
       console.log('Customer local strategy call:', { email });
       try {
-        // Find user by email
+        // First try to find a customer by email
+        const customer = await this.storage.getCustomerByEmail(email);
+        
+        if (customer) {
+          // Verify password for customer
+          const isValid = await this.verifyPassword(password, customer.password || '');
+          
+          if (isValid) {
+            return done(null, customer);
+          } else {
+            return done(null, false, { message: 'Incorrect email or password' });
+          }
+        }
+        
+        // If no customer found, try to find a regular user
         const user = await this.storage.getUserByEmail(email);
         
         if (!user) {
