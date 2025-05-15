@@ -20,6 +20,7 @@ export interface IStorage {
   getCustomer(id: number): Promise<Customer | undefined>;
   getCustomerByEmail(email: string): Promise<Customer | undefined>;
   createCustomer(customer: InsertCustomer): Promise<Customer>;
+  updateCustomerByEmail(email: string, updates: Partial<Customer>): Promise<Customer | undefined>;
   getAllCustomers(): Promise<Customer[]>;
   
   // Item methods

@@ -39,6 +39,15 @@ export class DatabaseStorage implements IStorage {
   async getAllCustomers(): Promise<Customer[]> {
     return await db.select().from(customers);
   }
+
+  async updateCustomerByEmail(email: string, updates: Partial<Customer>): Promise<Customer | undefined> {
+    const [updatedCustomer] = await db
+      .update(customers)
+      .set(updates)
+      .where(eq(customers.email, email))
+      .returning();
+    return updatedCustomer;
+  }
   
   async getCustomerByUserId(userId: number): Promise<Customer | undefined> {
     // First get the user to find the customer ID
