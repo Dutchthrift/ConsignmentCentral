@@ -131,7 +131,7 @@ router.post("/", async (req: Request, res: Response) => {
     const orderData = insertOrderSchema.parse({
       ...req.body,
       orderNumber,
-      status: req.body.status || OrderStatus.NEW,
+      status: req.body.status || OrderStatus.SUBMITTED,
       submissionDate: req.body.submissionDate || new Date(),
       createdAt: new Date(),
       updatedAt: new Date()
