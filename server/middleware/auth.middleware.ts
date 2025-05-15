@@ -34,9 +34,17 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     role: req.user?.role
   });
 
-  if (!req.isAuthenticated() || 
-      req.session?.userType !== UserType.ADMIN || 
-      req.user?.role !== UserRole.ADMIN) {
+  // Check if user is authenticated first
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+
+  // Check if user has admin role (either through session userType or direct user role)
+  // This is more flexible and allows admin users with different session types
+  if (req.user?.role !== UserRole.ADMIN) {
     return res.status(403).json({
       success: false,
       message: 'Admin access required'

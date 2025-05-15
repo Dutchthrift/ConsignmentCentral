@@ -101,11 +101,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register consignor routes
   app.use("/api/consignor", consignorRoutes);
   
-  // Move consignor listing to admin routes for better organization
-  app.use("/api/admin/consignors", requireAdmin, consignorRegistrationRoutes);
-  
-  // Keep the registration endpoint available at the original path for backward compatibility
-  // but only allow access to the register endpoint
+  // Only keep the consignor registration route at its original path
+  // and don't add the additional admin path which conflicts with adminRoutes
   app.post("/api/consignors/register", consignorRegistrationRoutes);
   
   // Register ML training routes
