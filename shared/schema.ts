@@ -363,6 +363,12 @@ export const UserRole = {
   ADMIN: "admin"
 } as const;
 
+// User types
+export const UserType = {
+  ADMIN: "admin",
+  CUSTOMER: "customer"
+} as const;
+
 // Auth Providers
 export const AuthProvider = {
   GOOGLE: "google",
@@ -370,7 +376,21 @@ export const AuthProvider = {
   LOCAL: "local"
 } as const;
 
-// User authentication table
+// Admin users table (separate from consignors/customers)
+export const adminUsers = pgTable("admin_users", {
+  id: serial("id").primaryKey(),
+  externalId: text("external_id"), // Auth provider's user ID
+  email: text("email").notNull().unique(),
+  password: text("password"), // Only for local auth
+  name: text("name").notNull(),
+  role: text("role").notNull().default(UserRole.ADMIN),
+  provider: text("provider").notNull(), // google, apple, local, etc.
+  profileImageUrl: text("profile_image_url"),
+  lastLogin: timestamp("last_login").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Legacy user authentication table (keeping for backward compatibility)
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   externalId: text("external_id"), // Auth provider's user ID
@@ -383,6 +403,13 @@ export const users = pgTable("users", {
   lastLogin: timestamp("last_login").defaultNow(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   customerId: integer("customer_id").references(() => customers.id),
+  userType: text("user_type").default(UserType.CUSTOMER), // New field to distinguish users
+});
+
+export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
+  id: true,
+  lastLogin: true,
+  createdAt: true,
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -429,6 +456,9 @@ export const sessions = pgTable("sessions", {
   sess: jsonb("sess").notNull(),
   expire: timestamp("expire").notNull(),
 });
+
+export type AdminUser = typeof adminUsers.$inferSelect;
+export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
