@@ -133,70 +133,7 @@ export default function Storefront() {
     form.setValue("items", updatedItems);
   };
 
-  // Handle file input change
-  const handleFileChange = (index: number) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Image must be less than 5MB",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Create preview URL
-    const previewUrl = URL.createObjectURL(file);
-    
-    // Show loading state
-    toast({
-      title: "Processing image",
-      description: "Please wait while we prepare your image...",
-    });
-    
-    // Update the specific item's image preview
-    const updatedItems = [...items];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      imagePreview: previewUrl
-    };
-    setItems(updatedItems);
-    
-    // Convert to base64
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      // Remove data URL prefix
-      const base64 = base64String.split(",")[1];
-      
-      // Update the specific item's base64 data
-      const itemsWithBase64 = [...items];
-      itemsWithBase64[index] = {
-        ...itemsWithBase64[index],
-        imageBase64: base64
-      };
-      setItems(itemsWithBase64);
-      
-      // Show success message
-      toast({
-        title: "Image ready",
-        description: "Image has been prepared for submission",
-      });
-    };
-    
-    reader.onerror = () => {
-      toast({
-        title: "Image upload failed",
-        description: "There was a problem processing your image. Please try again.",
-        variant: "destructive",
-      });
-    };
-    
-    reader.readAsDataURL(file);
-  };
+  // Image uploading is now handled directly in the button onClick handler
 
   // Handle form submission
   const onSubmit = async (data: any) => {
@@ -421,21 +358,85 @@ export default function Storefront() {
                             <div>
                               <FormLabel>Item Image (Required)</FormLabel>
                               <div className="mt-1">
-                                <label
-                                  htmlFor={`file-upload-${index}`}
-                                  className="cursor-pointer bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center justify-center w-full"
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="w-full"
+                                  onClick={() => {
+                                    // Create and trigger a file input element
+                                    const fileInput = document.createElement('input');
+                                    fileInput.type = 'file';
+                                    fileInput.accept = 'image/*';
+                                    fileInput.onchange = (e) => {
+                                      // @ts-ignore
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      
+                                      // Check file size (max 5MB)
+                                      if (file.size > 5 * 1024 * 1024) {
+                                        toast({
+                                          title: "File too large",
+                                          description: "Image must be less than 5MB",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+                                      
+                                      // Create preview URL
+                                      const previewUrl = URL.createObjectURL(file);
+                                      
+                                      // Show loading state
+                                      toast({
+                                        title: "Processing image",
+                                        description: "Please wait while we prepare your image...",
+                                      });
+                                      
+                                      // Update the specific item's image preview
+                                      const updatedItems = [...items];
+                                      updatedItems[index] = {
+                                        ...updatedItems[index],
+                                        imagePreview: previewUrl
+                                      };
+                                      setItems(updatedItems);
+                                      
+                                      // Convert to base64
+                                      const reader = new FileReader();
+                                      reader.onloadend = () => {
+                                        const base64String = reader.result as string;
+                                        // Remove data URL prefix
+                                        const base64 = base64String.split(",")[1];
+                                        
+                                        // Update the specific item's base64 data
+                                        const itemsWithBase64 = [...items];
+                                        itemsWithBase64[index] = {
+                                          ...itemsWithBase64[index],
+                                          imageBase64: base64
+                                        };
+                                        setItems(itemsWithBase64);
+                                        
+                                        // Show success message
+                                        toast({
+                                          title: "Image ready",
+                                          description: "Image has been prepared for submission",
+                                        });
+                                      };
+                                      
+                                      reader.onerror = () => {
+                                        toast({
+                                          title: "Image upload failed",
+                                          description: "There was a problem processing your image. Please try again.",
+                                          variant: "destructive",
+                                        });
+                                      };
+                                      
+                                      reader.readAsDataURL(file);
+                                    };
+                                    fileInput.click();
+                                  }}
                                 >
                                   <Camera className="h-4 w-4 mr-2" />
                                   {item.imagePreview ? "Change Image" : "Upload Image"}
-                                </label>
-                                <input
-                                  id={`file-upload-${index}`}
-                                  name={`file-upload-${index}`}
-                                  type="file"
-                                  accept="image/*"
-                                  className="sr-only"
-                                  onChange={handleFileChange(index)}
-                                />
+                                </Button>
                                 <p className="text-xs text-gray-500 mt-1 text-center">
                                   Upload a clear photo to help us analyze your item accurately
                                 </p>
