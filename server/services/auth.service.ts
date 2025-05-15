@@ -157,14 +157,15 @@ export class AuthService {
   }
 
   private initializePassport() {
-    // Configure Local Strategy for email/password login
-    passport.use('customer-local', new LocalStrategy({
+    // Configure unified Local Strategy for email/password login (handles both customers and admin users)
+    passport.use(new LocalStrategy({
       usernameField: 'email',
-      passwordField: 'password'
-    }, async (email, password, done) => {
-      console.log('Customer local strategy call:', { email });
+      passwordField: 'password',
+      passReqToCallback: true
+    }, async (req, email, password, done) => {
+      console.log('Unified local strategy call:', { email });
       try {
-        // First try to find a customer by email
+        // First try to find a customer by email (preferred)
         const customer = await this.storage.getCustomerByEmail(email);
         
         if (customer) {
@@ -172,75 +173,35 @@ export class AuthService {
           const isValid = await this.verifyPassword(password, customer.password || '');
           
           if (isValid) {
+            // Set customer type in session
+            if (req.session) {
+              req.session.userType = UserType.CUSTOMER;
+              console.log("Customer login, setting session userType to CUSTOMER");
+            }
             return done(null, customer);
           } else {
             return done(null, false, { message: 'Incorrect email or password' });
           }
         }
         
-        // If no customer found, try to find a regular user
-        const user = await this.storage.getUserByEmail(email);
-        
-        if (!user) {
-          return done(null, false, { message: 'Incorrect email or password' });
-        }
-        
-        // Check if this is an email-based account
-        if (user.provider !== 'local') {
-          return done(null, false, { 
-            message: `This email is associated with a ${user.provider} account` 
-          });
-        }
-        
-        // Verify password
-        const isValid = await this.verifyPassword(password, user.password || '');
-        
-        if (!isValid) {
-          return done(null, false, { message: 'Incorrect email or password' });
-        }
-        
-        // Set user type in session based on role
-        if (done.req && done.req.session) {
-          // If user has admin role, set userType to ADMIN, otherwise use CUSTOMER
-          if (user.role === UserRole.ADMIN) {
-            done.req.session.userType = UserType.ADMIN;
-            console.log("Admin user detected, setting session userType to ADMIN");
-          } else {
-            done.req.session.userType = UserType.CUSTOMER;
-          }
-        }
-        
-        return done(null, user);
-      } catch (error) {
-        return done(error);
-      }
-    }));
-    
-    // Configure Admin Local Strategy
-    passport.use('admin-local', new LocalStrategy({
-      usernameField: 'email',
-      passwordField: 'password',
-      passReqToCallback: true
-    }, async (req, email, password, done) => {
-      console.log('Admin local strategy call:', { email });
-      try {
-        // Find admin user by email
+        // If no customer found, try to find an admin user
         const adminUser = await this.storage.getAdminUserByEmail(email);
         
         if (!adminUser) {
-          return done(null, false, { message: 'Incorrect admin credentials' });
+          return done(null, false, { message: 'Incorrect email or password' });
         }
         
-        // Verify password
+        // Verify password for admin
         const isValid = await this.verifyPassword(password, adminUser.password || '');
         
         if (!isValid) {
-          return done(null, false, { message: 'Incorrect admin credentials' });
+          return done(null, false, { message: 'Incorrect email or password' });
         }
         
         // Set admin type in session
         if (req.session) {
           req.session.userType = UserType.ADMIN;
+          console.log("Admin user login, setting session userType to ADMIN");
         }
         
         return done(null, adminUser);
@@ -249,11 +210,19 @@ export class AuthService {
       }
     }));
     
+    // Admin authentication is now handled by the unified local strategy
+    
     // Serialize user to session - store user type along with ID
     passport.serializeUser((user: any, done) => {
-      // Determine if this is a customer or admin/user
-      // Check for properties specific to the Customer model
-      const userType = 'fullName' in user ? 'customer' : 'user';
+      // Determine if this is a customer or admin user by checking unique properties
+      let userType = 'customer';
+      
+      // If it has 'name' property instead of 'fullName', it's an admin user
+      if ('name' in user && !('fullName' in user)) {
+        userType = 'admin';
+      }
+      
+      console.log(`Serializing user with ID ${user.id} as type ${userType}`);
       done(null, { id: user.id, type: userType });
     });
 
@@ -262,7 +231,7 @@ export class AuthService {
       try {
         // Handle both new format (object with type) and legacy format (just ID)
         let id: number;
-        let type: string = 'user'; // Default to user for backward compatibility
+        let type: string = 'customer'; // Default to customer for backward compatibility
         
         if (typeof serialized === 'object' && serialized !== null) {
           id = serialized.id;
@@ -276,11 +245,16 @@ export class AuthService {
           setTimeout(() => reject(new Error('Database timeout')), 5000);
         });
         
+        console.log(`Deserializing user with ID ${id} of type ${type}`);
+        
         // Choose the right storage method based on user type
         let userPromise;
         if (type === 'customer') {
           userPromise = this.storage.getCustomer(id);
+        } else if (type === 'admin') {
+          userPromise = this.storage.getAdminUserById(id);
         } else {
+          // Legacy user type
           userPromise = this.storage.getUserById(id);
         }
         
@@ -297,9 +271,9 @@ export class AuthService {
         }
         
         // Try to update last login, but don't block if it fails
-        if (type === 'user') {
-          this.storage.updateUserLastLogin(id).catch(err => {
-            console.warn('Failed to update last login time:', err);
+        if (type === 'admin') {
+          this.storage.updateAdminUserLastLogin(id).catch(err => {
+            console.warn('Failed to update last login time for admin:', err);
           });
         }
         
