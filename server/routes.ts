@@ -24,9 +24,10 @@ import { requireAdmin } from "./middleware/auth.middleware";
 // Import route handlers
 import adminRoutes from "./routes/admin.ts";
 import adminAddConsignorRoute from "./routes/admin/add-consignor";
+import adminOrdersRoutes from "./routes/admin/orders";
+import adminItemsRoutes from "./routes/admin/items"; // Added import for admin items
 import dashboardRoutes from "./routes/dashboard.ts";
 import consignorRoutes from "./routes/consignor.ts";
-import adminOrdersRoutes from "./routes/admin/orders";
 import consignorOrdersRoutes from "./routes/consignor/orders";
 import consignorItemsRoutes from "./routes/consignor/items";
 import consignorRegistrationRoutes from "./routes/consignor-registration";
@@ -116,6 +117,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register admin orders routes
   app.use('/api/admin/orders', requireAdmin, adminOrdersRoutes);
+  
+  // Register admin items routes
+  app.use('/api/admin/items', requireAdmin, adminItemsRoutes);
   
   // Register consignor orders routes
   app.use('/api/consignor/orders', consignorOrdersRoutes);
