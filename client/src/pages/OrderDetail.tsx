@@ -120,7 +120,7 @@ export default function OrderDetailPage() {
     }
   }, [orderData]);
   
-  // Handle error with toast
+  // Handle errors with a useEffect hook
   React.useEffect(() => {
     if (error) {
       toast({

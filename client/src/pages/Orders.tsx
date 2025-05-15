@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -71,14 +71,20 @@ export default function OrdersPage() {
     error,
   } = useQuery<{ success: boolean; data: OrderSummary[] }>({
     queryKey: ["/api/admin/orders"],
-    onError: (err) => {
+    gcTime: 5 * 60 * 1000,
+    staleTime: 1 * 60 * 1000,
+  });
+  
+  // Handle errors with a useEffect hook
+  useEffect(() => {
+    if (error) {
       toast({
         title: "Error",
         description: "Failed to load orders. Please try again.",
         variant: "destructive",
       });
-    },
-  });
+    }
+  }, [error, toast]);
 
   // Handle search
   const handleSearch = () => {
@@ -100,7 +106,7 @@ export default function OrdersPage() {
   // Filter and sort orders
   const filteredOrders = orders?.data
     ? orders.data.filter(
-        (order) =>
+        (order: OrderSummary) =>
           order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
           order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -110,7 +116,7 @@ export default function OrdersPage() {
     : [];
 
   // Sort orders based on current sort settings
-  const sortedOrders = [...(filteredOrders || [])].sort((a, b) => {
+  const sortedOrders = [...(filteredOrders || [])].sort((a: OrderSummary, b: OrderSummary) => {
     if (sortColumn === "date") {
       return sortDirection === "asc"
         ? new Date(a.submissionDate).getTime() - new Date(b.submissionDate).getTime()
