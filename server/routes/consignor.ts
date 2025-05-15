@@ -4,6 +4,7 @@ import { UserRole, items, analyses, pricing, shipping } from "@shared/schema";
 import AuthService from "../services/auth.service";
 import { db } from "../db";
 import { eq } from "drizzle-orm";
+import { getConsignorDashboard } from "../getConsignorDashboard";
 
 const router = Router();
 const authService = new AuthService(storage);
@@ -96,38 +97,11 @@ router.get("/dashboard", (req: Request, res: Response, next: Function) => {
       });
     }
     
-    // Use direct SQL instead of going through broken routes
-    const items = await storage.getItemsForConsignorDashboard(customerId);
+    // Use our standalone function to get the dashboard data
+    const dashboardData = await getConsignorDashboard(customerId);
     
-    // Calculate stats ourselves instead of using getConsignorDetails
-    const itemStatusCount = {};
-    let totalSales = 0;
-    
-    // Loop through items to calculate stats
-    items.forEach(item => {
-      // Count items by status
-      itemStatusCount[item.status] = (itemStatusCount[item.status] || 0) + 1;
-      
-      // Add up sales from sold items
-      if (item.status === 'sold' && item.pricing && item.pricing.finalSalePrice) {
-        totalSales += item.pricing.finalSalePrice;
-      }
-    });
-    
-    const stats = {
-      totalItems: items.length,
-      totalSales: totalSales / 100, // Convert cents to euros
-      itemsPerStatus: itemStatusCount
-    };
-    
-    // Calculate pending payout amount
-    const pendingPayout = items.reduce((total, item) => {
-      // Only include sold items that haven't been paid yet
-      if (item.status === "sold" && item.pricing && item.pricing.finalPayout) {
-        return total + (item.pricing.finalPayout / 100);
-      }
-      return total;
-    }, 0);
+    // Return the result directly
+    return res.json(dashboardData);
     
     // Format the data for the dashboard
     const formattedItems = items.map((item) => {
