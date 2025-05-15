@@ -131,15 +131,14 @@ router.get("/dashboard", (req: Request, res: Response, next: Function) => {
     // Format the data for the dashboard
     const formattedItems = items.map((item) => {
       const pricing = item.pricing || { suggestedListingPrice: 0, commissionRate: 0 };
-      const imageUrl = item.imageUrls && item.imageUrls.length > 0 ? item.imageUrls[0] : null;
       
       return {
         id: item.id,
         referenceId: item.referenceId,
         title: item.title,
-        imageUrl: imageUrl,
+        imageUrl: item.imageUrl || null,
         status: item.status,
-        createdAt: item.updatedAt || new Date(), // Using updatedAt as fallback
+        createdAt: item.createdAt || new Date(),
         estimatedPrice: pricing.suggestedListingPrice ? pricing.suggestedListingPrice / 100 : undefined,
         commissionRate: pricing.commissionRate,
         payoutAmount: pricing.finalPayout ? pricing.finalPayout / 100 : undefined,

@@ -71,13 +71,15 @@ export const items = pgTable("items", {
   description: text("description"),
   category: text("category"),
   status: text("status").notNull().default(ItemStatus.PENDING),
-  imageUrls: text("image_urls").array(),
-  submissionDate: timestamp("submission_date").defaultNow().notNull(),
+  imageUrl: text("image_url"), // Changed from imageUrls array to single imageUrl
+  createdAt: timestamp("created_at").defaultNow(), // Using created_at field from DB
+  updatedAt: timestamp("updated_at").defaultNow(), // Using updated_at field from DB
 });
 
 export const insertItemSchema = createInsertSchema(items).omit({
   id: true,
-  submissionDate: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Analysis table
