@@ -118,9 +118,16 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     }
   );
   
-  // Customer registration route (now creates a Customer model directly)
+  // Customer registration route - TEMPORARILY DISABLED since customers table doesn't have password column
   router.post('/api/auth/register', async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Return a friendly error message explaining registration is temporarily unavailable
+      return res.status(503).json({
+        success: false,
+        message: 'Customer registration is temporarily unavailable. Please try again later.'
+      });
+      
+      /* Original code - commented out until database schema is updated
       const { email, password, name, phone } = req.body;
       
       // Check if user or customer already exists
@@ -177,12 +184,13 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
           token
         });
       });
+      */
     } catch (error) {
       next(error);
     }
   });
   
-  // Login endpoint for both customers and admin users
+  // Login endpoint for admin users only
   router.post('/api/auth/login', (req: Request, res: Response, next: NextFunction) => {
     // Log the incoming request for debugging
     console.log('Login attempt:', { 
@@ -191,7 +199,7 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
       sessionID: req.sessionID
     });
     
-    // Use local strategy which will check both customer and user tables
+    // Now using local strategy which is configured for admin-only authentication
     passport.authenticate('local', (err: Error | null, account: any, info: { message: string }) => {
       if (err) {
         console.error('Auth error:', err);
@@ -206,10 +214,8 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         });
       }
       
-      // Determine user type (customer or admin)
-      const userType = 'role' in account && account.role === UserRole.ADMIN 
-        ? UserType.ADMIN 
-        : UserType.CUSTOMER;
+      // Only admin authentication is enabled
+      const userType = UserType.ADMIN;
       
       req.login(account, (err) => {
         if (err) {
@@ -231,23 +237,19 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
           userType: req.session?.userType
         });
         
-        // Update last login timestamp - use the appropriate method based on user type
-        if (userType === UserType.ADMIN) {
-          storage.updateAdminUserLastLogin(account.id).catch(console.error);
-        } else {
-          storage.updateCustomerByEmail(account.email, { lastLogin: new Date() }).catch(console.error);
-        }
+        // Update last login timestamp for admin
+        storage.updateAdminUserLastLogin(account.id).catch(console.error);
         
-        console.log('Login successful:', { 
+        console.log('Admin login successful:', { 
           userId: account.id, 
           role: account.role, 
-          name: userType === UserType.CUSTOMER ? account.fullName : account.name,
+          name: account.name,
           userType: userType
         });
         
-        // Generate auth token
+        // Generate admin token
         try {
-          const token = authService.generateToken(account);
+          const token = authService.generateAdminToken(account);
           
           // Return account with token and userType
           return res.json({

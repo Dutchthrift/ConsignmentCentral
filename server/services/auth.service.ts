@@ -64,7 +64,7 @@ export class AuthService {
     }
   }
   
-  // Middleware to authenticate using JWT token
+  // Middleware to authenticate using JWT token (Admin only for now)
   authenticateJWT = async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Try to get token from Authorization header
@@ -86,32 +86,8 @@ export class AuthService {
               }
               return next();
             }
-          } else {
-            // For regular tokens, we need to check if it's a user or customer
-            // First try to get a customer with this ID
-            const customer = await this.storage.getCustomer(decoded.id);
-            if (customer) {
-              // Set the customer in the request
-              req.user = customer;
-              // Set customer user type in session
-              if (req.session) {
-                req.session.userType = UserType.CUSTOMER;
-              }
-              return next();
-            }
-            
-            // If not a customer, try a regular user
-            const user = await this.storage.getUserById(decoded.id);
-            if (user) {
-              // Set the user in the request
-              req.user = user;
-              // Set customer user type in session
-              if (req.session) {
-                req.session.userType = UserType.CUSTOMER;
-              }
-              return next();
-            }
           }
+          // No customer token checking for now
         }
       }
       
@@ -157,15 +133,15 @@ export class AuthService {
   }
 
   private initializePassport() {
-    // Configure unified Local Strategy for email/password login (handles both customers and admin users)
+    // Configure unified Local Strategy for email/password login (ADMIN ONLY FOR NOW)
     passport.use(new LocalStrategy({
       usernameField: 'email',
       passwordField: 'password',
       passReqToCallback: true
     }, async (req, email, password, done) => {
-      console.log('Unified local strategy call:', { email });
+      console.log('Local strategy call:', { email });
       try {
-        // For now, only try to find admin users since customers don't have password field in the DB yet
+        // Only try to find admin users since customers table doesn't have password column
         const adminUser = await this.storage.getAdminUserByEmail(email);
         
         if (!adminUser) {
@@ -193,30 +169,21 @@ export class AuthService {
     
     // Admin authentication is now handled by the unified local strategy
     
-    // Serialize user to session - store user type along with ID
+    // Serialize user to session - store user type along with ID (Admin only for now)
     passport.serializeUser((user: any, done) => {
-      // Determine if this is a customer or admin user by checking unique properties
-      let userType = 'customer';
-      
-      // If it has 'name' property instead of 'fullName', it's an admin user
-      if ('name' in user && !('fullName' in user)) {
-        userType = 'admin';
-      }
-      
-      console.log(`Serializing user with ID ${user.id} as type ${userType}`);
-      done(null, { id: user.id, type: userType });
+      // We're only handling admin users now
+      console.log(`Serializing admin user with ID ${user.id}`);
+      done(null, { id: user.id, type: 'admin' });
     });
 
-    // Deserialize user from session with enhanced error handling
+    // Deserialize user from session with enhanced error handling (Admin only for now)
     passport.deserializeUser(async (serialized: { id: number, type: string } | number, done) => {
       try {
         // Handle both new format (object with type) and legacy format (just ID)
         let id: number;
-        let type: string = 'customer'; // Default to customer for backward compatibility
         
         if (typeof serialized === 'object' && serialized !== null) {
           id = serialized.id;
-          type = serialized.type;
         } else {
           id = serialized as number;
         }
@@ -226,18 +193,10 @@ export class AuthService {
           setTimeout(() => reject(new Error('Database timeout')), 5000);
         });
         
-        console.log(`Deserializing user with ID ${id} of type ${type}`);
+        console.log(`Deserializing admin user with ID ${id}`);
         
-        // Choose the right storage method based on user type
-        let userPromise;
-        if (type === 'customer') {
-          userPromise = this.storage.getCustomer(id);
-        } else if (type === 'admin') {
-          userPromise = this.storage.getAdminUserById(id);
-        } else {
-          // Legacy user type
-          userPromise = this.storage.getUserById(id);
-        }
+        // Only use admin user retrieval
+        const userPromise = this.storage.getAdminUserById(id);
         
         // Race the database query with a timeout
         const user = await Promise.race([
@@ -246,17 +205,15 @@ export class AuthService {
         ]) as any;
         
         if (!user) {
-          console.warn(`${type.charAt(0).toUpperCase() + type.slice(1)} not found during session deserialization: ${id}`);
+          console.warn(`Admin user not found during session deserialization: ${id}`);
           // Instead of throwing an error, just return null to force re-login
           return done(null, null);
         }
         
         // Try to update last login, but don't block if it fails
-        if (type === 'admin') {
-          this.storage.updateAdminUserLastLogin(id).catch(err => {
-            console.warn('Failed to update last login time for admin:', err);
-          });
-        }
+        this.storage.updateAdminUserLastLogin(id).catch(err => {
+          console.warn('Failed to update last login time for admin:', err);
+        });
         
         done(null, user);
       } catch (error) {
