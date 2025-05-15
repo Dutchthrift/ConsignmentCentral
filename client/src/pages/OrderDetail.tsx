@@ -202,6 +202,12 @@ export default function OrderDetailPage() {
   // Calculate totals
   const calculateTotals = () => {
     if (!order) return { totalValue: 0, totalPayout: 0, totalItems: 0 };
+    
+    // Check if order.items exists and is an array
+    if (!order.items || !Array.isArray(order.items)) {
+      console.warn('Order items is undefined or not an array:', order);
+      return { totalValue: 0, totalPayout: 0, totalItems: 0 };
+    }
 
     const totalValue = order.items.reduce(
       (sum: number, item: Item & { pricing?: Pricing }) => sum + (item.pricing?.suggestedListingPrice || 0),
