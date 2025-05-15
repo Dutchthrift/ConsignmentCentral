@@ -148,17 +148,17 @@ router.get("/consignors", async (req: Request, res: Response) => {
       }
     });
     
-    // Get all users with role consignor
-    const consignorUsers = await storage.getUsersByRole('consignor');
-    console.log(`Found ${consignorUsers.length} consignors in the database`);
+    // Get all customers from the database (these are the consignors)
+    const customers = await storage.getAllCustomers();
+    console.log(`Found ${customers.length} customers/consignors in the database`);
     
-    // Simplified version - just return users with no additional processing
-    const consignors = consignorUsers.map(user => {
+    // Map customers to the expected consignor format
+    const consignors = customers.map(customer => {
       return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        totalItems: 0,
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        totalItems: 0, // We'll update these with actual values in a more complete implementation
         totalSales: 0
       };
     });
@@ -188,25 +188,36 @@ router.get("/consignors/:id", async (req: Request, res: Response) => {
       });
     }
     
-    // Get user with consignor role
-    const user = await storage.getUserById(consignorId);
+    // Get customer by ID directly since consignors are stored in the customers table
+    const customer = await storage.getCustomer(consignorId);
     
-    if (!user || user.role !== 'consignor') {
+    if (!customer) {
       return res.status(404).json({
         success: false,
         message: "Consignor not found",
       });
     }
     
-    // Simplified response - just return the user info
+    // Check if there's a linked user account
+    let linkedUser = null;
+    if (customer) {
+      // Find users linked to this customer ID
+      const allUsers = await storage.getAllUsers();
+      linkedUser = allUsers.find(u => u.customerId === customer.id);
+    }
+    
+    // Simplified response - return customer info
     const consignorData = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      customerId: user.customerId,
-      createdAt: user.createdAt,
-      items: [],
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      address: customer.address,
+      city: customer.city,
+      country: customer.country,
+      linkedUserId: linkedUser?.id,
+      createdAt: customer.created_at,
+      items: [], // This would be populated in a more complete implementation
       totalSales: 0
     };
     
