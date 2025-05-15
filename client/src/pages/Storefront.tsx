@@ -742,8 +742,12 @@ export default function Storefront() {
                       >
                         Accept All Quotes & Continue
                       </Button>
-                      <Button variant="outline" size="lg">
-                        Decline Quotes
+                      <Button 
+                        variant="outline" 
+                        size="lg"
+                        onClick={() => setShowDeclineModal(true)}
+                      >
+                        Naah, thanks
                       </Button>
                     </div>
                   </div>
@@ -947,6 +951,63 @@ export default function Storefront() {
           </div>
         </div>
       </footer>
+      
+      {/* Decline Quote Modal */}
+      <Dialog open={showDeclineModal} onOpenChange={setShowDeclineModal}>
+        <DialogContent className="sm:max-w-4xl max-h-screen overflow-y-auto p-0">
+          <div className="bg-gradient-to-br from-rose-500 to-purple-700 text-white min-h-[85vh] flex flex-col">
+            <div className="p-6 sm:p-10 flex-1 flex flex-col items-center justify-center text-center space-y-6">
+              <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mx-auto">
+                <Recycle className="h-10 w-10" />
+              </div>
+              
+              <h2 className="text-3xl sm:text-4xl font-extrabold">Are you sure you want to miss out?</h2>
+              
+              <p className="text-xl opacity-90 max-w-2xl">
+                We'd hate to see your amazing items collecting dust instead of making you money!
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-3xl mt-8">
+                <div className="bg-white/10 rounded-lg p-6 flex flex-col items-center text-center">
+                  <DollarSign className="h-10 w-10 mb-4 text-yellow-300" />
+                  <h3 className="font-bold text-lg">Missed Earnings</h3>
+                  <p className="opacity-80 mt-2">You could earn up to €{quoteResult?.suggestedPayout || 0} with almost zero effort</p>
+                </div>
+                
+                <div className="bg-white/10 rounded-lg p-6 flex flex-col items-center text-center">
+                  <PackageCheck className="h-10 w-10 mb-4 text-green-300" />
+                  <h3 className="font-bold text-lg">Eco-Friendly Choice</h3>
+                  <p className="opacity-80 mt-2">Give your items a second life instead of adding to landfill</p>
+                </div>
+                
+                <div className="bg-white/10 rounded-lg p-6 flex flex-col items-center text-center">
+                  <ShoppingBag className="h-10 w-10 mb-4 text-blue-300" />
+                  <h3 className="font-bold text-lg">Free Up Space</h3>
+                  <p className="opacity-80 mt-2">Declutter your home while making money</p>
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-4 mt-8 w-full max-w-md">
+                <Button
+                  className="bg-white text-purple-700 hover:bg-white/90 hover:text-purple-800 font-bold py-6"
+                  size="lg"
+                  onClick={() => setShowDeclineModal(false)}
+                >
+                  Okay fine, I'll sell anyway
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  className="text-white/80 hover:text-white hover:bg-white/10"
+                  onClick={() => navigate("/")}
+                >
+                  No, I really want to miss out
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
