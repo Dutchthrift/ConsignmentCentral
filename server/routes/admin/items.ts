@@ -20,23 +20,47 @@ const requireAdminAuth = async (req: Request, res: Response, next: Function) => 
     if (token) {
       try {
         const decoded = authService.verifyToken(token);
-        console.log('Admin JWT decoded:', decoded);
+        console.log('Admin JWT decoded:', JSON.stringify(decoded, null, 2));
         
         if (decoded && decoded.id && decoded.role === 'admin') {
           try {
-            // If token is valid, find the admin user using direct SQL (to avoid ORM issues)
-            const user = await getAdminById(decoded.id);
-            console.log('Found admin by JWT token:', !!user);
+            // Use executeRawQuery directly to verify admin user
+            const query = `
+              SELECT id, email, name, role, provider, profile_image_url, last_login, created_at
+              FROM admin_users
+              WHERE id = $1
+            `;
+            console.log(`Executing direct SQL query to find admin with ID ${decoded.id}`);
             
-            if (user) {
+            const result = await executeRawQuery(query, [decoded.id]);
+            console.log('Direct SQL admin query result rows:', result?.length || 0);
+            
+            if (result && result.length > 0) {
+              const admin = {
+                id: result[0].id,
+                email: result[0].email,
+                name: result[0].name,
+                role: result[0].role,
+                provider: result[0].provider,
+                profileImageUrl: result[0].profile_image_url,
+                lastLogin: result[0].last_login,
+                createdAt: result[0].created_at
+              };
+              
+              console.log('Found admin, proceeding with authentication');
+              
               // Set the admin in the request
-              req.user = user;
+              req.user = admin;
               return next();
+            } else {
+              console.log(`No admin found with ID ${decoded.id}`);
             }
           } catch (sqlError) {
             console.error("SQL error in admin authentication:", sqlError);
             // Continue to other auth methods if SQL fails
           }
+        } else {
+          console.log('Invalid JWT token format - missing id or admin role');
         }
       } catch (jwtError) {
         console.error("Error in admin JWT auth:", jwtError);
@@ -47,22 +71,27 @@ const requireAdminAuth = async (req: Request, res: Response, next: Function) => 
     console.log('Admin session auth check:', {
       isAuthenticated: req.isAuthenticated(),
       hasUser: !!req.user,
-      role: req.user?.role
+      role: req.user?.role,
+      sessionInfo: req.session
     });
     
-    if (!req.isAuthenticated() || !req.user || req.user.role !== 'admin') {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Admin authentication required" 
-      });
+    // Session-based admin check
+    if (req.isAuthenticated() && req.user && req.user.role === 'admin') {
+      console.log('Session authentication successful');
+      return next();
     }
     
-    next();
+    // If we get here, authentication failed
+    console.log('Admin authentication failed - no valid token or session');
+    return res.status(401).json({ 
+      success: false, 
+      message: "Authentication error" 
+    });
   } catch (error) {
     console.error("Admin authentication middleware error:", error);
     return res.status(500).json({
       success: false,
-      message: "Authentication error"
+      message: "Server error"
     });
   }
 };
