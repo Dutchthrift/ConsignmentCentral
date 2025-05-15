@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Eye, Search, User, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AddConsignorModal } from "@/components/AddConsignorModal";
 
 interface ConsignorProps {
   id: number;
@@ -18,6 +19,7 @@ interface ConsignorProps {
 
 export default function Consignors() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   
@@ -59,6 +61,16 @@ export default function Consignors() {
       }
     }
   }, [error, navigate, toast]);
+  
+  // Handler for opening the add consignor modal
+  const handleOpenAddModal = () => {
+    setShowAddModal(true);
+  };
+  
+  // Handler for closing the add consignor modal
+  const handleCloseAddModal = () => {
+    setShowAddModal(false);
+  };
 
   return (
     <div>
@@ -77,12 +89,21 @@ export default function Consignors() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button className="flex items-center gap-1">
+          <Button 
+            className="flex items-center gap-1" 
+            onClick={handleOpenAddModal}
+          >
             <Plus className="h-4 w-4 mr-1" />
             Add Consignor
           </Button>
         </div>
       </div>
+      
+      {/* Add Consignor Modal */}
+      <AddConsignorModal 
+        isOpen={showAddModal} 
+        onClose={handleCloseAddModal} 
+      />
       
       <Card>
         <CardHeader className="pb-3">

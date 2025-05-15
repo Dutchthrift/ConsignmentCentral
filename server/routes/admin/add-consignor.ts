@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { storage } from "../../storage";
 import { z } from "zod";
-import { UserRole } from "@shared/schema";
+import { UserRole, AuthProvider } from "@shared/schema";
 import { hashPassword } from "../../hash-password";
 
 // Schema for validating admin-created consignor data
@@ -48,8 +48,8 @@ router.post("/add-consignor", async (req: Request, res: Response) => {
       phone: consignorData.phone || "",
       address: "",
       city: "",
-      postal_code: "",
-      country: "",
+      postalCode: "", // Fixed field name to match schema
+      country: "NL", // Default to Netherlands
       status: "active",
       notes: consignorData.notes || "",
       created_at: new Date().toISOString(),
@@ -64,13 +64,12 @@ router.post("/add-consignor", async (req: Request, res: Response) => {
       email: consignorData.email,
       password: hashedPassword,
       role: UserRole.CONSIGNOR,
-      auth_provider: "local",
-      external_id: null,
-      last_login: new Date().toISOString(),
+      provider: AuthProvider.LOCAL, // Fixed field name to match schema
+      externalId: null, // Fixed field name to match schema
+      lastLogin: new Date().toISOString(), // Fixed field name to match schema
+      profileImageUrl: null,
+      customerId: customer.id, // Link to customer
     });
-    
-    // Link the user to the customer
-    await storage.linkUserToCustomer(user.id, customer.id);
     
     // Return success with the created data
     return res.status(201).json({
