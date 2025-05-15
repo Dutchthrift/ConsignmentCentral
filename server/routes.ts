@@ -6,6 +6,7 @@ import {
   legacyIntakeFormSchema,
   orderWebhookSchema, 
   ItemStatus,
+  UserRole,
   insertCustomerSchema,
   insertItemSchema,
   insertAnalysisSchema,
@@ -188,6 +189,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Process new intake from form
   app.post("/api/intake", async (req, res) => {
     try {
+      console.log("Received intake form data:", JSON.stringify(req.body));
+      
       // Try parsing using the new schema (multiple items)
       let data;
       let isLegacyFormat = false;
@@ -195,6 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         data = intakeFormSchema.parse(req.body);
       } catch (parseError) {
+        console.error("Error parsing with intakeFormSchema:", parseError);
         // If that fails, try the legacy schema (single item)
         try {
           const legacyData = legacyIntakeFormSchema.parse(req.body);
@@ -205,6 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
           isLegacyFormat = true;
         } catch (legacyParseError) {
+          console.error("Error parsing with legacyIntakeFormSchema:", legacyParseError);
           // If both fail, throw the original error
           throw parseError;
         }
@@ -214,16 +219,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let customer = await storage.getCustomerByEmail(data.customer.email);
       
       if (!customer) {
-        // Create new customer
+        // Create new customer - ensure field names match database schema
         const newCustomer = insertCustomerSchema.parse({
-          name: data.customer.name,
+          fullName: data.customer.name,
           email: data.customer.email,
+          password: "temppassword123", // Default password for form submissions
           phone: data.customer.phone || null,
           address: data.customer.address || null,
           city: data.customer.city || null,
-          state: data.customer.state || null,
-          postalCode: data.customer.postalCode || null,
-          country: data.customer.country || null
+          payoutMethod: data.customer.state || null, // Repurposed as payoutMethod
+          iban: data.customer.postalCode || null,    // Repurposed as iban
+          country: data.customer.country || "NL",
+          role: UserRole.CONSIGNOR
         });
         
         customer = await storage.createCustomer(newCustomer);
@@ -241,21 +248,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerId: customer.id, 
           title: itemData.title,
           description: itemData.description || null,
-          imageUrl: itemData.imageUrl || null,
+          imageUrl: null, // Will be updated later if we have an image
           status: ItemStatus.PENDING,
           referenceId
         });
         
         const item = await storage.createItem(newItem);
         
-        // If we have an image, analyze the item immediately
-        if (itemData.imageBase64) {
+        // If we have images, use the first one and analyze the item immediately
+        const imageBase64 = itemData.images && itemData.images.length > 0 ? itemData.images[0] : null;
+        
+        if (imageBase64) {
           try {
+            // Update the item's image URL
+            if (storage.updateItemImage) {
+              await storage.updateItemImage(item.id, imageBase64);
+            }
+            
             // Analyze the item with OpenAI
             const analysisResult = await analyzeProduct(
               itemData.title,
               itemData.description || "",
-              itemData.imageBase64
+              imageBase64
             );
 
             // Create analysis record

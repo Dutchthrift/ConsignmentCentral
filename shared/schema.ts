@@ -241,27 +241,41 @@ export const intakeItemSchema = z.object({
 
 export type IntakeItem = z.infer<typeof intakeItemSchema>;
 
+// New schema format that matches the frontend's structure
 export const intakeFormSchema = z.object({
-  customerName: z.string(),
-  customerEmail: z.string().email(),
-  customerPhone: z.string().optional(),
-  customerAddress: z.string().optional(),
-  items: z.array(intakeItemSchema),
+  customer: z.object({
+    name: z.string().min(1, "Name is required"),
+    email: z.string().email("Invalid email address"),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    country: z.string().default("NL"),
+  }),
+  items: z.array(intakeItemSchema).default([]),
   sessionId: z.string().optional(),
 });
 
+// For legacy single-item submissions
 export const legacyIntakeFormSchema = z.object({
-  name: z.string(),
-  email: z.string().email(),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  items: z.array(z.object({
-    title: z.string(),
+  customer: z.object({
+    name: z.string().min(1, "Name is required"),
+    email: z.string().email("Invalid email address"),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    country: z.string().default("NL"),
+  }),
+  item: z.object({
+    title: z.string().min(1, "Title is required"),
+    description: z.string().optional(),
     brand: z.string().optional(),
     category: z.string().optional(),
     condition: z.string().optional(),
-    description: z.string().optional(),
-  })),
+  }),
 });
 
 export type IntakeFormData = z.infer<typeof intakeFormSchema>;
