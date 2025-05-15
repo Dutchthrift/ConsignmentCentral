@@ -14,7 +14,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { IStorage } from "./storage";
-import { and, count, desc, distinctOn, eq, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   // Customer methods
@@ -383,17 +383,61 @@ export class DatabaseStorage implements IStorage {
 
   // User methods
   async getUserById(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    // For compatibility with older database schema, use a simplified query
+    // that doesn't include the user_type column
+    const [user] = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      password: users.password,
+      role: users.role,
+      provider: users.provider,
+      externalId: users.externalId,
+      profileImageUrl: users.profileImageUrl,
+      lastLogin: users.lastLogin,
+      createdAt: users.createdAt,
+      customerId: users.customerId,
+    }).from(users).where(eq(users.id, id));
+    
     return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    // For compatibility with older database schema, use a simplified query
+    // that doesn't include the user_type column
+    const [user] = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      password: users.password,
+      role: users.role,
+      provider: users.provider,
+      externalId: users.externalId,
+      profileImageUrl: users.profileImageUrl,
+      lastLogin: users.lastLogin,
+      createdAt: users.createdAt,
+      customerId: users.customerId,
+    }).from(users).where(eq(users.email, email));
+    
     return user;
   }
 
   async getUserByExternalId(externalId: string, provider: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(
+    // For compatibility with older database schema, use a simplified query
+    // that doesn't include the user_type column
+    const [user] = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      password: users.password,
+      role: users.role,
+      provider: users.provider,
+      externalId: users.externalId,
+      profileImageUrl: users.profileImageUrl,
+      lastLogin: users.lastLogin,
+      createdAt: users.createdAt,
+      customerId: users.customerId,
+    }).from(users).where(
       and(
         eq(users.externalId, externalId),
         eq(users.provider, provider)
@@ -493,9 +537,10 @@ export class DatabaseStorage implements IStorage {
     
     // Get active consignors (those with at least one item)
     const activeConsignorsQuery = db.select({
-      distinctCustomerId: distinctOn(items.customerId, items.customerId)
+      customerId: items.customerId
     })
-    .from(items);
+    .from(items)
+    .groupBy(items.customerId);
     
     const activeConsignors = (await activeConsignorsQuery).length;
 
