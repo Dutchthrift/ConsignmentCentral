@@ -133,7 +133,7 @@ export class AuthService {
   }
 
   private initializePassport() {
-    // Configure unified Local Strategy for email/password login (ADMIN ONLY FOR NOW)
+    // Configure unified Local Strategy for email/password login (ADMIN AND CUSTOMERS)
     passport.use(new LocalStrategy({
       usernameField: 'email',
       passwordField: 'password',
@@ -141,49 +141,77 @@ export class AuthService {
     }, async (req, email, password, done) => {
       console.log('Local strategy call:', { email });
       try {
-        // Only try to find admin users since customers table doesn't have password column
+        // First try admin users
         const adminUser = await this.storage.getAdminUserByEmail(email);
         
-        if (!adminUser) {
+        if (adminUser) {
+          // Found admin, verify password
+          const isValid = await this.verifyPassword(password, adminUser.password || '');
+          
+          if (isValid) {
+            // Set admin type in session
+            if (req.session) {
+              req.session.userType = UserType.ADMIN;
+              console.log("Admin user login, setting session userType to ADMIN");
+            }
+            
+            return done(null, adminUser);
+          } else {
+            return done(null, false, { message: 'Incorrect email or password' });
+          }
+        }
+        
+        // If no admin found, try customer
+        const customer = await this.storage.getCustomerByEmail(email);
+        
+        if (!customer) {
           return done(null, false, { message: 'Incorrect email or password' });
         }
         
-        // Verify password for admin
-        const isValid = await this.verifyPassword(password, adminUser.password || '');
+        // Verify customer password
+        const isCustomerValid = await this.verifyPassword(password, customer.password || '');
         
-        if (!isValid) {
+        if (!isCustomerValid) {
           return done(null, false, { message: 'Incorrect email or password' });
         }
         
-        // Set admin type in session
+        // Set customer type in session
         if (req.session) {
-          req.session.userType = UserType.ADMIN;
-          console.log("Admin user login, setting session userType to ADMIN");
+          req.session.userType = UserType.CUSTOMER;
+          console.log("Customer login, setting session userType to CUSTOMER");
         }
         
-        return done(null, adminUser);
+        console.log("Customer authentication successful", { customerId: customer.id });
+        return done(null, customer);
       } catch (error) {
+        console.error("Authentication error:", error);
         return done(error);
       }
     }));
     
     // Admin authentication is now handled by the unified local strategy
     
-    // Serialize user to session - store user type along with ID (Admin only for now)
+    // Serialize user to session - store user type along with ID for both admin and customer
     passport.serializeUser((user: any, done) => {
-      // We're only handling admin users now
-      console.log(`Serializing admin user with ID ${user.id}`);
-      done(null, { id: user.id, type: 'admin' });
+      // Determine user type from the presence of specific fields
+      // Customers have fullName field, admins have name field
+      const isCustomer = 'fullName' in user;
+      const userType = isCustomer ? 'customer' : 'admin';
+      
+      console.log(`Serializing ${userType} with ID ${user.id}`);
+      done(null, { id: user.id, type: userType });
     });
 
-    // Deserialize user from session with enhanced error handling (Admin only for now)
+    // Deserialize user from session with enhanced error handling for both admin and customer
     passport.deserializeUser(async (serialized: { id: number, type: string } | number, done) => {
       try {
         // Handle both new format (object with type) and legacy format (just ID)
         let id: number;
+        let type: string = 'admin'; // Default to admin for legacy format
         
         if (typeof serialized === 'object' && serialized !== null) {
           id = serialized.id;
+          type = serialized.type || 'admin';
         } else {
           id = serialized as number;
         }
@@ -193,10 +221,15 @@ export class AuthService {
           setTimeout(() => reject(new Error('Database timeout')), 5000);
         });
         
-        console.log(`Deserializing admin user with ID ${id}`);
+        console.log(`Deserializing ${type} with ID ${id}`);
         
-        // Only use admin user retrieval
-        const userPromise = this.storage.getAdminUserById(id);
+        // Choose the right retrieval method based on user type
+        let userPromise;
+        if (type === 'customer') {
+          userPromise = this.storage.getCustomer(id);
+        } else {
+          userPromise = this.storage.getAdminUserById(id);
+        }
         
         // Race the database query with a timeout
         const user = await Promise.race([
@@ -205,16 +238,19 @@ export class AuthService {
         ]) as any;
         
         if (!user) {
-          console.warn(`Admin user not found during session deserialization: ${id}`);
+          console.warn(`${type} not found during session deserialization: ${id}`);
           // Instead of throwing an error, just return null to force re-login
           return done(null, null);
         }
         
         // Try to update last login, but don't block if it fails
-        this.storage.updateAdminUserLastLogin(id).catch(err => {
-          console.warn('Failed to update last login time for admin:', err);
-        });
+        if (type === 'admin') {
+          this.storage.updateAdminUserLastLogin(id).catch(err => {
+            console.warn('Failed to update last login time for admin:', err);
+          });
+        }
         
+        console.log(`${type} deserialized: ${user.email}`);
         done(null, user);
       } catch (error) {
         console.error('Error deserializing user:', error);
