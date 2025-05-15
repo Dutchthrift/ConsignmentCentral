@@ -476,7 +476,7 @@ export default function OrderDetailPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              {order.items.length === 0 ? (
+              {!order.items || order.items.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No items in this order. Add your first item to get started.
                 </div>
