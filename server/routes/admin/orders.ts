@@ -168,14 +168,14 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
     }
     
     // Validate status
-    if (!status || !Object.values(OrderStatus).includes(status as OrderStatus)) {
+    if (!status || !Object.values(OrderStatus).includes(status as typeof OrderStatus[keyof typeof OrderStatus])) {
       return res.status(400).json({
         success: false,
         message: "Invalid status value"
       });
     }
     
-    const updatedOrder = await storage.updateOrder(orderId, { status: status as OrderStatus });
+    const updatedOrder = await storage.updateOrder(orderId, { status: status as typeof OrderStatus[keyof typeof OrderStatus] });
     
     if (!updatedOrder) {
       return res.status(404).json({
@@ -325,7 +325,7 @@ router.put("/:id", async (req: Request, res: Response) => {
       customerId: z.number().optional(),
       orderNumber: z.string().optional(),
       submissionDate: z.date().optional(),
-      status: z.nativeEnum(OrderStatus).optional(),
+      status: z.enum(Object.values(OrderStatus) as [string, ...string[]]).optional(),
       trackingCode: z.string().nullable().optional(),
       notes: z.string().nullable().optional(),
     }).safeParse(orderData);

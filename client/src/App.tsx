@@ -191,6 +191,16 @@ function Router() {
           allowedRoles={[UserRole.CONSIGNOR]} 
         />
         <ProtectedRoute 
+          path="/consignor/orders" 
+          component={Orders}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute 
+          path="/consignor/orders/:id" 
+          component={OrderDetail}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute 
           path="/consignor/payouts" 
           component={ConsignorPayouts}
           allowedRoles={[UserRole.CONSIGNOR]} 

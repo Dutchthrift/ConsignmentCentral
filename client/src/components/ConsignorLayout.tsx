@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { UserRound, Package, BarChart3, Settings, LogOut, History, CreditCard, PieChart, ChartBar } from "lucide-react";
+import { UserRound, Package, BarChart3, Settings, LogOut, History, CreditCard, PieChart, ChartBar, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
