@@ -81,43 +81,72 @@ export default function SetupAccount() {
       // Submit the consignor profile data to the backend
       const response = await apiRequest("POST", "/api/consignors/register", data);
       
+      // Check if the response is OK
       if (response.ok) {
-        // Parse the response to get user data
-        const userData = await response.json();
-        
-        toast({
-          title: "Account created successfully!",
-          description: "Your consignor account has been set up",
-        });
-        
-        // Store token in localStorage if provided
-        if (userData.token) {
-          localStorage.setItem("authToken", userData.token);
-        }
-        
-        // Redirect to consignor dashboard or confirmation page
-        if (userData.id) {
-          // User is automatically logged in, redirect to dashboard
-          navigate("/consignor/dashboard");
-        } else {
-          // Fall back to confirmation page if no user ID (shouldn't happen)
-          navigate("/setup-complete");
-        }
-      } else {
-        const errorData = await response.json();
-        
-        // If user already exists, show a special message
-        if (errorData.isExistingUser) {
+        try {
+          // Parse the response to get user data, with safety checks for content type
+          const contentType = response.headers.get('content-type');
+          
+          // If the response is not JSON, handle it differently
+          if (!contentType || !contentType.includes('application/json')) {
+            console.error("Server returned non-JSON response:", await response.text());
+            throw new Error("Server returned an invalid response format. Please try again.");
+          }
+          
+          const userData = await response.json();
+          
           toast({
-            title: "Account already exists",
-            description: "Please log in with your existing account",
-            variant: "destructive",
+            title: "Account created successfully!",
+            description: "Your consignor account has been set up",
           });
           
-          // Redirect to login page
-          navigate("/consignor/login");
-        } else {
-          throw new Error(errorData.message || "Failed to create account");
+          // Store token in localStorage if provided
+          if (userData.token) {
+            localStorage.setItem("authToken", userData.token);
+          }
+          
+          // Redirect to consignor dashboard or confirmation page
+          if (userData.id) {
+            // User is automatically logged in, redirect to dashboard
+            navigate("/consignor/dashboard");
+          } else {
+            // Fall back to confirmation page if no user ID (shouldn't happen)
+            navigate("/setup-complete");
+          }
+        } catch (jsonError) {
+          console.error("Error parsing JSON response:", jsonError);
+          throw new Error("Invalid response from server. Please try again.");
+        }
+      } else {
+        try {
+          // Check content type before trying to parse as JSON
+          const contentType = response.headers.get('content-type');
+          
+          if (!contentType || !contentType.includes('application/json')) {
+            // Handle non-JSON error response
+            const errorText = await response.text();
+            console.error("Server returned non-JSON error:", errorText);
+            throw new Error("Server error. Please try again later.");
+          }
+          
+          const errorData = await response.json();
+          
+          // If user already exists, show a special message
+          if (errorData.isExistingUser) {
+            toast({
+              title: "Account already exists",
+              description: "Please log in with your existing account",
+              variant: "destructive",
+            });
+            
+            // Redirect to login page
+            navigate("/consignor/login");
+          } else {
+            throw new Error(errorData.message || "Failed to create account");
+          }
+        } catch (jsonParseError) {
+          console.error("Error parsing error response:", jsonParseError);
+          throw new Error(`Server error (${response.status}). Please try again later.`);
         }
       }
     } catch (error) {

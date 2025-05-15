@@ -29,10 +29,20 @@ const consignorRegistrationSchema = z.object({
 // POST /api/consignors/register - Register a new consignor
 router.post("/register", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // Set correct content type header to ensure JSON response
+    res.setHeader('Content-Type', 'application/json');
+    
+    console.log("Consignor registration request received with data:", { 
+      email: req.body?.email,
+      hasFullName: !!req.body?.fullName,
+      hasPassword: !!req.body?.password
+    });
+    
     // Validate the request body
     const validationResult = consignorRegistrationSchema.safeParse(req.body);
     
     if (!validationResult.success) {
+      console.log("Validation failed:", validationResult.error.format());
       return res.status(400).json({
         success: false,
         message: "Validation failed",
@@ -42,11 +52,17 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
     
     const consignorData = validationResult.data;
     
+    console.log("Validated consignor data:", { 
+      email: consignorData.email,
+      payoutMethod: consignorData.payoutMethod
+    });
+    
     // Check if a user or customer with this email already exists
     const existingUser = await storage.getUserByEmail(consignorData.email);
     const existingCustomer = await storage.getCustomerByEmail(consignorData.email);
     
     if (existingUser) {
+      console.log("User already exists with email:", consignorData.email);
       return res.status(400).json({
         success: false,
         message: "A user with this email already exists. Please log in instead.",
@@ -63,6 +79,7 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
       console.log(`Using existing customer with ID ${customer.id} for registration`);
     } else {
       // Create a new customer record
+      console.log("Creating new customer record for:", consignorData.email);
       customer = await storage.createCustomer({
         name: consignorData.fullName,
         email: consignorData.email,
@@ -74,6 +91,7 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
         postalCode: null,
         country: "NL", // Default to Netherlands
       });
+      console.log("Customer created with ID:", customer.id);
     }
     
     // Hash the password
@@ -83,6 +101,7 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
     const userWithEmail = await storage.getUserByEmail(consignorData.email);
     
     if (userWithEmail) {
+      console.log("Race condition detected - user already created with email:", consignorData.email);
       return res.status(400).json({
         success: false,
         message: "A user with this email already exists. Please log in instead.",
@@ -91,6 +110,7 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
     }
     
     // Create a new user account linked to this customer
+    console.log("Creating new user account linked to customer ID:", customer.id);
     const newUser = await storage.createUser({
       email: consignorData.email,
       password: hashedPassword,
@@ -100,14 +120,18 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
       externalId: null,
       profileImageUrl: null,
       customerId: customer.id,
-      // Removed userType field as it doesn't exist in the database yet
     });
+    
+    console.log("User created with ID:", newUser.id);
     
     // Auto-login the user (create a session)
     req.login(newUser, async (err) => {
       if (err) {
         console.error("Login error after registration:", err);
-        return next(err);
+        return res.status(500).json({
+          success: false,
+          message: "Account created but login failed. Please try logging in manually.",
+        });
       }
       
       // Update last login timestamp
@@ -116,19 +140,29 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
       // Generate JWT token for API access
       const token = authService.generateToken(newUser);
       
+      console.log("Login successful, returning user data and token");
+      
       // Return success with the new user data and token
       return res.status(201).json({
-        ...newUser,
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        customerId: newUser.customerId,
         token,
         success: true,
         message: "Consignor account created successfully",
       });
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error registering consignor:", error);
+    
+    // Set content type even in error case
+    res.setHeader('Content-Type', 'application/json');
+    
     return res.status(500).json({
       success: false,
-      message: "An error occurred while registering the consignor",
+      message: error?.message || "An error occurred while registering the consignor",
     });
   }
 });
