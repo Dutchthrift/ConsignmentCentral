@@ -168,6 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: item.customer.email
         },
         pricing: item.pricing ? {
+          averageMarketPrice: item.pricing.averageMarketPrice ? item.pricing.averageMarketPrice / 100 : 0,
           estimatedSalePrice: item.pricing.suggestedListingPrice ? item.pricing.suggestedListingPrice / 100 : 0,
           yourPayout: item.pricing.suggestedPayout ? item.pricing.suggestedPayout / 100 : 0,
           commissionRate: item.pricing.commissionRate || 0
@@ -344,7 +345,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 averageMarketPrice: defaultPrice,
                 suggestedListingPrice: defaultPrice,
                 suggestedPayout: suggestedPayout,
-                commissionRate: commissionRate
+                commissionRate: commissionRate,
+                payoutType: "cash" // Default to cash payout
               });
               
               await storage.createPricing(fallbackPricing);
@@ -490,7 +492,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         averageMarketPrice: marketData.averagePrice,
         suggestedListingPrice: suggestedListingPrice,
         suggestedPayout: suggestedPayout,
-        commissionRate: commissionRate
+        commissionRate: commissionRate,
+        payoutType: "cash" // Default to cash payout
       });
       
       const pricing = await storage.createPricing(newPricing);
@@ -506,7 +509,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             averageMarketPrice: marketData.averagePrice / 100, // Convert to EUR
             suggestedListingPrice: suggestedListingPrice / 100, // Convert to EUR
             suggestedPayout: suggestedPayout / 100, // Convert to EUR
-            commissionRate: commissionRate
+            commissionRate: commissionRate,
+            payoutType: "cash" // Default to cash payout
           }
         }
       });
