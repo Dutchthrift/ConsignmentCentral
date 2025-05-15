@@ -39,6 +39,15 @@ export class DatabaseStorage implements IStorage {
   async getAllCustomers(): Promise<Customer[]> {
     return await db.select().from(customers);
   }
+  
+  async getCustomerByUserId(userId: number): Promise<Customer | undefined> {
+    // First get the user to find the customer ID
+    const user = await this.getUserById(userId);
+    if (!user || !user.customerId) return undefined;
+    
+    // Then get the customer with that ID
+    return await this.getCustomer(user.customerId);
+  }
 
   // Item methods
   async getItem(id: number): Promise<Item | undefined> {

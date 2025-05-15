@@ -7,14 +7,34 @@ const router = Router();
 // Get all orders for the current consignor
 router.get("/", requireConsignorOwnership, async (req: Request, res: Response) => {
   try {
-    if (!req.user?.customerId) {
+    // Debug the user info
+    console.log("Consignor orders route - user info:", {
+      user: req.user,
+      userId: req.user?.id,
+      customerId: req.user?.customerId,
+      isAuthenticated: req.isAuthenticated()
+    });
+    
+    // Try to get the customerId from the user object or by looking up the customer
+    let customerId: number | undefined;
+    
+    if (req.user?.customerId) {
+      // If customerId is directly on the user object
+      customerId = req.user.customerId;
+    } else if (req.user?.id) {
+      // Try to get the customer by user ID
+      const customer = await storage.getCustomerByUserId(req.user.id);
+      if (customer) {
+        customerId = customer.id;
+      }
+    }
+    
+    if (!customerId) {
       return res.status(403).json({
         success: false,
         message: "No linked customer account found"
       });
     }
-
-    const customerId = req.user.customerId;
     
     // Get orders for this specific consignor only
     const summaries = await storage.getOrdersWithDetailsByCustomerId(customerId);
@@ -68,14 +88,34 @@ router.get("/:id", requireConsignorOwnership, async (req: Request, res: Response
       });
     }
     
-    if (!req.user?.customerId) {
+    // Debug the user info
+    console.log("Consignor single order route - user info:", {
+      user: req.user,
+      userId: req.user?.id,
+      customerId: req.user?.customerId,
+      isAuthenticated: req.isAuthenticated()
+    });
+    
+    // Try to get the customerId from the user object or by looking up the customer
+    let customerId: number | undefined;
+    
+    if (req.user?.customerId) {
+      // If customerId is directly on the user object
+      customerId = req.user.customerId;
+    } else if (req.user?.id) {
+      // Try to get the customer by user ID
+      const customer = await storage.getCustomerByUserId(req.user.id);
+      if (customer) {
+        customerId = customer.id;
+      }
+    }
+    
+    if (!customerId) {
       return res.status(403).json({
         success: false,
         message: "No linked customer account found"
       });
     }
-
-    const customerId = req.user.customerId;
     
     // Get the order details
     const order = await storage.getOrderWithDetails(orderId);
