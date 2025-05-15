@@ -112,7 +112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Only keep the consignor registration route at its original path
   // and don't add the additional admin path which conflicts with adminRoutes
-  app.post("/api/consignors/register", consignorRegistrationRoutes);
+  app.use("/api/consignors", consignorRegistrationRoutes);
   
   // Register ML training routes
   app.use("/api/ml", mlTrainingRoutes);
