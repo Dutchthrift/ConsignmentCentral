@@ -77,12 +77,12 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
     // Create a new customer record (now handles their own authentication)
     console.log("Creating new customer record for:", consignorData.email);
     const customer = await storage.createCustomer({
-      fullName: consignorData.fullName,
+      name: consignorData.fullName, // Match DB column name
       email: consignorData.email,
       password: hashedPassword,
       phone: consignorData.phone || null,
-      payoutMethod: consignorData.payoutMethod,
-      iban: consignorData.iban || null,
+      state: consignorData.payoutMethod, // Used for payout method 
+      postal_code: consignorData.iban || null, // Used for IBAN
       address: null,
       city: null,
       country: "NL", // Default to Netherlands
@@ -112,7 +112,7 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
       return res.status(201).json({
         id: customer.id,
         email: customer.email,
-        fullName: customer.fullName, // Using fullName instead of name to match schema
+        fullName: customer.name, // Map DB column 'name' to 'fullName' for the client
         role: customer.role,
         token,
         success: true,

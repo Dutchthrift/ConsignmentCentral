@@ -47,15 +47,15 @@ export const customers = pgTable("customers", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(), // Hashed password
-  fullName: text("name").notNull(), // Renamed from name for clarity
+  name: text("name").notNull(), // This is the actual column name in the database
   phone: text("phone"),
-  payoutMethod: text("state"), // Repurposed state field for payout_method
-  iban: text("postal_code"), // Repurposed postal_code field for iban
+  state: text("state"), // This is used for payout method
+  postal_code: text("postal_code"), // This is used for IBAN
   address: text("address"),
   city: text("city"),
   country: text("country").default("NL"),
   role: text("role").notNull().default(UserRole.CONSIGNOR),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertCustomerSchema = createInsertSchema(customers).omit({
