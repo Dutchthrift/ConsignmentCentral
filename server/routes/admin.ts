@@ -134,8 +134,23 @@ router.get("/commission-calculator", (req: Request, res: Response) => {
 // GET /api/admin/consignors - list all consignors
 router.get("/consignors", async (req: Request, res: Response) => {
   try {
+    console.log('GET /api/admin/consignors: Authentication debug info:', {
+      isAuthenticated: req.isAuthenticated(),
+      hasUser: !!req.user,
+      sessionID: req.sessionID,
+      userType: req.session?.userType,
+      userRole: req.user?.role,
+      method: req.method,
+      url: req.originalUrl,
+      headers: {
+        authorization: req.headers.authorization ? 'present' : 'not present',
+        cookie: req.headers.cookie ? 'present' : 'not present'
+      }
+    });
+    
     // Get all users with role consignor
     const consignorUsers = await storage.getUsersByRole('consignor');
+    console.log(`Found ${consignorUsers.length} consignors in the database`);
     
     // Simplified version - just return users with no additional processing
     const consignors = consignorUsers.map(user => {
