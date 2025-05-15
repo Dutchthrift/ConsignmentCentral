@@ -359,7 +359,9 @@ export class AuthService {
 
   // Check if the user is an admin
   isAdmin(req: Request): boolean {
-    return req.isAuthenticated() && req.user && (req.user as User).role === 'admin';
+    return req.isAuthenticated() && 
+           (req.session?.userType === UserType.ADMIN || 
+            (req.user && (req.user as any).role === UserRole.ADMIN));
   }
 }
 

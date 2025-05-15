@@ -3,6 +3,7 @@ import type { Express } from 'express';
 import passport from 'passport';
 import { IStorage } from '../storage';
 import AuthService from '../services/auth.service';
+import { UserType, UserRole } from '@shared/schema';
 
 export function registerAuthRoutes(app: Express, storage: IStorage) {
   const authService = new AuthService(storage);
@@ -14,7 +15,7 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
   // Create a router for auth routes
   const router = Router();
   
-  // User info endpoint - get current logged in user
+  // User info endpoint - get current logged in user (admin or customer)
   router.get('/api/auth/user', (req: Request, res: Response) => {
     // Log session details for debugging (only sensitive info is session ID)
     console.log('Session debug:', {
@@ -22,6 +23,7 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
       sessionID: req.sessionID, 
       isAuthenticated: req.isAuthenticated(),
       userPresent: !!req.user,
+      userType: req.session?.userType,
       cookies: req.headers.cookie
     });
     
@@ -36,11 +38,20 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     const userData = req.user;
     
     // Log what we're returning
-    console.log('Returning user data:', { userId: (userData as any)?.id });
+    console.log('Returning user data:', { 
+      userId: (userData as any)?.id,
+      userType: req.session?.userType
+    });
+    
+    // Return the user object with userType added
+    const userWithType = {
+      ...userData as any,
+      userType: req.session?.userType
+    };
     
     // Return the user object directly without wrapping
     // This is what the frontend is expecting based on the client code
-    res.json(userData);
+    res.json(userWithType);
   });
   
   // Login status endpoint
@@ -52,10 +63,25 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     });
   });
   
-  // Logout endpoint
+  // Logout endpoint - works for both admin and regular users
   router.post('/api/auth/logout', (req: Request, res: Response, next: NextFunction) => {
+    // Save some info for logging before logout
+    const userInfo = {
+      userType: req.session?.userType,
+      userId: req.user?.id,
+      isAuthenticated: req.isAuthenticated()
+    };
+    
     req.logout((err) => {
       if (err) { return next(err); }
+      
+      // Clear user type from session
+      if (req.session) {
+        req.session.userType = undefined;
+      }
+      
+      console.log('Logout successful:', userInfo);
+      
       res.json({ success: true });
     });
   });
@@ -92,7 +118,7 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     }
   );
   
-  // Local authentication routes
+  // Customer registration route
   router.post('/api/auth/register', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { email, password, name } = req.body;
@@ -113,10 +139,11 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         password: hashedPassword,
         name,
         provider: 'local',
-        role: 'consignor',
+        role: UserRole.CONSIGNOR,
         externalId: null,
         profileImageUrl: null,
         customerId: null,
+        userType: UserType.CUSTOMER,
         // createdAt is added automatically by the database schema
       });
       
@@ -126,25 +153,42 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
           return next(err);
         }
         
-        console.log('Registration successful:', { userId: user.id, role: user.role, name: user.name });
+        // Set user type in session
+        if (req.session) {
+          req.session.userType = UserType.CUSTOMER;
+        }
         
-        // Return user directly (client expects the user object directly, not wrapped in data property)
-        return res.status(201).json(user);
+        console.log('Registration successful:', { 
+          userId: user.id, 
+          role: user.role, 
+          name: user.name,
+          userType: UserType.CUSTOMER
+        });
+        
+        // Generate token
+        const token = authService.generateToken(user);
+        
+        // Return user directly with token
+        return res.status(201).json({
+          ...user,
+          token
+        });
       });
     } catch (error) {
       next(error);
     }
   });
   
+  // Customer login endpoint
   router.post('/api/auth/login', (req: Request, res: Response, next: NextFunction) => {
     // Log the incoming request for debugging
-    console.log('Login attempt:', { 
+    console.log('Customer login attempt:', { 
       email: req.body.email,
       hasSession: !!req.session,
       sessionID: req.sessionID
     });
     
-    passport.authenticate('local', (err: Error | null, user: any, info: { message: string }) => {
+    passport.authenticate('customer-local', (err: Error | null, user: any, info: { message: string }) => {
       if (err) {
         console.error('Auth error:', err);
         return next(err);
@@ -164,18 +208,29 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
           return next(err);
         }
         
+        // Set user type in session
+        if (req.session) {
+          req.session.userType = UserType.CUSTOMER;
+        }
+        
         // Debug session after login
-        console.log('After login session debug:', {
+        console.log('After customer login session debug:', {
           hasSession: !!req.session,
           sessionID: req.sessionID,
           isAuthenticated: req.isAuthenticated(),
-          userPresent: !!req.user
+          userPresent: !!req.user,
+          userType: req.session?.userType
         });
         
         // Update last login timestamp
         storage.updateUserLastLogin(user.id).catch(console.error);
         
-        console.log('Login successful:', { userId: user.id, role: user.role, name: user.name });
+        console.log('Customer login successful:', { 
+          userId: user.id, 
+          role: user.role, 
+          name: user.name,
+          userType: UserType.CUSTOMER
+        });
         
         // Generate auth token
         try {
@@ -195,6 +250,135 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     })(req, res, next);
   });
   
+  // Admin login endpoint
+  router.post('/api/auth/admin/login', (req: Request, res: Response, next: NextFunction) => {
+    // Log the incoming request for debugging
+    console.log('Admin login attempt:', { 
+      email: req.body.email,
+      hasSession: !!req.session,
+      sessionID: req.sessionID
+    });
+    
+    passport.authenticate('admin-local', (err: Error | null, adminUser: any, info: { message: string }) => {
+      if (err) {
+        console.error('Admin auth error:', err);
+        return next(err);
+      }
+      
+      if (!adminUser) {
+        console.log('Admin auth failed:', info?.message);
+        return res.status(401).json({
+          success: false,
+          message: info?.message || 'Invalid admin credentials'
+        });
+      }
+      
+      req.login(adminUser, (err) => {
+        if (err) {
+          console.error('Admin login error:', err);
+          return next(err);
+        }
+        
+        // Set admin type in session
+        if (req.session) {
+          req.session.userType = UserType.ADMIN;
+        }
+        
+        // Debug session after login
+        console.log('After admin login session debug:', {
+          hasSession: !!req.session,
+          sessionID: req.sessionID,
+          isAuthenticated: req.isAuthenticated(),
+          userPresent: !!req.user,
+          userType: req.session?.userType
+        });
+        
+        // Update last login timestamp
+        storage.updateAdminUserLastLogin(adminUser.id).catch(console.error);
+        
+        console.log('Admin login successful:', { 
+          adminId: adminUser.id, 
+          role: adminUser.role, 
+          name: adminUser.name,
+          userType: UserType.ADMIN
+        });
+        
+        // Generate admin token
+        try {
+          const token = authService.generateAdminToken(adminUser);
+          
+          // Return admin user with token
+          return res.json({
+            ...adminUser,
+            token: token
+          });
+        } catch (tokenError) {
+          console.error('Admin token generation error:', tokenError);
+          // If token generation fails, still return the admin user without token
+          return res.json(adminUser);
+        }
+      });
+    })(req, res, next);
+  });
+  
+  // Admin registration endpoint - this should be secured in production
+  router.post('/api/auth/admin/register', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email, password, name } = req.body;
+      
+      // Check if admin user already exists
+      const existingAdmin = await storage.getAdminUserByEmail(email);
+      if (existingAdmin) {
+        return res.status(400).json({
+          success: false,
+          message: 'Admin user already exists'
+        });
+      }
+      
+      // Hash password and create admin user
+      const hashedPassword = await authService.hashPassword(password);
+      const adminUser = await storage.createAdminUser({
+        email,
+        password: hashedPassword,
+        name,
+        provider: 'local',
+        role: UserRole.ADMIN,
+        externalId: null,
+        profileImageUrl: null,
+        // createdAt is added automatically by the database schema
+      });
+      
+      // Log the admin in
+      req.login(adminUser, (err) => {
+        if (err) {
+          return next(err);
+        }
+        
+        // Set admin type in session
+        if (req.session) {
+          req.session.userType = UserType.ADMIN;
+        }
+        
+        console.log('Admin registration successful:', { 
+          adminId: adminUser.id, 
+          role: adminUser.role, 
+          name: adminUser.name 
+        });
+        
+        // Generate admin token
+        const token = authService.generateAdminToken(adminUser);
+        
+        // Return admin user directly with token
+        return res.status(201).json({
+          ...adminUser,
+          token
+        });
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Admin check
   router.get('/api/auth/admin-check', (req: Request, res: Response) => {
     res.json({
