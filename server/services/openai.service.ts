@@ -19,7 +19,7 @@ export interface ProductAnalysisResult {
 export async function analyzeProduct(
   title: string,
   description: string,
-  imageBase64: string
+  imageInput: string
 ): Promise<ProductAnalysisResult> {
   try {
     // Prepare the prompt with specific instructions
@@ -47,6 +47,16 @@ export async function analyzeProduct(
     }
     `;
 
+    // Check if the imageInput is a URL or base64
+    const isUrl = imageInput.startsWith('http');
+    
+    // Set up the image URL based on the format
+    const imageUrl = isUrl 
+      ? imageInput 
+      : `data:image/jpeg;base64,${imageInput}`;
+    
+    console.log("Analyzing image:", isUrl ? "URL format" : "Base64 format");
+    
     // Call GPT-4 Vision API
     // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
@@ -62,7 +72,7 @@ export async function analyzeProduct(
             {
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`
+                url: imageUrl
               }
             }
           ],
