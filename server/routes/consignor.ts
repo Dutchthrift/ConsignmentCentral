@@ -18,13 +18,14 @@ const ensureConsignor = async (req: Request, res: Response, next: NextFunction) 
     const decoded = authService.verifyToken(token);
     if (decoded) {
       try {
-        // If token is valid, find the user
-        const user = await storage.getUserById(decoded.id);
-        if (user) {
-          // Set the user in the request
-          req.user = user;
+        // If token is valid, find the customer (not user)
+        // This is the key fix - we're checking for customers, not users
+        const customer = await storage.getCustomer(decoded.id);
+        if (customer) {
+          // Set the customer in the request
+          req.user = customer;
           
-          if (user.role !== 'consignor') {
+          if (customer.role !== 'consignor') {
             return res.status(403).json({
               success: false,
               message: "Access denied. Consignor role required.",
@@ -34,7 +35,7 @@ const ensureConsignor = async (req: Request, res: Response, next: NextFunction) 
           return next();
         }
       } catch (error) {
-        console.error("Error verifying JWT user:", error);
+        console.error("Error verifying JWT customer:", error);
       }
     }
   }
