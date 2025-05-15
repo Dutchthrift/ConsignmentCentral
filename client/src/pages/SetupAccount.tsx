@@ -82,16 +82,43 @@ export default function SetupAccount() {
       const response = await apiRequest("POST", "/api/consignors/register", data);
       
       if (response.ok) {
+        // Parse the response to get user data
+        const userData = await response.json();
+        
         toast({
           title: "Account created successfully!",
           description: "Your consignor account has been set up",
         });
         
-        // Redirect to confirmation page
-        navigate("/setup-complete");
+        // Store token in localStorage if provided
+        if (userData.token) {
+          localStorage.setItem("authToken", userData.token);
+        }
+        
+        // Redirect to consignor dashboard or confirmation page
+        if (userData.id) {
+          // User is automatically logged in, redirect to dashboard
+          navigate("/consignor/dashboard");
+        } else {
+          // Fall back to confirmation page if no user ID (shouldn't happen)
+          navigate("/setup-complete");
+        }
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create account");
+        
+        // If user already exists, show a special message
+        if (errorData.isExistingUser) {
+          toast({
+            title: "Account already exists",
+            description: "Please log in with your existing account",
+            variant: "destructive",
+          });
+          
+          // Redirect to login page
+          navigate("/consignor/login");
+        } else {
+          throw new Error(errorData.message || "Failed to create account");
+        }
       }
     } catch (error) {
       console.error("Error creating account:", error);
