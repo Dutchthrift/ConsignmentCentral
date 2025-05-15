@@ -69,15 +69,30 @@ export default function OrdersPage() {
     data: orders,
     isLoading,
     error,
+    refetch
   } = useQuery<{ success: boolean; data: OrderSummary[] }>({
     queryKey: ["/api/admin/orders"],
     gcTime: 5 * 60 * 1000,
     staleTime: 1 * 60 * 1000,
+    retry: 2,
+    retryDelay: 1000
   });
   
+  // Debugging the orders data
+  useEffect(() => {
+    if (orders) {
+      console.log("Orders data retrieved:", { 
+        success: orders.success, 
+        dataCount: orders.data?.length || 0,
+        firstItem: orders.data?.[0] || null 
+      });
+    }
+  }, [orders]);
+
   // Handle errors with a useEffect hook
   useEffect(() => {
     if (error) {
+      console.error("Error loading orders:", error);
       toast({
         title: "Error",
         description: "Failed to load orders. Please try again.",
@@ -103,8 +118,8 @@ export default function OrdersPage() {
     }
   };
 
-  // Filter and sort orders
-  const filteredOrders = orders?.data
+  // Filter and sort orders - safely handle potentially missing data
+  const filteredOrders = orders?.success && orders?.data
     ? orders.data.filter(
         (order: OrderSummary) =>
           order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -115,8 +130,13 @@ export default function OrdersPage() {
       )
     : [];
 
+  // Log filtered orders for debugging  
+  useEffect(() => {
+    console.log(`Filtered ${filteredOrders.length} orders based on search: "${searchTerm}"`);
+  }, [filteredOrders.length, searchTerm]);
+
   // Sort orders based on current sort settings
-  const sortedOrders = [...(filteredOrders || [])].sort((a: OrderSummary, b: OrderSummary) => {
+  const sortedOrders = [...filteredOrders].sort((a: OrderSummary, b: OrderSummary) => {
     if (sortColumn === "date") {
       return sortDirection === "asc"
         ? new Date(a.submissionDate).getTime() - new Date(b.submissionDate).getTime()
