@@ -100,6 +100,7 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
       externalId: null,
       profileImageUrl: null,
       customerId: customer.id,
+      // Removed userType field as it doesn't exist in the database yet
     });
     
     // Auto-login the user (create a session)

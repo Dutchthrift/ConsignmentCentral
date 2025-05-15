@@ -143,7 +143,7 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
         externalId: null,
         profileImageUrl: null,
         customerId: null,
-        userType: UserType.CUSTOMER,
+        // userType field removed as it doesn't exist in database yet
         // createdAt is added automatically by the database schema
       });
       

@@ -1,0 +1,53 @@
+
+✅ Replit Consignment App – Diagnostic Checklist: Account Creation & Role Access
+
+Use this checklist to troubleshoot why new accounts cannot be created and data is not visible in the dashboard.
+
+1. 🔐 AUTH FLOW
+
+[ ] Are you distinguishing between "admin" and "consignor" login in the login controller?
+[ ] On login, do you store the correct role in session: req.session.userType = "admin" or "consignor"?
+[ ] On signup (setup-account), are new accounts saved to the **Customers** collection, not Users?
+
+2. 📁 DATABASE STRUCTURE
+
+[ ] Is the "Users" DB only storing admin accounts?
+[ ] Is the "Customers" DB used for consignors only, and includes fields like:
+    - id
+    - name
+    - email
+    - passwordHash
+    - consignedItems: []
+
+[ ] Are you using consistent ID references (like customerId or email) when linking consigned items?
+
+3. 🧾 ACCOUNT CREATION
+
+[ ] Does the form at `/setup-account`:
+    - Include all required fields (name, email, password)?
+    - Hash the password before saving?
+    - Save the new customer in the correct DB?
+    - Redirect the user after creation?
+
+[ ] Do you auto-log the customer in after signup?
+    - Check req.session.customerId is set
+    - Check req.session.userType = "consignor"
+
+4. 🔄 DASHBOARD DATA FETCH
+
+[ ] Does `/dashboard/:id` verify that the logged-in customer matches the ID in the URL?
+[ ] Does it read from the **Customers** DB, not Users?
+[ ] Does it pull `consignedItems` based on session or customerId?
+
+5. 🚫 ACCESS CONTROL
+
+[ ] Are you using `requireConsignor` middleware for dashboard routes?
+[ ] Are customers prevented from accessing each other's dashboards?
+[ ] Are admins blocked from accessing consignor-only routes?
+
+6. ✅ SUGGESTED FIXES
+
+[ ] Create a shared auth service to check role and user-type
+[ ] Move all customer creation logic into a controller: `createCustomer()`
+[ ] Log all session values after login/signup to confirm they're set correctly
+[ ] Temporarily console.log user data fetched on dashboard load
