@@ -4,7 +4,7 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as AppleStrategy } from 'passport-apple';
 import { IStorage } from '../storage';
 import { Request, Response, NextFunction } from 'express';
-import { User, AdminUser, UserType, UserRole } from '@shared/schema';
+import { User, AdminUser, Customer, UserType, UserRole } from '@shared/schema';
 import SessionService from './session.service';
 import { scrypt, randomBytes, timingSafeEqual, createHmac } from 'crypto';
 import { promisify } from 'util';

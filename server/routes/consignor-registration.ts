@@ -70,62 +70,31 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
       });
     }
     
-    // Create or get existing customer record
-    let customer;
-    
-    if (existingCustomer) {
-      // Use the existing customer
-      customer = existingCustomer;
-      console.log(`Using existing customer with ID ${customer.id} for registration`);
-    } else {
-      // Create a new customer record
-      console.log("Creating new customer record for:", consignorData.email);
-      customer = await storage.createCustomer({
-        name: consignorData.fullName,
-        email: consignorData.email,
-        phone: consignorData.phone || null,
-        // Store payout details in proper fields
-        address: null,
-        city: null,
-        state: consignorData.payoutMethod, // Store payment method in state field temporarily
-        postalCode: null,
-        country: "NL", // Default to Netherlands
-      });
-      console.log("Customer created with ID:", customer.id);
-    }
-    
+    // Create a new customer record directly with proper fields
     // Hash the password
     const hashedPassword = await authService.hashPassword(consignorData.password);
     
-    // Double check if a user with this email exists (race condition protection)
-    const userWithEmail = await storage.getUserByEmail(consignorData.email);
-    
-    if (userWithEmail) {
-      console.log("Race condition detected - user already created with email:", consignorData.email);
-      return res.status(400).json({
-        success: false,
-        message: "A user with this email already exists. Please log in instead.",
-        isExistingUser: true,
-      });
-    }
-    
-    // Create a new user account linked to this customer
-    console.log("Creating new user account linked to customer ID:", customer.id);
-    const newUser = await storage.createUser({
+    // Create a new customer record (now handles their own authentication)
+    console.log("Creating new customer record for:", consignorData.email);
+    const customer = await storage.createCustomer({
+      fullName: consignorData.fullName,
       email: consignorData.email,
       password: hashedPassword,
-      name: consignorData.fullName,
-      provider: AuthProvider.LOCAL,
+      phone: consignorData.phone || null,
+      payoutMethod: consignorData.payoutMethod,
+      iban: consignorData.iban || null,
+      address: null,
+      city: null,
+      country: "NL", // Default to Netherlands
       role: UserRole.CONSIGNOR,
-      externalId: null,
-      profileImageUrl: null,
-      customerId: customer.id,
     });
+    console.log("Customer created with ID:", customer.id);
     
-    console.log("User created with ID:", newUser.id);
+    // Auto-login the customer (create a session)
+    // Since we've simplified our auth model, we now use the customer as the authenticated user
+    console.log("Creating session for new customer ID:", customer.id);
     
-    // Auto-login the user (create a session)
-    req.login(newUser, async (err) => {
+    req.login(customer, async (err) => {
       if (err) {
         console.error("Login error after registration:", err);
         return res.status(500).json({
@@ -134,21 +103,17 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
         });
       }
       
-      // Update last login timestamp
-      await storage.updateUserLastLogin(newUser.id);
-      
       // Generate JWT token for API access
-      const token = authService.generateToken(newUser);
+      const token = authService.generateToken(customer);
       
-      console.log("Login successful, returning user data and token");
+      console.log("Login successful, returning customer data and token");
       
-      // Return success with the new user data and token
+      // Return success with the new customer data and token
       return res.status(201).json({
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        role: newUser.role,
-        customerId: newUser.customerId,
+        id: customer.id,
+        email: customer.email,
+        fullName: customer.fullName, // Using fullName instead of name to match schema
+        role: customer.role,
         token,
         success: true,
         message: "Consignor account created successfully",
