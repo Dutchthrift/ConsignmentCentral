@@ -403,7 +403,9 @@ export const users = pgTable("users", {
   lastLogin: timestamp("last_login").defaultNow(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   customerId: integer("customer_id").references(() => customers.id),
-  userType: text("user_type").default(UserType.CUSTOMER), // New field to distinguish users
+  // userType field is commented out as it doesn't exist in the database yet
+  // Will be added in a future migration
+  // userType: text("user_type").default(UserType.CUSTOMER),
 });
 
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
