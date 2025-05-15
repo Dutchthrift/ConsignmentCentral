@@ -61,11 +61,11 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
     const existingUser = await storage.getUserByEmail(consignorData.email);
     const existingCustomer = await storage.getCustomerByEmail(consignorData.email);
     
-    if (existingUser) {
-      console.log("User already exists with email:", consignorData.email);
+    if (existingUser || existingCustomer) {
+      console.log("User/Customer already exists with email:", consignorData.email);
       return res.status(400).json({
         success: false,
-        message: "A user with this email already exists. Please log in instead.",
+        message: "An account with this email already exists. Please log in instead.",
         isExistingUser: true,
       });
     }
