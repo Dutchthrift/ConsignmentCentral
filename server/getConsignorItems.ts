@@ -80,6 +80,7 @@ export async function getConsignorItems(customerId: number) {
         updatedAt: item.updatedAt ? item.updatedAt.toISOString() : null,
         
         // Pricing details
+        averageMarketPrice: itemPricing?.averageMarketPrice,
         suggestedListingPrice: itemPricing?.suggestedListingPrice,
         commissionRate: itemPricing?.commissionRate,
         suggestedPayout: itemPricing?.suggestedPayout,

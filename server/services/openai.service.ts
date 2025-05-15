@@ -19,7 +19,7 @@ export interface ProductAnalysisResult {
 export async function analyzeProduct(
   title: string,
   description: string,
-  imageInput: string
+  imageInput: string | null | undefined
 ): Promise<ProductAnalysisResult> {
   try {
     // Prepare the prompt with specific instructions
@@ -47,6 +47,20 @@ export async function analyzeProduct(
     }
     `;
 
+    // If no image is provided, use a title-only analysis approach
+    if (!imageInput) {
+      console.log("No image provided, performing title-only analysis");
+      // Return a simplified analysis based on the title
+      return {
+        productType: title.toLowerCase().includes("t-shirt") ? "Clothing" : "Unknown",
+        brand: "Unknown",
+        model: "Unknown",
+        condition: "Unknown",
+        accessories: [],
+        additionalNotes: "Analysis performed based on title only, no image provided."
+      };
+    }
+    
     // Check if the imageInput is a URL or base64
     const isUrl = imageInput.startsWith('http');
     
