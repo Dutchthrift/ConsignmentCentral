@@ -69,6 +69,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== API Routes =====
   
+  // Admin auth test route (public route for debugging only)
+  app.use("/api/admin-auth-test", adminAuthTestRoutes);
+  
   // ROOT API route - service health check
   app.get("/api", (req, res) => {
     res.json({ 

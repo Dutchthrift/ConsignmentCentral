@@ -37,6 +37,7 @@ import ConsignorInsights from "@/pages/ConsignorInsights";
 import Layout from "@/components/Layout";
 import StorefrontLayout from "@/components/StorefrontLayout";
 import ConsignorLayout from "@/components/ConsignorLayout";
+import TokenTestPage from "@/pages/token-test-page";
 // No layout for login pages - they have their own interface
 
 function Router() {
@@ -234,6 +235,9 @@ function Router() {
         
         {/* System Health Check - publicly accessible */}
         <Route path="/system-health" component={SystemHealth} />
+        
+        {/* Token Test Page - for debugging */}
+        <Route path="/token-test" component={TokenTestPage} />
         
         {/* 404 Page */}
         <Route component={NotFound} />
