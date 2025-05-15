@@ -86,6 +86,18 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
           </Button>
           
           <Button
+            variant={location === "/consignor/orders" ? "default" : "ghost"}
+            size="sm"
+            className="w-full justify-start"
+            asChild
+          >
+            <Link to="/consignor/orders">
+              <ShoppingBag className="mr-2 h-4 w-4" />
+              Orders
+            </Link>
+          </Button>
+          
+          <Button
             variant={location === "/consignor/history" ? "default" : "ghost"}
             size="sm"
             className="w-full justify-start"
@@ -216,6 +228,18 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
               <Link to="/consignor/items" onClick={() => setIsMenuOpen(false)}>
                 <Package className="mr-2 h-4 w-4" />
                 My Items
+              </Link>
+            </Button>
+            
+            <Button
+              variant={location === "/consignor/orders" ? "default" : "ghost"}
+              size="sm"
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/consignor/orders" onClick={() => setIsMenuOpen(false)}>
+                <ShoppingBag className="mr-2 h-4 w-4" />
+                Orders
               </Link>
             </Button>
             

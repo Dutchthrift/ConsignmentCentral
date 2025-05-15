@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, useLocation } from "wouter";
+import React, { useState } from "react";
+import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -105,20 +105,31 @@ export default function OrderDetailPage() {
     error,
   } = useQuery<{ success: boolean; data: OrderWithDetails }>({
     queryKey: ["/api/admin/orders", id],
-    onSuccess: (data: { success: boolean; data: OrderWithDetails }) => {
-      setOrderStatus(data.data.status);
-      if (data.data.trackingCode) {
-        setTrackingCode(data.data.trackingCode);
+    // Use latest TanStack Query v5 format for callbacks 
+    gcTime: 5 * 60 * 1000,
+    staleTime: 1 * 60 * 1000,
+  });
+  
+  // Set up state after data is loaded
+  React.useEffect(() => {
+    if (orderData?.data) {
+      setOrderStatus(orderData.data.status);
+      if (orderData.data.trackingCode) {
+        setTrackingCode(orderData.data.trackingCode);
       }
-    },
-    onError: (err: Error) => {
+    }
+  }, [orderData]);
+  
+  // Handle error with toast
+  React.useEffect(() => {
+    if (error) {
       toast({
         title: "Error",
         description: "Failed to load order details. Please try again.",
         variant: "destructive",
       });
-    },
-  });
+    }
+  }, [error, toast]);
 
   const order = orderData?.data;
 
@@ -477,7 +488,7 @@ export default function OrderDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {order.items.map((item) => (
+                      {order.items.map((item: Item & { pricing?: Pricing, analysis?: Analysis, shipping?: Shipping }) => (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">
                             <Link
