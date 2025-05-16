@@ -271,10 +271,10 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
                   Submitted: {format(new Date(item.createdAt), "MMMM dd, yyyy")}
                 </div>
                 
-                {item.brand && (
+                {customer && (
                   <div className="flex items-center text-sm">
                     <Tag className="h-4 w-4 mr-2 text-muted-foreground" />
-                    Brand: <span className="font-medium ml-1">{item.brand}</span>
+                    Consignor: <span className="font-medium ml-1">{customer.name}</span>
                   </div>
                 )}
                 
@@ -316,6 +316,83 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
               </div>
             )}
             
+            {/* Analysis section if available */}
+            {analysis && (
+              <div className="bg-blue-50 p-4 rounded-md mt-4 border border-blue-100">
+                <h4 className="text-sm font-medium mb-1 text-blue-900">Item Analysis</h4>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                  {analysis.brand && (
+                    <div className="text-sm">
+                      <span className="font-medium">Brand:</span> {analysis.brand}
+                    </div>
+                  )}
+                  
+                  {analysis.model && (
+                    <div className="text-sm">
+                      <span className="font-medium">Model:</span> {analysis.model}
+                    </div>
+                  )}
+                  
+                  {analysis.category && (
+                    <div className="text-sm">
+                      <span className="font-medium">Category:</span> {analysis.category}
+                    </div>
+                  )}
+                  
+                  {analysis.condition && (
+                    <div className="text-sm">
+                      <span className="font-medium">Condition:</span> {analysis.condition}
+                    </div>
+                  )}
+                </div>
+                
+                {analysis.features && analysis.features.length > 0 && (
+                  <div className="mt-2">
+                    <span className="text-sm font-medium">Features:</span>
+                    <ul className="list-disc pl-5 mt-1 text-sm">
+                      {analysis.features.map((feature, idx) => (
+                        <li key={idx}>{feature}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Pricing section if available */}
+            {pricing && (
+              <div className="bg-green-50 p-4 rounded-md mt-4 border border-green-100">
+                <h4 className="text-sm font-medium mb-1 text-green-900">Pricing Details</h4>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                  {pricing.suggestedListingPrice !== undefined && (
+                    <div className="text-sm">
+                      <span className="font-medium">Suggested Price:</span> {formatCurrency(pricing.suggestedListingPrice)}
+                    </div>
+                  )}
+                  
+                  {pricing.commissionRate !== undefined && (
+                    <div className="text-sm">
+                      <span className="font-medium">Commission Rate:</span> {pricing.commissionRate}%
+                    </div>
+                  )}
+                  
+                  {pricing.finalPayout !== undefined && (
+                    <div className="text-sm">
+                      <span className="font-medium">Estimated Payout:</span> {formatCurrency(pricing.finalPayout)}
+                    </div>
+                  )}
+                  
+                  {pricing.payoutType && (
+                    <div className="text-sm">
+                      <span className="font-medium">Payout Type:</span> {pricing.payoutType}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
             {/* Additional item info if available */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               {item.sku && (
@@ -329,20 +406,6 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
                 <div className="p-3 bg-muted/20 rounded-md">
                   <h4 className="text-sm font-medium">Serial Number</h4>
                   <p className="text-sm font-mono">{item.serialNumber}</p>
-                </div>
-              )}
-              
-              {item.model && (
-                <div className="p-3 bg-muted/20 rounded-md">
-                  <h4 className="text-sm font-medium">Model</h4>
-                  <p className="text-sm">{item.model}</p>
-                </div>
-              )}
-              
-              {item.manufacturer && (
-                <div className="p-3 bg-muted/20 rounded-md">
-                  <h4 className="text-sm font-medium">Manufacturer</h4>
-                  <p className="text-sm">{item.manufacturer}</p>
                 </div>
               )}
             </div>
