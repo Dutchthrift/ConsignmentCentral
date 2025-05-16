@@ -8,22 +8,17 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-console.log('Using Neon fallback connection for development');
+console.log('Using Supabase connection pooling');
 
-// Temporarily fall back to Neon while we develop a working Supabase solution
-// This ensures the application continues to function during the transition
-import { neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
-neonConfig.webSocketConstructor = ws;
-
-// Use the existing Neon database for now
+// Use Supabase connection pooling which provides better reliability
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: true,
-  max: 1,
-  idleTimeoutMillis: 120000,
-  connectionTimeoutMillis: 30000,
-  allowExitOnIdle: false
+  ssl: {
+    rejectUnauthorized: false
+  },
+  max: 3, // Reasonable pool size for development
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 30000
 });
 
 // Add error handler to prevent app crashes on connection issues
