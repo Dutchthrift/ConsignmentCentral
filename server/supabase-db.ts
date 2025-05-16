@@ -1,62 +1,58 @@
+import 'dotenv/config';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import * as schema from "@shared/schema";
-import 'dotenv/config';
+import * as schema from '@shared/schema';
 
-// Validate that we have a database URL
+// Parse the DATABASE_URL to get the connection parameters
+// This will be updated to use Supabase connection string
 if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to set up the Supabase database?"
-  );
+  throw new Error('DATABASE_URL environment variable is required for database connection');
 }
 
-// Create a connection pool with conservative settings
+// Create a connection pool with proper SSL configuration for Supabase
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 5, // Increased slightly for Supabase which handles more connections
-  idleTimeoutMillis: 30000, 
-  connectionTimeoutMillis: 10000,
-  ssl: { rejectUnauthorized: false } // Required for Supabase connections
+  ssl: {
+    rejectUnauthorized: false, // Less strict SSL validation for compatibility
+  },
+  // Connection pool configuration optimized for stability
+  max: 5, // Fewer connections to avoid overwhelming the server
+  idleTimeoutMillis: 60000, // Keep idle clients longer (1 minute) 
+  connectionTimeoutMillis: 10000, // Longer timeout (10 seconds)
+  allowExitOnIdle: true, // Allow pool to clean up on idle
 });
 
-// Add error handler to prevent app crashes on connection issues
+// Logging for connection errors
 pool.on('error', (err) => {
   console.error('Unexpected database pool error:', err);
+  
+  // Schedule a reconnection attempt
+  const reconnectDelay = Math.floor(Math.random() * 5000) + 5000; // 5-10 seconds
+  console.log(`Scheduling database reconnection attempt in ${reconnectDelay}ms`);
+  
+  setTimeout(() => {
+    console.log('Attempting to reconnect to database...');
+    pool.connect()
+      .then(client => {
+        console.log('Successfully reconnected to database');
+        client.release();
+      })
+      .catch(error => {
+        console.error('Database reconnection attempt failed:', error.message);
+      });
+  }, reconnectDelay);
 });
 
-// Initialize Drizzle ORM
+// Create and export the drizzle client
 export const db = drizzle(pool, { schema });
 
-// Add a direct SQL query function for cases where ORM causes issues
+// Utility function for executing raw SQL queries
 export async function executeRawQuery<T = any>(query: string, params: any[] = []): Promise<T[]> {
   const client = await pool.connect();
   try {
     const result = await client.query(query, params);
     return result.rows as T[];
-  } catch (error) {
-    console.error('Error executing raw query:', error);
-    throw error;
   } finally {
     client.release();
   }
 }
-
-// Health check function to verify database connection
-export async function checkDatabaseConnection(): Promise<boolean> {
-  try {
-    const client = await pool.connect();
-    try {
-      await client.query('SELECT 1');
-      console.log('Database connection check: OK');
-      return true;
-    } finally {
-      client.release();
-    }
-  } catch (err) {
-    console.error('Database connection check failed:', err);
-    return false;
-  }
-}
-
-// Run an initial health check
-checkDatabaseConnection().catch(console.error);

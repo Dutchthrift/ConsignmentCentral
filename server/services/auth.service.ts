@@ -9,7 +9,7 @@ import SessionService from './session.service';
 import { scrypt, randomBytes, timingSafeEqual, createHmac } from 'crypto';
 import { promisify } from 'util';
 import jwt from 'jsonwebtoken';
-import { pool } from '../db'; // Import database pool for direct SQL queries
+import { pool } from '../supabase-db'; // Import Supabase database pool
 
 export class AuthService {
   private storage: IStorage;
