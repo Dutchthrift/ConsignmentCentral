@@ -1,10 +1,6 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
-
-// Configure WebSockets for Neon serverless
-neonConfig.webSocketConstructor = ws;
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -12,14 +8,16 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Ultra-conservative pool configuration to absolutely minimize rate limit issues
+// Supabase-optimized connection pool settings
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 1, // Single connection pool to avoid rate limits entirely
-  idleTimeoutMillis: 120000, // Keep connection alive for longer (2 minutes)
-  connectionTimeoutMillis: 30000, // Longer timeout for slow connections
-  maxUses: 500, // Reduce max uses further to maintain connection health
-  allowExitOnIdle: false // Don't allow connections to exit on idle
+  ssl: {
+    rejectUnauthorized: false, // Less strict SSL validation for compatibility
+  },
+  max: 5, // Moderate pool size for better performance
+  idleTimeoutMillis: 60000, // Keep idle clients for 1 minute
+  connectionTimeoutMillis: 10000, // 10 second connection timeout
+  allowExitOnIdle: true, // Allow pool to clean up on idle
 });
 
 // Add error handler to prevent app crashes on connection issues
