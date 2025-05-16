@@ -316,8 +316,8 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
               </div>
             )}
             
-            {/* Analysis section if available */}
-            {analysis && (
+            {/* Analysis section - with placeholder when no analysis is available */}
+            {analysis ? (
               <div className="bg-blue-50 p-4 rounded-md mt-4 border border-blue-100">
                 <h4 className="text-sm font-medium mb-1 text-blue-900">Item Analysis</h4>
                 
@@ -433,10 +433,21 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
                   </div>
                 )}
               </div>
+            ) : (
+              <div className="bg-yellow-50 p-4 rounded-md mt-4 border border-yellow-100">
+                <h4 className="text-sm font-medium mb-1 text-yellow-900">Item Analysis Pending</h4>
+                <p className="text-sm text-yellow-700">This item is waiting for analysis by our team. Once analyzed, you'll see detailed information about your item here, including:</p>
+                <ul className="list-disc pl-5 mt-2 text-sm text-yellow-700 space-y-1">
+                  <li>Product identification (brand, model, category)</li>
+                  <li>Condition assessment</li>
+                  <li>Details on features and accessories</li>
+                  <li>Market value estimation</li>
+                </ul>
+              </div>
             )}
             
-            {/* Pricing section if available */}
-            {pricing && (
+            {/* Pricing section - with placeholder when no pricing is available */}
+            {pricing ? (
               <div className="bg-green-50 p-4 rounded-md mt-4 border border-green-100">
                 <h4 className="text-sm font-medium mb-1 text-green-900">Pricing Details</h4>
                 
@@ -465,6 +476,16 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
                     </div>
                   )}
                 </div>
+              </div>
+            ) : (
+              <div className="bg-green-50 p-4 rounded-md mt-4 border border-green-100 opacity-75">
+                <h4 className="text-sm font-medium mb-1 text-green-900">Pricing Pending</h4>
+                <p className="text-sm text-green-700">Our team will determine pricing once your item has been analyzed. You will receive:</p>
+                <ul className="list-disc pl-5 mt-2 text-sm text-green-700 space-y-1">
+                  <li>Recommended selling price</li>
+                  <li>Your estimated payout amount</li>
+                  <li>Comparison with current market prices</li>
+                </ul>
               </div>
             )}
             
