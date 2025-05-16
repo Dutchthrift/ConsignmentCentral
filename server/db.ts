@@ -8,21 +8,22 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-console.log('Using direct configuration for PostgreSQL connection');
+console.log('Using Supabase direct connection with correct parameters');
 
-// Supabase direct connection configuration with more conservative settings
+// Supabase direct connection with parameters from dashboard
 export const pool = new Pool({
   user: 'postgres',
-  password: 'Prinsesseweg79!',
+  password: 'Prinsesseweg79!', 
   host: 'db.pkktakjpjytfxkkyuvrk.supabase.co',
   port: 5432,
   database: 'postgres',
-  ssl: true, // Simple true setting for SSL
-  max: 2, // Very limited pool size
-  idleTimeoutMillis: 10000, // Shorter idle timeout
-  connectionTimeoutMillis: 30000, // Longer connection timeout
+  ssl: {
+    rejectUnauthorized: false // Required for SSL connections
+  },
+  max: 2, // Limited pool size
+  idleTimeoutMillis: 30000, // 30 seconds idle timeout
+  connectionTimeoutMillis: 30000, // 30 seconds connection timeout
   allowExitOnIdle: true,
-  keepAlive: true // Enable TCP keepalive
 });
 
 // Add error handler to prevent app crashes on connection issues
