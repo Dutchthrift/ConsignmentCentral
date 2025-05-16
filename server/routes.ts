@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage-supabase";
+// Use in-memory storage for reliable testing while database issues are resolved
+import { storage } from "./memory-storage";
 import { 
   intakeFormSchema,
   legacyIntakeFormSchema,
