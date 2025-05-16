@@ -119,7 +119,37 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
     );
   }
   
-  const item = data.data;
+  // Safely extract item data from the API response
+  const item = data.data?.item || data.data;
+  
+  // Safety check in case the item doesn't have all properties
+  if (!item || !item.status) {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => onClose()}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-amber-500">Item Data Format Issue</DialogTitle>
+            <DialogDescription>
+              The item data is not in the expected format.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p>The system cannot display this item properly. This might be due to:</p>
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              <li>The item is newly created and not fully processed</li>
+              <li>A mismatch between the API response and what the UI expects</li>
+            </ul>
+            <pre className="mt-4 p-2 bg-gray-100 rounded text-xs overflow-auto">
+              {JSON.stringify(data, null, 2)}
+            </pre>
+          </div>
+          <DialogFooter>
+            <Button onClick={onClose}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
   
   return (
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
