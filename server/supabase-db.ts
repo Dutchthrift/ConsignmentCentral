@@ -13,9 +13,10 @@ if (!process.env.DATABASE_URL) {
 // Create a connection pool with conservative settings
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 3, // Reasonable number of connections for Supabase
+  max: 5, // Increased slightly for Supabase which handles more connections
   idleTimeoutMillis: 30000, 
   connectionTimeoutMillis: 10000,
+  ssl: { rejectUnauthorized: false } // Required for Supabase connections
 });
 
 // Add error handler to prevent app crashes on connection issues

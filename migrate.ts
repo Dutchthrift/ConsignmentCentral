@@ -1,4 +1,5 @@
-import { pool, db } from './server/db';
+import { pool, db } from './server/supabase-db';
+import 'dotenv/config';
 import * as schema from './shared/schema';
 import { sql } from 'drizzle-orm';
 

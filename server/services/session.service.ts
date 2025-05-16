@@ -1,6 +1,8 @@
 import session, { SessionOptions } from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
-import { pool } from '../db';
+// Import from the Supabase database adapter instead of Neon
+import { pool } from '../supabase-db';
+import 'dotenv/config';
 
 export class SessionService {
   private pgSession: any;
@@ -14,15 +16,16 @@ export class SessionService {
       // Use the same schema as the one specified in drizzle schema
       schemaName: 'public',
       // Clean up expired sessions less frequently to reduce connections
-      pruneSessionInterval: 60 * 60, // 60 minutes
+      pruneSessionInterval: 120 * 60, // 120 minutes - longer interval for Supabase
       // Add additional options for connection stability
       createTableIfMissing: true,
       errorLog: (error) => console.error('PgSession connection error:', error),
-      // Retry options
+      // Retry options for Supabase
       conObject: {
-        connectionTimeoutMillis: 10000,
-        query_timeout: 10000,
-        statement_timeout: 10000
+        connectionTimeoutMillis: 15000, // Longer timeout for Supabase
+        query_timeout: 15000,
+        statement_timeout: 15000,
+        ssl: { rejectUnauthorized: false } // SSL settings for Supabase
       }
     });
 
