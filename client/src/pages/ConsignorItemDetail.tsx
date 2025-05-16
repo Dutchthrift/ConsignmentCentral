@@ -5,7 +5,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { Loader2, ChevronLeft, Package, Clipboard, Tag, CalendarClock, CheckCircle2, CircleDashed, CircleAlert } from "lucide-react";
 
 // Helper function to format currency
-const formatCurrency = (amount: number) => {
+const formatCurrency = (amount: number | undefined) => {
+  if (amount === undefined || amount === null) return "€0,00";
   return new Intl.NumberFormat("nl-NL", {
     style: "currency",
     currency: "EUR",
@@ -63,9 +64,10 @@ export default function ConsignorItemDetail() {
   const { user } = useAuth();
 
   // Fetch the item details
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<{success: boolean, data: any}>({
     queryKey: [`/api/consignor/item/${id}`],
-    enabled: !!id && !!user
+    enabled: !!id && !!user,
+    retry: 1
   });
 
   // Handle back button click
@@ -110,6 +112,7 @@ export default function ConsignorItemDetail() {
     );
   }
 
+  // Handle missing data
   if (!data || !data.success) {
     return (
       <div className="space-y-4">
@@ -127,6 +130,11 @@ export default function ConsignorItemDetail() {
           </CardHeader>
           <CardContent>
             <p>Please check the item reference ID and try again.</p>
+            {data && (
+              <pre className="mt-4 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            )}
           </CardContent>
           <CardFooter>
             <Button onClick={handleBack}>
@@ -138,6 +146,7 @@ export default function ConsignorItemDetail() {
     );
   }
 
+  // Safely extract item data
   const item = data.data;
 
   return (

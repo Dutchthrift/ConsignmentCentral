@@ -1,528 +1,360 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
-import { formatDistanceToNow } from "date-fns";
+import { Loader2, Package, Clipboard, Tag, CalendarClock, CheckCircle2, CircleDashed, CircleAlert } from "lucide-react";
+import { format } from "date-fns";
 
-type ItemDetailModalProps = {
-  referenceId: string;
-  onClose: () => void;
+// Helper function to format currency
+const formatCurrency = (amount: number | undefined) => {
+  if (amount === undefined || amount === null) return "€0,00";
+  return new Intl.NumberFormat("nl-NL", {
+    style: "currency",
+    currency: "EUR",
+  }).format(amount / 100);
 };
 
-export default function ItemDetailModal({ referenceId, onClose }: ItemDetailModalProps) {
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("details");
-  const [payoutType, setPayoutType] = useState<string | undefined>(undefined);
+// Helper function to determine status badge color
+const getStatusColor = (status: string) => {
+  const statusMap: Record<string, string> = {
+    pending: "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/10",
+    submitted: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/10",
+    approved: "bg-green-500/10 text-green-500 hover:bg-green-500/10",
+    analyzing: "bg-purple-500/10 text-purple-500 hover:bg-purple-500/10",
+    analyzed: "bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/10",
+    rejected: "bg-red-500/10 text-red-500 hover:bg-red-500/10",
+    pricing: "bg-orange-500/10 text-orange-500 hover:bg-orange-500/10",
+    priced: "bg-green-500/10 text-green-500 hover:bg-green-500/10",
+    listed: "bg-teal-500/10 text-teal-500 hover:bg-teal-500/10",
+    sold: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/10",
+    shipped: "bg-purple-500/10 text-purple-500 hover:bg-purple-500/10",
+    completed: "bg-green-500/10 text-green-500 hover:bg-green-500/10",
+    cancelled: "bg-red-500/10 text-red-500 hover:bg-red-500/10",
+  };
   
-  // Fetch item details
-  const { data: itemData, isLoading } = useQuery<any>({
-    queryKey: ["/api/items", referenceId],
-    queryFn: async () => {
-      const response = await apiRequest("GET", `/api/items/${referenceId}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch item details");
-      }
-      return response.json();
-    },
+  return statusMap[status] || "bg-gray-500/10 text-gray-500 hover:bg-gray-500/10";
+};
+
+// Helper function to get status icon
+const StatusIcon = ({ status }: { status: string }) => {
+  if (["completed", "approved", "priced", "sold"].includes(status)) {
+    return <CheckCircle2 className="w-5 h-5 text-green-500" />;
+  } else if (["rejected", "cancelled"].includes(status)) {
+    return <CircleAlert className="w-5 h-5 text-red-500" />;
+  } else {
+    return <CircleDashed className="w-5 h-5 text-yellow-500" />;
+  }
+};
+
+type ItemDetailModalProps = {
+  referenceId: string | null;
+  onClose: () => void;
+  isAdmin?: boolean;
+};
+
+export function ItemDetailModal({ referenceId, onClose, isAdmin = false }: ItemDetailModalProps) {
+  const { user } = useAuth();
+  const isOpen = !!referenceId;
+  
+  // API endpoint depends on user role
+  const endpoint = isAdmin ? 
+    `/api/admin/items/${referenceId}` : 
+    `/api/items/${referenceId}`;
+  
+  // Fetch the item details
+  const { data, isLoading, error } = useQuery<{success: boolean, data: any}>({
+    queryKey: [endpoint],
+    enabled: isOpen && !!referenceId,
+    retry: 1
   });
   
-  // Update payout preference mutation
-  const updatePayoutMutation = useMutation({
-    mutationFn: async (payoutType: string) => {
-      const response = await apiRequest(
-        "POST", 
-        `/api/consignor/items/${itemData.data.id}/payout`, 
-        { payoutType }
-      );
-      
-      if (!response.ok) {
-        throw new Error("Failed to update payout preference");
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ["/api/items", referenceId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/consignor/dashboard"] });
-      
-      toast({
-        title: "Payout preference updated",
-        description: "Your payout preference has been successfully updated",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Update failed",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
-      });
-    },
-  });
+  if (!isOpen) return null;
   
-  const handleUpdatePayoutType = () => {
-    if (payoutType && itemData?.data?.id) {
-      updatePayoutMutation.mutate(payoutType);
-    }
-  };
+  if (isLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => onClose()}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2">Loading item details...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
   
-  // Format item status for display
-  const formatStatus = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "Pending Intake";
-      case "received":
-        return "Received";
-      case "analyzing":
-        return "Analyzing";
-      case "pricing":
-        return "Pricing";
-      case "approved":
-        return "Approved";
-      case "listed":
-        return "Listed";
-      case "sold":
-        return "Sold";
-      case "paid":
-        return "Paid Out";
-      case "returned":
-        return "Returned";
-      case "rejected":
-        return "Rejected";
-      default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
-    }
-  };
+  if (error || !data || !data.success) {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => onClose()}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-red-500">Error Loading Item</DialogTitle>
+            <DialogDescription>
+              There was a problem loading the item details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p>Please try again later or contact support if the problem persists.</p>
+            {data && (
+              <pre className="mt-4 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={onClose}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
   
-  // Get status badge color based on the item status
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
-      case "received":
-        return "bg-blue-100 text-blue-800 hover:bg-blue-200";
-      case "analyzing":
-        return "bg-indigo-100 text-indigo-800 hover:bg-indigo-200";
-      case "pricing":
-        return "bg-purple-100 text-purple-800 hover:bg-purple-200";
-      case "approved":
-        return "bg-teal-100 text-teal-800 hover:bg-teal-200";
-      case "listed":
-        return "bg-green-100 text-green-800 hover:bg-green-200";
-      case "sold":
-        return "bg-orange-100 text-orange-800 hover:bg-orange-200";
-      case "paid":
-        return "bg-green-100 text-green-800 hover:bg-green-200";
-      case "returned":
-        return "bg-gray-100 text-gray-800 hover:bg-gray-200";
-      case "rejected":
-        return "bg-red-100 text-red-800 hover:bg-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 hover:bg-gray-200";
-    }
-  };
-  
-  const item = itemData?.data;
+  const item = data.data;
   
   return (
-    <Dialog open={!!referenceId} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {isLoading ? (
-              <Skeleton className="h-6 w-64" />
-            ) : (
-              <div className="flex items-center justify-between">
-                <span>{item?.title || "Item Details"}</span>
-                {item?.status && (
-                  <Badge variant="outline" className={getStatusColor(item.status)}>
-                    {formatStatus(item.status)}
-                  </Badge>
-                )}
-              </div>
-            )}
-          </DialogTitle>
+    <Dialog open={isOpen} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="border-b pb-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <DialogTitle className="text-2xl font-bold">{item.title}</DialogTitle>
+              <DialogDescription className="flex items-center mt-1">
+                <Package className="h-4 w-4 mr-1 text-muted-foreground" />
+                Reference ID: {item.referenceId}
+              </DialogDescription>
+            </div>
+            <Badge className={getStatusColor(item.status)}>
+              <StatusIcon status={item.status} />
+              <span className="ml-1 capitalize">{item.status.replace(/_/g, " ")}</span>
+            </Badge>
+          </div>
         </DialogHeader>
         
-        {isLoading ? (
-          <div className="space-y-4 py-4">
-            <Skeleton className="h-40 w-full" />
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-            </div>
-          </div>
-        ) : (
-          <>
-            <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-4 mb-4">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="pricing">Pricing</TabsTrigger>
-                <TabsTrigger value="timeline">Timeline</TabsTrigger>
-                <TabsTrigger value="shipping">Shipping</TabsTrigger>
-              </TabsList>
+        <div className="py-6 space-y-6">
+          {/* Basic Item Details Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Item Details</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <CalendarClock className="h-4 w-4 mr-2" />
+                  Submitted: {format(new Date(item.createdAt), "MMMM dd, yyyy")}
+                </div>
+                
+                {item.brand && (
+                  <div className="flex items-center text-sm">
+                    <Tag className="h-4 w-4 mr-2 text-muted-foreground" />
+                    Brand: <span className="font-medium ml-1">{item.brand}</span>
+                  </div>
+                )}
+                
+                {item.category && (
+                  <div className="flex items-center text-sm">
+                    <Clipboard className="h-4 w-4 mr-2 text-muted-foreground" />
+                    Category: <span className="font-medium ml-1">{item.category}</span>
+                  </div>
+                )}
+                
+                {item.condition && (
+                  <div className="flex items-center text-sm">
+                    <span className="font-medium mr-1">Condition:</span> {item.condition}
+                  </div>
+                )}
+              </div>
               
-              <TabsContent value="details" className="space-y-4">
-                {/* Image and basic details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="aspect-square rounded-md overflow-hidden border">
-                    {item?.imageUrl ? (
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.title} 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-neutral-100 flex items-center justify-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="64"
-                          height="64"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="text-neutral-400"
-                        >
-                          <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
-                          <circle cx="9" cy="9" r="2"></circle>
-                          <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
-                        </svg>
+              {/* Image if available */}
+              <div className="flex justify-center">
+                {item.imageUrl ? (
+                  <img 
+                    src={item.imageUrl} 
+                    alt={item.title} 
+                    className="rounded-md object-cover max-h-[150px]" 
+                  />
+                ) : (
+                  <div className="flex items-center justify-center bg-muted rounded-md w-full h-[150px]">
+                    <span className="text-muted-foreground text-sm">No image available</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Description if available */}
+            {item.description && (
+              <div className="bg-muted/30 p-4 rounded-md mt-4">
+                <h4 className="text-sm font-medium mb-1">Description</h4>
+                <p className="text-sm text-muted-foreground">{item.description}</p>
+              </div>
+            )}
+          </div>
+          
+          <Separator />
+          
+          {/* Analysis Section */}
+          {item.analysis && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Product Analysis</h3>
+              
+              <div className="bg-blue-50/50 p-4 rounded-md space-y-2">
+                {item.analysis.productType && (
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <span className="text-muted-foreground">Product Type:</span>
+                    <span className="col-span-2 font-medium">{item.analysis.productType}</span>
+                  </div>
+                )}
+                
+                {item.analysis.authenticityAssessment && (
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <span className="text-muted-foreground">Authenticity:</span>
+                    <span className="col-span-2 font-medium">{item.analysis.authenticityAssessment}</span>
+                  </div>
+                )}
+                
+                {item.analysis.features && (
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <span className="text-muted-foreground">Features:</span>
+                    <span className="col-span-2">{item.analysis.features}</span>
+                  </div>
+                )}
+                
+                {/* Only show accessories section if it exists */}
+                {item.analysis.accessories && item.analysis.accessories.trim() !== "" && (
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <span className="text-muted-foreground">Accessories:</span>
+                    <span className="col-span-2">{item.analysis.accessories}</span>
+                  </div>
+                )}
+                
+                {item.analysis.notes && (
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <span className="text-muted-foreground">Analysis Notes:</span>
+                    <span className="col-span-2">{item.analysis.notes}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Pricing Section */}
+          {item.pricing && (
+            <>
+              <Separator />
+              
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Pricing Information</h3>
+                
+                <div className="bg-green-50/50 p-4 rounded-md space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {item.pricing.marketComps && (
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium">Market Comparisons</h4>
+                        <p className="text-sm text-muted-foreground">{item.pricing.marketComps}</p>
+                      </div>
+                    )}
+                    
+                    {item.pricing.averageMarketPrice !== null && item.pricing.averageMarketPrice !== undefined && (
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium">Average Market Price</h4>
+                        <p className="text-base font-semibold">{formatCurrency(item.pricing.averageMarketPrice)}</p>
                       </div>
                     )}
                   </div>
                   
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-medium">{item?.title}</h3>
-                      <p className="text-sm text-neutral-500">{item?.referenceId}</p>
-                      <p className="text-sm mt-2">{item?.description}</p>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <p className="text-neutral-500">Brand</p>
-                        <p className="font-medium">{item?.brand || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-neutral-500">Category</p>
-                        <p className="font-medium">{item?.category || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-neutral-500">Condition</p>
-                        <p className="font-medium">{item?.condition || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-neutral-500">Size</p>
-                        <p className="font-medium">{item?.size || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-neutral-500">Color</p>
-                        <p className="font-medium">{item?.color || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-neutral-500">Material</p>
-                        <p className="font-medium">{item?.material || "—"}</p>
-                      </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="text-sm">
-                      <p className="text-neutral-500">Received on</p>
-                      <p className="font-medium">
-                        {item?.createdAt 
-                          ? new Date(item.createdAt).toLocaleDateString() + " (" + 
-                            formatDistanceToNow(new Date(item.createdAt), { addSuffix: true }) + ")"
-                          : "—"
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="pricing" className="space-y-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Pricing Information</CardTitle>
-                    <CardDescription>
-                      Details about pricing, commission, and payout
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Selling and payout information */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-sm text-neutral-500">Estimated Market Value</p>
-                          <p className="text-xl font-medium">
-                            {item?.pricing?.averageMarketPrice 
-                              ? `€${(item.pricing.averageMarketPrice / 100).toFixed(2)}`
-                              : "Pending Analysis"
-                            }
-                          </p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-sm text-neutral-500">Suggested Listing Price</p>
-                          <p className="text-xl font-medium">
-                            {item?.pricing?.suggestedListingPrice 
-                              ? `€${(item.pricing.suggestedListingPrice / 100).toFixed(2)}`
-                              : "Pending"
-                            }
-                          </p>
-                        </div>
-                        
-                        {item?.status === "sold" && (
-                          <div>
-                            <p className="text-sm text-neutral-500">Final Sale Price</p>
-                            <p className="text-xl font-medium">
-                              {item?.pricing?.finalSalePrice 
-                                ? `€${(item.pricing.finalSalePrice / 100).toFixed(2)}`
-                                : "—"
-                              }
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-sm text-neutral-500">Commission Rate</p>
-                          <p className="text-xl font-medium">
-                            {item?.pricing?.commissionRate
-                              ? `${item.pricing.commissionRate}%`
-                              : "Pending"
-                            }
-                          </p>
-                          <p className="text-xs text-neutral-500 mt-1">
-                            Based on a sliding scale: 25-40% depending on item value
-                          </p>
-                        </div>
-                        
-                        <div>
-                          <p className="text-sm text-neutral-500">Estimated Payout</p>
-                          <p className="text-xl font-medium">
-                            {item?.pricing?.suggestedPayout
-                              ? `€${(item.pricing.suggestedPayout / 100).toFixed(2)}`
-                              : "Pending"
-                            }
-                          </p>
-                        </div>
-                        
-                        {(item?.status === "sold" || item?.status === "paid") && (
-                          <div>
-                            <p className="text-sm text-neutral-500">Final Payout</p>
-                            <p className="text-xl font-medium">
-                              {item?.pricing?.finalPayout
-                                ? `€${(item.pricing.finalPayout / 100).toFixed(2)}`
-                                : "—"
-                              }
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    {/* Payout preference selector - only enabled for sold items not yet paid out */}
-                    <div>
-                      <p className="text-sm font-medium mb-2">Payout Preference</p>
-                      
-                      <div className="flex gap-4 items-end">
-                        <div className="flex-1">
-                          <p className="text-sm text-neutral-500 mb-2">
-                            Choose how you'd like to receive your payment when this item sells
-                          </p>
-                          <Select
-                            disabled={
-                              item?.status !== "sold" ||
-                              item?.status === "paid" ||
-                              updatePayoutMutation.isPending
-                            }
-                            value={payoutType || item?.pricing?.payoutType || "cash"}
-                            onValueChange={setPayoutType}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select payout method" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="cash">Cash Payout</SelectItem>
-                              <SelectItem value="storeCredit">
-                                Store Credit (+10% bonus)
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <Button
-                          disabled={
-                            !payoutType ||
-                            item?.status !== "sold" ||
-                            item?.status === "paid" ||
-                            payoutType === item?.pricing?.payoutType ||
-                            updatePayoutMutation.isPending
-                          }
-                          onClick={handleUpdatePayoutType}
-                        >
-                          {updatePayoutMutation.isPending
-                            ? "Updating..."
-                            : "Update Preference"
-                          }
-                        </Button>
-                      </div>
-                      
-                      {payoutType === "storeCredit" && (
-                        <p className="text-sm text-green-600 mt-2">
-                          +10% bonus: You'll receive €
-                          {item?.pricing?.finalPayout
-                            ? ((item.pricing.finalPayout * 1.1) / 100).toFixed(2)
-                            : "0.00"
-                          } in store credit
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="timeline" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Status Timeline</CardTitle>
-                    <CardDescription>
-                      Track the progress of your item
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Status timeline - simplified version */}
-                    <div className="relative pl-6 space-y-6 py-2">
-                      <div className="absolute top-0 bottom-0 left-2 border-l-2 border-neutral-200"></div>
-                      
-                      {item?.statusHistory?.length ? (
-                        item.statusHistory
-                          .sort((a: any, b: any) => 
-                            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                          )
-                          .map((statusItem: any, index: number) => (
-                            <div key={index} className="relative">
-                              <div className="absolute -left-6 top-0 flex items-center justify-center">
-                                <div className={`w-4 h-4 rounded-full ${index === 0 ? 'bg-primary' : 'bg-neutral-300'}`}></div>
-                              </div>
-                              <div>
-                                <p className="font-medium">
-                                  {formatStatus(statusItem.status)}
-                                </p>
-                                <p className="text-sm text-neutral-500">
-                                  {new Date(statusItem.createdAt).toLocaleDateString()} at {new Date(statusItem.createdAt).toLocaleTimeString()}
-                                </p>
-                                {statusItem.note && (
-                                  <p className="text-sm mt-1 bg-neutral-50 p-2 rounded-md">
-                                    {statusItem.note}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                      ) : (
-                        <p className="text-neutral-500">No status updates available</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="shipping" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Shipping Information</CardTitle>
-                    <CardDescription>
-                      Details about shipping and handling
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {item?.shipping ? (
-                      <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm text-neutral-500">Shipping Provider</p>
-                            <p className="font-medium">
-                              {item.shipping.provider || "Not assigned"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-neutral-500">Tracking Number</p>
-                            <p className="font-medium">
-                              {item.shipping.trackingNumber || "Not available"}
-                            </p>
-                          </div>
-                          {item.shipping.trackingUrl && (
-                            <div className="md:col-span-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => window.open(item.shipping.trackingUrl, "_blank")}
-                              >
-                                Track Package
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div>
-                          <p className="text-sm text-neutral-500 mb-2">Shipping Address</p>
-                          {item.shipping.shippingAddress ? (
-                            <div className="text-sm">
-                              <p>{item.shipping.shippingAddress.name}</p>
-                              <p>{item.shipping.shippingAddress.streetAddress}</p>
-                              <p>
-                                {item.shipping.shippingAddress.postalCode}{" "}
-                                {item.shipping.shippingAddress.city}
-                              </p>
-                              <p>{item.shipping.shippingAddress.country}</p>
-                            </div>
-                          ) : (
-                            <p className="text-neutral-500">
-                              No shipping address available yet
-                            </p>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="py-8 text-center">
-                        <p className="text-neutral-500">
-                          Shipping information will be available once the item is ready to ship.
-                        </p>
+                  <Separator className="my-2" />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {item.pricing.suggestedListingPrice !== null && item.pricing.suggestedListingPrice !== undefined && (
+                      <div className="bg-white p-3 rounded-md text-center">
+                        <h4 className="text-sm text-muted-foreground">Listing Price</h4>
+                        <p className="text-lg font-bold text-green-600">{formatCurrency(item.pricing.suggestedListingPrice)}</p>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </>
-        )}
+                    
+                    {item.pricing.commissionRate !== null && item.pricing.commissionRate !== undefined && (
+                      <div className="bg-white p-3 rounded-md text-center">
+                        <h4 className="text-sm text-muted-foreground">Commission</h4>
+                        <p className="text-lg font-bold">{item.pricing.commissionRate}%</p>
+                      </div>
+                    )}
+                    
+                    {item.pricing.estimatedPayout !== null && item.pricing.estimatedPayout !== undefined && (
+                      <div className="bg-white p-3 rounded-md text-center">
+                        <h4 className="text-sm text-muted-foreground">Your Payout</h4>
+                        <p className="text-lg font-bold text-blue-600">{formatCurrency(item.pricing.estimatedPayout)}</p>
+                        {item.pricing.payoutBonus && (
+                          <Badge variant="outline" className="mt-1">+10% Store Credit Bonus</Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {item.pricing.pricingNotes && (
+                    <div className="mt-3 text-sm">
+                      <span className="font-medium">Notes: </span>
+                      <span className="text-muted-foreground">{item.pricing.pricingNotes}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+          
+          {/* Shipping Section */}
+          {item.shipping && (
+            <>
+              <Separator />
+              
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Shipping Information</h3>
+                
+                <div className="bg-purple-50/50 p-4 rounded-md">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {item.shipping.carrier && (
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium">Shipping Carrier</h4>
+                        <p className="text-muted-foreground">{item.shipping.carrier}</p>
+                      </div>
+                    )}
+                    
+                    {item.shipping.trackingNumber && (
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium">Tracking Number</h4>
+                        <p className="font-mono">{item.shipping.trackingNumber}</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {item.shipping.shippedAt && (
+                    <div className="mt-3">
+                      <h4 className="text-sm font-medium">Shipped Date</h4>
+                      <p>{format(new Date(item.shipping.shippedAt), "MMMM dd, yyyy")}</p>
+                    </div>
+                  )}
+                  
+                  {item.shipping.shippingNotes && (
+                    <div className="mt-3">
+                      <h4 className="text-sm font-medium">Shipping Notes</h4>
+                      <p className="text-sm text-muted-foreground">{item.shipping.shippingNotes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
         
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
+        <DialogFooter className="border-t pt-4">
+          <Button onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

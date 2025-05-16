@@ -24,6 +24,7 @@ import { format } from "date-fns";
 import { Search, Filter, ArrowUpDown, Image } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ItemDetailModal } from "@/components/ItemDetailModal";
 
 // Helper function to format currency
 const formatCurrency = (amount: number) => {
@@ -83,6 +84,8 @@ export default function ItemsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortColumn, setSortColumn] = useState<"date" | "title" | "price">("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{id: number, referenceId: string} | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -148,6 +151,14 @@ export default function ItemsPage() {
       )
     : [];
 
+  // Handle item click - navigate to item detail page
+  const handleItemClick = (referenceId: string) => {
+    if (isConsignor) {
+      // Open the modal with the item details
+      setSelectedItemId(referenceId);
+    }
+  };
+  
   // Sort items based on current sort settings
   const sortedItems = [...filteredItems].sort((a: ItemData, b: ItemData) => {
     if (sortColumn === "date") {
@@ -287,12 +298,13 @@ export default function ItemsPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Link
-                          to={isConsignor ? `/consignor/items/${item.referenceId}` : `/items/${item.id}`}
-                          className="font-medium hover:underline text-blue-600"
+                        {/* Using the item ID directly to avoid navigation issues */}
+                        <span 
+                          onClick={() => handleItemClick(item.referenceId)}
+                          className="font-medium hover:underline text-blue-600 cursor-pointer"
                         >
                           {item.referenceId}
-                        </Link>
+                        </span>
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">{item.title}</div>
