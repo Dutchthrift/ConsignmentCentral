@@ -189,6 +189,11 @@ function Router() {
           allowedRoles={[UserRole.CONSIGNOR]} 
         />
         <ProtectedRoute 
+          path="/consignor/items/:id" 
+          component={ConsignorItemDetail}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute 
           path="/consignor/history" 
           component={ConsignorHistory}
           allowedRoles={[UserRole.CONSIGNOR]} 

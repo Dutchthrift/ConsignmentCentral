@@ -111,10 +111,11 @@ export default function ConsignorItems() {
     item.referenceId.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const [, navigate] = useLocation();
+  
   const handleItemClick = (referenceId: string) => {
-    setSelectedItemId(referenceId);
-    // Instead of navigating to a different page, we'll show a modal with item details
-    // This prevents the 404 error when clicking on items
+    // Navigate to the item detail page instead of showing a modal
+    navigate(`/consignor/items/${referenceId}`);
   };
 
   const handleCloseModal = () => {
