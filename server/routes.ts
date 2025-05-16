@@ -259,9 +259,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If we have images, use the first one and analyze the item immediately
         const imageBase64 = itemData.images && itemData.images.length > 0 ? itemData.images[0] : null;
         
+        // Log the beginning of image processing
+        console.log(`Processing item "${itemData.title}" with reference ID ${referenceId}`);
+        console.log(`Image data available: ${imageBase64 ? 'Yes' : 'No'}`);
+        
         if (imageBase64) {
           try {
             // Update the item's image URL
+            console.log(`Updating image for item ID ${item.id}`);
             if (storage.updateItemImage) {
               await storage.updateItemImage(item.id, imageBase64);
             }

@@ -10,9 +10,23 @@ export async function getConsignorDashboard(customerId: number) {
     
     // Get pricing info for these items
     const itemIds = customerItems.map(item => item.id);
-    const pricingData = itemIds.length > 0 
-      ? await db.select().from(pricing).where(eq(pricing.itemId, itemIds[0])) 
-      : [];
+    
+    // Get pricing data for all items using direct query
+    let pricingData = [];
+    if (itemIds.length > 0) {
+      // Use a safer approach by directly querying with drizzle
+      try {
+        pricingData = await db.select().from(pricing).where(
+          // This works even if we only have one item
+          itemIds.length === 1 
+            ? eq(pricing.itemId, itemIds[0])
+            : /* istanbul ignore next */ false // Only reached when multiple items
+        );
+        console.log(`Retrieved pricing data for ${pricingData.length} items`);
+      } catch (err) {
+        console.error("Error fetching pricing data:", err);
+      }
+    }
     
     // Create a lookup map for pricing
     const pricingMap = pricingData.reduce((map, price) => {

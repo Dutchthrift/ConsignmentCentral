@@ -5,14 +5,18 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Function to extract potential brand name from title
 function extractBrandFromTitle(title: string): string {
-  // Common brand names to look for in the title
+  // Common brand names to look for in the title, with focus on camera brands
   const commonBrands = [
+    // Camera brands
+    "Sony", "Canon", "Nikon", "Pentax", "Olympus", "Leica", "Hasselblad", 
+    "Fujifilm", "Fuji", "Minolta", "Panasonic", "Polaroid", "Kodak",
+    "Mamiya", "Rollei", "Rolleiflex", "Samsung", "Ricoh", "Konica",
+    // Other common brands
     "Nike", "Adidas", "Puma", "Reebok", "New Balance",
     "Under Armour", "Levi's", "Gap", "H&M", "Zara",
     "Calvin Klein", "Tommy Hilfiger", "Ralph Lauren", 
     "Gucci", "Louis Vuitton", "Prada", "Versace", "Balenciaga",
-    "Apple", "Samsung", "Sony", "Microsoft", "Google", "LG",
-    "Philips", "Bosch", "Siemens", "IKEA"
+    "Apple", "Microsoft", "Google", "LG", "Philips", "Bosch", "Siemens", "IKEA"
   ];
   
   // Check if any brand name appears in the title

@@ -48,7 +48,7 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
         <div className="mb-6 px-2">
           <div className="flex items-center gap-3 mb-3">
             <Avatar>
-              <AvatarImage src={user?.profileImageUrl || ""} />
+              <AvatarImage src="" />
               <AvatarFallback className="bg-primary text-white">
                 {user?.name?.charAt(0) || "U"}
               </AvatarFallback>

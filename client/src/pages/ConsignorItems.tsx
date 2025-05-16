@@ -113,6 +113,8 @@ export default function ConsignorItems() {
 
   const handleItemClick = (referenceId: string) => {
     setSelectedItemId(referenceId);
+    // Instead of navigating to a different page, we'll show a modal with item details
+    // This prevents the 404 error when clicking on items
   };
 
   const handleCloseModal = () => {
