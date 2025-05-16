@@ -57,16 +57,36 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
       payoutMethod: consignorData.payoutMethod
     });
     
-    // Check if a user or customer with this email already exists
-    const existingUser = await storage.getUserByEmail(consignorData.email);
-    const existingCustomer = await storage.getCustomerByEmail(consignorData.email);
-    
-    if (existingUser || existingCustomer) {
-      console.log("User/Customer already exists with email:", consignorData.email);
-      return res.status(400).json({
+    // Check if a user or customer with this email already exists using direct SQL
+    try {
+      const client = await authService.getPool().connect();
+      try {
+        // Check if email exists in either customers or users table
+        const checkEmailQuery = `
+          SELECT id FROM customers WHERE email = $1
+          UNION
+          SELECT id FROM users WHERE email = $1
+          LIMIT 1
+        `;
+        
+        const result = await client.query(checkEmailQuery, [consignorData.email]);
+        
+        if (result.rowCount && result.rowCount > 0) {
+          console.log("User/Customer already exists with email:", consignorData.email);
+          return res.status(400).json({
+            success: false,
+            message: "An account with this email already exists. Please log in instead.",
+            isExistingUser: true,
+          });
+        }
+      } finally {
+        client.release();
+      }
+    } catch (checkError) {
+      console.error("Error checking for existing account:", checkError);
+      return res.status(500).json({
         success: false,
-        message: "An account with this email already exists. Please log in instead.",
-        isExistingUser: true,
+        message: "Error checking for existing account"
       });
     }
     
@@ -119,11 +139,11 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
       } finally {
         client.release();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("SQL Error in customer creation:", error);
       return res.status(500).json({
         success: false,
-        message: `Database error: ${error.message}`
+        message: `Database error: ${error.message || "Unknown database error"}`
       });
     }
     console.log("Customer created with ID:", customer.id);
