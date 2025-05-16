@@ -232,6 +232,18 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
             </Button>
             
             <Button
+              variant={location === "/consignor/new-item" ? "default" : "ghost"}
+              size="sm"
+              className="w-full justify-start"
+              asChild
+            >
+              <Link to="/consignor/new-item" onClick={() => setIsMenuOpen(false)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Submit New Item
+              </Link>
+            </Button>
+            
+            <Button
               variant={location === "/consignor/items" ? "default" : "ghost"}
               size="sm"
               className="w-full justify-start"
