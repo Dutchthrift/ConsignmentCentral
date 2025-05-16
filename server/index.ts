@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { checkDatabaseConnection } from "./supabase-db";
+import "dotenv/config";
 
 const app = express();
 // Increase JSON payload limit to 50MB for image uploads

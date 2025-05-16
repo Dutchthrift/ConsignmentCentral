@@ -15,7 +15,8 @@ import {
   UserRole, UserType,
   ItemWithDetails, DashboardStats
 } from "@shared/schema";
-import { db } from "./db";
+// Import from the new Supabase adapter instead of Neon
+import { db } from "./supabase-db";
 import { IStorage } from "./storage";
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 
