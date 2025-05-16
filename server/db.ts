@@ -8,17 +8,14 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-console.log('Using Supabase connection pooling');
+console.log('Using Replit-hosted PostgreSQL database');
 
-// Use Supabase connection pooling which provides better reliability
+// Use Replit-provisioned PostgreSQL database for reliability
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  max: 3, // Reasonable pool size for development
+  max: 5,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 30000
+  connectionTimeoutMillis: 15000
 });
 
 // Add error handler to prevent app crashes on connection issues
