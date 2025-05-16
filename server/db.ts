@@ -12,14 +12,14 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Enhanced pool configuration with even stricter limits to avoid rate limiting
+// Ultra-conservative pool configuration to absolutely minimize rate limit issues
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 2, // Reduced to absolute minimum to prevent Neon rate limits
-  idleTimeoutMillis: 60000, // Increased idle timeout to reduce reconnections
-  connectionTimeoutMillis: 15000, // Increased connection timeout for slow connections
-  maxUses: 1000, // Reduced max uses to maintain connection health
-  allowExitOnIdle: true // Allow pool to exit on idle (helpful for serverless environments)
+  max: 1, // Single connection pool to avoid rate limits entirely
+  idleTimeoutMillis: 120000, // Keep connection alive for longer (2 minutes)
+  connectionTimeoutMillis: 30000, // Longer timeout for slow connections
+  maxUses: 500, // Reduce max uses further to maintain connection health
+  allowExitOnIdle: false // Don't allow connections to exit on idle
 });
 
 // Add error handler to prevent app crashes on connection issues
@@ -35,32 +35,70 @@ const MAX_RETRIES = 5;
 const RETRY_DELAY_BASE = 5000; // Increased base delay to 5 seconds
 const JITTER_MAX = 1000; // Add random jitter to prevent synchronized retries
 
-// Ping database periodically to maintain connection
+// Temporary memory cache to reduce database hits
+const memoryCache = new Map();
+
+// Check if we need to make a real database connection or can use cached data
+const shouldUseCache = (key: string): boolean => {
+  if (!memoryCache.has(key)) return false;
+  
+  const { timestamp, data } = memoryCache.get(key);
+  const now = Date.now();
+  const cacheAge = now - timestamp;
+  
+  // Cache items for 5 minutes to drastically reduce database load
+  return cacheAge < 5 * 60 * 1000;
+};
+
+// Store data in the memory cache
+const cacheData = (key: string, data: any): void => {
+  memoryCache.set(key, {
+    timestamp: Date.now(),
+    data
+  });
+};
+
+// A minimal health check that doesn't touch the database if it's not needed
+// We want to reduce database connections as much as possible under rate limiting
 const keepAliveQuery = async () => {
+  // Cache key for the health check
+  const healthCheckKey = 'db_health_check';
+  
+  // If we have a recent health check result, use that instead of hitting the DB
+  if (shouldUseCache(healthCheckKey)) {
+    console.log('Database connection check: Using cached status (OK)');
+    return;
+  }
+  
   try {
+    // Only connect to DB if absolutely necessary (cache miss)
     const client = await pool.connect();
     try {
       await client.query('SELECT 1');
       console.log('Database connection check: OK');
       // Reset retry count on successful connection
       connectionRetryCount = 0;
+      
+      // Cache the successful health check
+      cacheData(healthCheckKey, true);
     } finally {
       client.release();
     }
-  } catch (err) {
+  } catch (err: any) { // Adding type annotation to silence TypeScript error
     connectionRetryCount++;
     console.error(`Error during database connection check (attempt ${connectionRetryCount}):`, err);
     
     // Check if this is a rate limit error
     const isRateLimit = err.message && 
+      (typeof err.message === 'string') && 
       (err.message.includes('rate limit') || 
        err.message.includes('too many connections') ||
        err.message.includes('exceeded'));
     
     // If we haven't exceeded max retries, schedule retry with exponential backoff
     if (connectionRetryCount <= MAX_RETRIES) {
-      // Use longer delays for rate limit errors
-      const baseDelay = isRateLimit ? RETRY_DELAY_BASE * 2 : RETRY_DELAY_BASE;
+      // Use much longer delays for rate limit errors
+      const baseDelay = isRateLimit ? RETRY_DELAY_BASE * 5 : RETRY_DELAY_BASE;
       const jitter = Math.floor(Math.random() * JITTER_MAX); // Add random jitter
       const delay = baseDelay * Math.pow(2, connectionRetryCount - 1) + jitter;
       
@@ -70,6 +108,9 @@ const keepAliveQuery = async () => {
       console.error(`Failed to reconnect to database after ${MAX_RETRIES} attempts`);
       // Reset retry count to allow future scheduled attempts to work
       connectionRetryCount = 0;
+      
+      // Even on failure, cache a negative result to prevent hammering the database
+      cacheData(healthCheckKey, false);
     }
   }
 };

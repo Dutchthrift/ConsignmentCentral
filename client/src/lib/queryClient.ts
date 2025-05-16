@@ -166,30 +166,45 @@ function getQueryFn<T>({ on401 }: { on401: UnauthorizedBehavior }): QueryFunctio
   };
 }
 
-// Enhanced query client with more robust error handling
+// Enhanced query client with extreme rate limit protection
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn<unknown>({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: true,
+      refetchOnWindowFocus: false, // Reduce automatic refetching
+      refetchOnReconnect: false, // Reduce automatic refetching
       retryOnMount: true,
-      staleTime: 30000,
-      // More aggressive retry strategy for unstable connections
+      staleTime: 300000, // 5 minutes - greatly increased cache time to reduce DB hits
+      cacheTime: 3600000, // 1 hour - keep data in cache much longer
+      // Extreme retry strategy for rate limited connections
       retry: (failureCount, error: any) => {
         // Don't retry on 404 (not found) or 400 (bad request)
         if (error?.message?.includes('404:') || error?.message?.includes('400:')) {
           return false;
         }
-        // Retry up to 5 times for network errors or server errors (5xx)
-        return failureCount < 5;
+        
+        // Special handling for rate limit errors
+        const isRateLimit = 
+          error?.message?.includes('rate limit') || 
+          error?.message?.includes('exceeded') ||
+          error?.message?.includes('500');
+          
+        // For rate limits, retry more times with longer delays
+        if (isRateLimit) {
+          console.log(`Rate limit detected, retry ${failureCount}/10`);
+          return failureCount < 10; // Retry up to 10 times for rate limits
+        }
+        
+        // For other errors, retry fewer times
+        return failureCount < 3;
       },
       retryDelay: attemptIndex => {
-        // Exponential backoff with jitter to prevent thundering herd
-        const delay = Math.min(1000 * 2 ** attemptIndex, 30000);
-        const jitter = delay * 0.2 * Math.random();
-        return delay + jitter;
+        // Much more aggressive exponential backoff with high jitter
+        const baseDelay = Math.min(2000 * (2 ** attemptIndex), 120000); // Up to 2 minutes
+        const jitter = baseDelay * 0.5 * Math.random(); // 50% jitter
+        console.log(`Retry delay: ${baseDelay + jitter}ms`);
+        return baseDelay + jitter;
       }
     },
     mutations: {
