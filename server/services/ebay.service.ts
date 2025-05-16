@@ -29,12 +29,20 @@ export async function getMarketPricing(
     
     console.log(`Searching eBay for: ${brand} ${model} ${productType} (${condition})`);
     
+    // Log search parameters
+    console.log(`eBay API search parameters: 
+      - Product Type: ${productType}
+      - Brand: ${brand}
+      - Model: ${model}
+      - Condition: ${condition}
+    `);
+    
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // Generate a base price based on the product type
     // In a real implementation, this would come from actual eBay data
-    let basePrice = 0;
+    let basePrice = 15000; // Default to 150 EUR if nothing else matches
     
     // Simulate different price ranges based on product type
     const productTypeLower = productType.toLowerCase();
