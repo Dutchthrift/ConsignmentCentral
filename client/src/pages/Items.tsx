@@ -22,7 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Search, Filter, ArrowUpDown, Image } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Helper function to format currency
@@ -87,7 +87,9 @@ export default function ItemsPage() {
   const { user } = useAuth();
 
   // Determine if user is admin or consignor for correct endpoint
-  const itemsEndpoint = user?.role === 'admin' ? '/api/admin/items' : '/api/consignor/items';
+  const [location] = useLocation();
+  const isConsignor = user?.role === 'consignor' || location.includes('/consignor');
+  const itemsEndpoint = isConsignor ? '/api/consignor/items' : '/api/admin/items';
 
   // Fetch items
   const {
@@ -286,7 +288,7 @@ export default function ItemsPage() {
                       </TableCell>
                       <TableCell>
                         <Link
-                          to={`/items/${item.id}`}
+                          to={isConsignor ? `/consignor/items/${item.referenceId}` : `/items/${item.id}`}
                           className="font-medium hover:underline text-blue-600"
                         >
                           {item.referenceId}
