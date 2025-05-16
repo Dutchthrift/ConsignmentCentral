@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { UserRound, Package, BarChart3, Settings, LogOut, History, CreditCard, PieChart, ChartBar, ShoppingBag } from "lucide-react";
+import { UserRound, Package, BarChart3, Settings, LogOut, History, CreditCard, PieChart, ChartBar, ShoppingBag, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
@@ -70,6 +70,18 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
             <Link to="/consignor">
               <BarChart3 className="mr-2 h-4 w-4" />
               Dashboard
+            </Link>
+          </Button>
+          
+          <Button
+            variant={location === "/consignor/new-item" ? "default" : "ghost"}
+            size="sm"
+            className="w-full justify-start"
+            asChild
+          >
+            <Link to="/consignor/new-item">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Submit New Item
             </Link>
           </Button>
           

@@ -34,6 +34,7 @@ import ConsignorPayouts from "@/pages/ConsignorPayouts";
 import ConsignorProfile from "@/pages/ConsignorProfile";
 import ConsignorSettings from "@/pages/ConsignorSettings";
 import ConsignorInsights from "@/pages/ConsignorInsights";
+import ConsignorSubmitItem from "@/pages/ConsignorSubmitItem";
 import Layout from "@/components/Layout";
 import StorefrontLayout from "@/components/StorefrontLayout";
 import ConsignorLayout from "@/components/ConsignorLayout";
@@ -177,8 +178,8 @@ function Router() {
           allowedRoles={[UserRole.CONSIGNOR]} 
         />
         <ProtectedRoute
-          path="/consignor/submit" 
-          component={() => <div>Submit New Item</div>}
+          path="/consignor/new-item" 
+          component={ConsignorSubmitItem}
           allowedRoles={[UserRole.CONSIGNOR]} 
         />
         <ProtectedRoute 
