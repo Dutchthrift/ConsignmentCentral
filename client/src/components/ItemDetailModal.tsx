@@ -66,7 +66,7 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
   const { user } = useAuth();
   const isOpen = !!referenceId;
   
-  // API endpoint depends on user role
+  // API endpoint depends on user role - use consignor endpoint for consignor and admin endpoint for admin
   const endpoint = isAdmin ? 
     `/api/admin/items/${referenceId}` : 
     `/api/items/${referenceId}`;
@@ -226,6 +226,37 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
                 <p className="text-sm text-muted-foreground">{item.description}</p>
               </div>
             )}
+            
+            {/* Additional item info if available */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              {item.sku && (
+                <div className="p-3 bg-muted/20 rounded-md">
+                  <h4 className="text-sm font-medium">SKU</h4>
+                  <p className="text-sm font-mono">{item.sku}</p>
+                </div>
+              )}
+              
+              {item.serialNumber && (
+                <div className="p-3 bg-muted/20 rounded-md">
+                  <h4 className="text-sm font-medium">Serial Number</h4>
+                  <p className="text-sm font-mono">{item.serialNumber}</p>
+                </div>
+              )}
+              
+              {item.model && (
+                <div className="p-3 bg-muted/20 rounded-md">
+                  <h4 className="text-sm font-medium">Model</h4>
+                  <p className="text-sm">{item.model}</p>
+                </div>
+              )}
+              
+              {item.manufacturer && (
+                <div className="p-3 bg-muted/20 rounded-md">
+                  <h4 className="text-sm font-medium">Manufacturer</h4>
+                  <p className="text-sm">{item.manufacturer}</p>
+                </div>
+              )}
+            </div>
           </div>
           
           <Separator />
