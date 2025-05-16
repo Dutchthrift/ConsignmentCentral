@@ -84,7 +84,7 @@ export default function ConsignorStats({ stats, consignor, isLoading }: StatsPro
           ) : (
             <>
               <div className="text-2xl font-bold">
-                {stats?.totalItems || 0}
+                {Object.values(stats?.itemsPerStatus || {}).reduce((sum, count) => sum + (count || 0), 0) || 0}
               </div>
               <p className="text-xs text-neutral-500 mt-1">
                 Items in consignment
