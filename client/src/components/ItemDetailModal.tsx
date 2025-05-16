@@ -489,6 +489,49 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
               </div>
             )}
             
+            {/* Shipping section - with placeholder when no shipping data is available */}
+            {itemData.shipping ? (
+              <div className="bg-purple-50 p-4 rounded-md mt-4 border border-purple-100">
+                <h4 className="text-sm font-medium mb-1 text-purple-900">Shipping Information</h4>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                  {itemData.shipping.trackingCode && (
+                    <div className="text-sm">
+                      <span className="font-medium">Tracking Code:</span> {itemData.shipping.trackingCode}
+                    </div>
+                  )}
+                  
+                  {itemData.shipping.carrier && (
+                    <div className="text-sm">
+                      <span className="font-medium">Carrier:</span> {itemData.shipping.carrier}
+                    </div>
+                  )}
+                  
+                  {itemData.shipping.shippingDate && (
+                    <div className="text-sm">
+                      <span className="font-medium">Shipped On:</span> {new Date(itemData.shipping.shippingDate).toLocaleDateString()}
+                    </div>
+                  )}
+                  
+                  {itemData.shipping.estimatedArrival && (
+                    <div className="text-sm">
+                      <span className="font-medium">Est. Arrival:</span> {new Date(itemData.shipping.estimatedArrival).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-purple-50 p-4 rounded-md mt-4 border border-purple-100 opacity-75">
+                <h4 className="text-sm font-medium mb-1 text-purple-900">Shipping Status</h4>
+                <p className="text-sm text-purple-700">Shipping information will be displayed here when your item ships. You'll receive:</p>
+                <ul className="list-disc pl-5 mt-2 text-sm text-purple-700 space-y-1">
+                  <li>Tracking number</li>
+                  <li>Shipping carrier</li>
+                  <li>Estimated arrival date</li>
+                </ul>
+              </div>
+            )}
+            
             {/* Additional item info if available */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               {item.sku && (
