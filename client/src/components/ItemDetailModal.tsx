@@ -345,16 +345,91 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
                       <span className="font-medium">Condition:</span> {analysis.condition}
                     </div>
                   )}
+                  
+                  {analysis.manufactureYear && analysis.manufactureYear !== "Unknown" && (
+                    <div className="text-sm">
+                      <span className="font-medium">Year Made:</span> {analysis.manufactureYear}
+                    </div>
+                  )}
+                  
+                  {analysis.color && analysis.color !== "Unknown" && (
+                    <div className="text-sm">
+                      <span className="font-medium">Color:</span> {analysis.color}
+                    </div>
+                  )}
+                  
+                  {analysis.dimensions && analysis.dimensions !== "Unknown" && (
+                    <div className="text-sm">
+                      <span className="font-medium">Dimensions:</span> {analysis.dimensions}
+                    </div>
+                  )}
+                  
+                  {analysis.weight && analysis.weight !== "Unknown" && (
+                    <div className="text-sm">
+                      <span className="font-medium">Weight:</span> {analysis.weight}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {analysis.materials && analysis.materials !== "Unknown" && (
+                    <div className="text-sm">
+                      <span className="font-medium">Materials:</span> {analysis.materials}
+                    </div>
+                  )}
+                  
+                  {analysis.authenticity && analysis.authenticity !== "Unknown" && (
+                    <div className="text-sm">
+                      <span className="font-medium">Authenticity:</span> {analysis.authenticity}
+                    </div>
+                  )}
+                  
+                  {analysis.rarity && analysis.rarity !== "Unknown" && (
+                    <div className="text-sm">
+                      <span className="font-medium">Rarity:</span> {analysis.rarity}
+                    </div>
+                  )}
+                  
+                  {analysis.marketValue > 0 && (
+                    <div className="text-sm">
+                      <span className="font-medium">Estimated Value:</span> {formatCurrency(analysis.marketValue)}
+                    </div>
+                  )}
                 </div>
                 
                 {analysis.features && analysis.features.length > 0 && (
-                  <div className="mt-2">
+                  <div className="mt-4">
                     <span className="text-sm font-medium">Features:</span>
                     <ul className="list-disc pl-5 mt-1 text-sm">
-                      {analysis.features.map((feature, idx) => (
+                      {analysis.features.map((feature: string, idx: number) => (
                         <li key={idx}>{feature}</li>
                       ))}
                     </ul>
+                  </div>
+                )}
+                
+                {analysis.accessories && analysis.accessories.length > 0 && (
+                  <div className="mt-4">
+                    <span className="text-sm font-medium">Accessories:</span>
+                    <ul className="list-disc pl-5 mt-1 text-sm">
+                      {analysis.accessories.map((accessory: string, idx: number) => (
+                        <li key={idx}>{accessory}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {analysis.additionalNotes && (
+                  <div className="mt-4 p-2 bg-blue-50 rounded border border-blue-100">
+                    <span className="text-sm font-medium">Analysis Notes:</span>
+                    <p className="text-sm mt-1">{analysis.additionalNotes}</p>
+                  </div>
+                )}
+                
+                {analysis.confidenceScore && analysis.confidenceScore > 0 && (
+                  <div className="mt-4">
+                    <span className="text-sm font-medium">Analysis Confidence: </span>
+                    <span className="text-sm">{Math.round(analysis.confidenceScore * 100)}%</span>
                   </div>
                 )}
               </div>
