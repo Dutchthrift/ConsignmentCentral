@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, varchar, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -90,8 +90,19 @@ export const analyses = pgTable("analyses", {
   productType: text("product_type"),
   model: text("model"),
   condition: text("condition"),
+  category: text("category"),
+  features: jsonb("features"), // Array of product features
   accessories: jsonb("accessories"), // Array of included accessories
+  manufactureYear: text("manufacture_year"),
+  color: text("color"),
+  dimensions: text("dimensions"),
+  weight: text("weight"),
+  materials: text("materials"),
+  authenticity: text("authenticity"),
+  rarity: text("rarity"),
   additionalNotes: text("additional_notes"),
+  analysisSummary: text("analysis_summary"),
+  confidenceScore: numeric("confidence_score", { precision: 4, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
