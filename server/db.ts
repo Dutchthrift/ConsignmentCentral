@@ -12,13 +12,13 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Enhanced pool configuration for better stability
+// Enhanced pool configuration with even stricter limits to avoid rate limiting
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 5, // Further reduced maximum connections to prevent exceeding Neon's limits
-  idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
-  connectionTimeoutMillis: 10000, // Increased timeout to establish a connection
-  maxUses: 3000, // Close connections after this many uses to prevent memory issues
+  max: 2, // Reduced to absolute minimum to prevent Neon rate limits
+  idleTimeoutMillis: 60000, // Increased idle timeout to reduce reconnections
+  connectionTimeoutMillis: 15000, // Increased connection timeout for slow connections
+  maxUses: 1000, // Reduced max uses to maintain connection health
   allowExitOnIdle: true // Allow pool to exit on idle (helpful for serverless environments)
 });
 
@@ -29,10 +29,11 @@ pool.on('error', (err) => {
   // an unrecoverable error. This is to prevent the app from crashing.
 });
 
-// Enhanced connection management with retry logic
+// Enhanced connection management with improved retry logic
 let connectionRetryCount = 0;
 const MAX_RETRIES = 5;
-const RETRY_DELAY_BASE = 2000; // Base delay of 2 seconds
+const RETRY_DELAY_BASE = 5000; // Increased base delay to 5 seconds
+const JITTER_MAX = 1000; // Add random jitter to prevent synchronized retries
 
 // Ping database periodically to maintain connection
 const keepAliveQuery = async () => {
@@ -50,10 +51,20 @@ const keepAliveQuery = async () => {
     connectionRetryCount++;
     console.error(`Error during database connection check (attempt ${connectionRetryCount}):`, err);
     
-    // If we haven't exceeded max retries, schedule an immediate retry with exponential backoff
+    // Check if this is a rate limit error
+    const isRateLimit = err.message && 
+      (err.message.includes('rate limit') || 
+       err.message.includes('too many connections') ||
+       err.message.includes('exceeded'));
+    
+    // If we haven't exceeded max retries, schedule retry with exponential backoff
     if (connectionRetryCount <= MAX_RETRIES) {
-      const delay = RETRY_DELAY_BASE * Math.pow(2, connectionRetryCount - 1);
-      console.log(`Scheduling database reconnection attempt in ${delay}ms`);
+      // Use longer delays for rate limit errors
+      const baseDelay = isRateLimit ? RETRY_DELAY_BASE * 2 : RETRY_DELAY_BASE;
+      const jitter = Math.floor(Math.random() * JITTER_MAX); // Add random jitter
+      const delay = baseDelay * Math.pow(2, connectionRetryCount - 1) + jitter;
+      
+      console.log(`Scheduling database reconnection attempt in ${delay}ms${isRateLimit ? ' (rate limited)' : ''}`);
       setTimeout(keepAliveQuery, delay);
     } else {
       console.error(`Failed to reconnect to database after ${MAX_RETRIES} attempts`);
@@ -66,8 +77,8 @@ const keepAliveQuery = async () => {
 // Initial database connection check
 keepAliveQuery();
 
-// Setup periodic ping every 3 minutes to prevent idle timeouts
-const keepAliveInterval = setInterval(keepAliveQuery, 3 * 60 * 1000);
+// Setup periodic ping every 5 minutes to prevent idle timeouts (reduced frequency)
+const keepAliveInterval = setInterval(keepAliveQuery, 5 * 60 * 1000);
 
 // Properly handle interval cleanup when process exits
 process.on('SIGTERM', () => {
