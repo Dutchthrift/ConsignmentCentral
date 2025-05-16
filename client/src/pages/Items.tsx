@@ -24,7 +24,7 @@ import { format } from "date-fns";
 import { Search, Filter, ArrowUpDown, Image } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ItemDetailModal } from "@/components/ItemDetailModal";
+import ItemDetailModal from "@/components/ItemDetailModal";
 
 // Helper function to format currency
 const formatCurrency = (amount: number) => {
@@ -151,12 +151,16 @@ export default function ItemsPage() {
       )
     : [];
 
-  // Handle item click - navigate to item detail page
+  // Handle item click - show item details
   const handleItemClick = (referenceId: string) => {
-    if (isConsignor) {
-      // Open the modal with the item details
-      setSelectedItemId(referenceId);
-    }
+    // Instead of trying to navigate to a different URL, just store the item ID
+    // and we'll show more details right on this page when an item is selected
+    setSelectedItemId(referenceId);
+  };
+  
+  // Function to close the item details panel
+  const handleCloseDetails = () => {
+    setSelectedItemId(null);
   };
   
   // Sort items based on current sort settings
@@ -347,6 +351,15 @@ export default function ItemsPage() {
           )}
         </CardContent>
       </Card>
+      
+      {/* Item Detail Modal */}
+      {selectedItemId && (
+        <ItemDetailModal 
+          referenceId={selectedItemId} 
+          onClose={() => setSelectedItemId(null)}
+          isAdmin={!isConsignor}
+        />
+      )}
     </div>
   );
 }

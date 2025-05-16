@@ -62,7 +62,7 @@ type ItemDetailModalProps = {
   isAdmin?: boolean;
 };
 
-export function ItemDetailModal({ referenceId, onClose, isAdmin = false }: ItemDetailModalProps) {
+export default function ItemDetailModal({ referenceId, onClose, isAdmin = false }: ItemDetailModalProps) {
   const { user } = useAuth();
   const isOpen = !!referenceId;
   
