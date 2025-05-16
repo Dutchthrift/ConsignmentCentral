@@ -123,62 +123,115 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     try {
       const { email, password, name, phone } = req.body;
       
-      // Check if user or customer already exists
-      const existingUser = await storage.getUserByEmail(email);
-      const existingCustomer = await storage.getCustomerByEmail(email);
-      
-      if (existingUser || existingCustomer) {
-        return res.status(400).json({
+      // Check if user or customer already exists using raw SQL to avoid Drizzle issues
+      const client = await authService.getPool().connect();
+      try {
+        // Check for existing accounts
+        const checkEmailQuery = `
+          SELECT id FROM customers WHERE email = $1
+          UNION
+          SELECT id FROM users WHERE email = $1
+          LIMIT 1
+        `;
+        
+        const existingAccount = await client.query(checkEmailQuery, [email]);
+        
+        if (existingAccount.rowCount && existingAccount.rowCount > 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'An account with this email already exists'
+          });
+        }
+        
+        // Hash password
+        const hashedPassword = await authService.hashPassword(password);
+        
+        // Create customer with raw SQL
+        const insertQuery = `
+          INSERT INTO customers (
+            email,
+            password,
+            name,
+            phone,
+            address,
+            city,
+            state,
+            postal_code,
+            country,
+            role
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+          ) RETURNING *
+        `;
+        
+        const params = [
+          email,
+          hashedPassword,
+          name,
+          phone || null,
+          null, // address
+          null, // city
+          null, // state/payoutMethod
+          null, // postal_code/iban
+          'NL', // Default to Netherlands
+          UserRole.CONSIGNOR
+        ];
+        
+        console.log('Creating new customer with params:', {
+          email,
+          name,
+          hasPassword: !!hashedPassword,
+          role: UserRole.CONSIGNOR
+        });
+        
+        const result = await client.query(insertQuery, params);
+        const customer = result.rows[0];
+        
+        console.log('Customer created successfully with ID:', customer.id);
+        
+        // Log the customer in
+        req.login(customer, (err) => {
+          if (err) {
+            console.error('Login error after registration:', err);
+            return next(err);
+          }
+          
+          // Set user type in session
+          if (req.session) {
+            req.session.userType = UserType.CUSTOMER;
+          }
+          
+          console.log('Registration successful:', { 
+            userId: customer.id, 
+            role: customer.role, 
+            name: customer.name,
+            userType: UserType.CUSTOMER
+          });
+          
+          // Generate token
+          const token = authService.generateToken(customer);
+          
+          // Return customer directly with token
+          return res.status(201).json({
+            ...customer,
+            token
+          });
+        });
+      } catch (dbError) {
+        console.error('Database error during registration:', dbError);
+        return res.status(500).json({
           success: false,
-          message: 'An account with this email already exists'
+          message: `Registration failed: ${dbError.message}`
         });
+      } finally {
+        client.release();
       }
-      
-      // Hash password and create customer
-      const hashedPassword = await authService.hashPassword(password);
-      const customer = await storage.createCustomer({
-        email,
-        password: hashedPassword,
-        fullName: name, // Using fullName for Customer model
-        phone: phone || null,
-        payoutMethod: null,
-        iban: null,
-        address: null,
-        city: null,
-        country: null,
-        role: UserRole.CONSIGNOR,
-        // createdAt is added automatically by the database schema
-      });
-      
-      // Log the customer in
-      req.login(customer, (err) => {
-        if (err) {
-          return next(err);
-        }
-        
-        // Set user type in session
-        if (req.session) {
-          req.session.userType = UserType.CUSTOMER;
-        }
-        
-        console.log('Registration successful:', { 
-          userId: customer.id, 
-          role: customer.role, 
-          name: customer.fullName,
-          userType: UserType.CUSTOMER
-        });
-        
-        // Generate token
-        const token = authService.generateToken(customer);
-        
-        // Return customer directly with token
-        return res.status(201).json({
-          ...customer,
-          token
-        });
-      });
     } catch (error) {
-      next(error);
+      console.error('Unexpected error during registration:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Registration failed'
+      });
     }
   });
   

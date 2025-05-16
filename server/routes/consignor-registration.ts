@@ -3,7 +3,6 @@ import { storage } from "../storage";
 import { z } from "zod";
 import { UserRole, AuthProvider } from "@shared/schema";
 import AuthService from "../services/auth.service";
-import { pool } from "../db";
 
 // Create an instance of AuthService
 const authService = new AuthService(storage);
@@ -112,7 +111,7 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
       ];
       
       console.log("Executing SQL query with params:", params);
-      const client = await pool.connect();
+      const client = await authService.getPool().connect();
       try {
         const result = await client.query(insertQuery, params);
         customer = result.rows[0];

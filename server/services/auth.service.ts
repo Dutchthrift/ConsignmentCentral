@@ -9,6 +9,7 @@ import SessionService from './session.service';
 import { scrypt, randomBytes, timingSafeEqual, createHmac } from 'crypto';
 import { promisify } from 'util';
 import jwt from 'jsonwebtoken';
+import { pool } from '../db'; // Import database pool for direct SQL queries
 
 export class AuthService {
   private storage: IStorage;
@@ -16,6 +17,11 @@ export class AuthService {
   private scryptAsync = promisify(scrypt);
   private readonly JWT_SECRET = process.env.JWT_SECRET || 'dutch-thrift-jwt-secret';
   private readonly TOKEN_EXPIRY = '7d'; // Token valid for 7 days
+  
+  // Expose database pool for direct queries
+  getPool() {
+    return pool;
+  }
 
   constructor(storage: IStorage) {
     this.storage = storage;
