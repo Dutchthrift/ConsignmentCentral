@@ -24,14 +24,10 @@ import { Loader2, Camera, ArrowLeft } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// Form schema for item submission
+// Form schema for item submission - simplified as requested
 const itemSubmissionSchema = z.object({
   item: z.object({
     title: z.string().min(1, "Title is required"),
-    description: z.string().optional(),
-    brand: z.string().optional(),
-    category: z.string().optional(),
-    condition: z.string().optional(),
   }),
 });
 
@@ -71,16 +67,12 @@ export default function ConsignorSubmitItem() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [step, setStep] = useState<'form' | 'analysis' | 'confirmation'>('form');
   
-  // Define form
+  // Define form - simplified as requested
   const form = useForm<ItemSubmissionValues>({
     resolver: zodResolver(itemSubmissionSchema),
     defaultValues: {
       item: {
         title: "",
-        description: "",
-        brand: "",
-        category: "",
-        condition: "",
       },
     },
   });
@@ -195,122 +187,79 @@ export default function ConsignorSubmitItem() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div>
-          <h3 className="text-lg font-medium mb-4">Item Information</h3>
-          <div className="space-y-4">
+          <div className="bg-blue-50 p-4 rounded-md mb-6">
+            <p className="text-blue-800 font-medium">
+              That's it! Our AI will take it from here — we'll identify the item, assess condition, and estimate its value for consignment.
+            </p>
+          </div>
+          
+          <div className="space-y-6">
             <FormField
               control={form.control}
               name="item.title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Item Title</FormLabel>
+                  <FormLabel>Item Title (model/type)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Brand and model (e.g., Apple iPhone 14 Pro)" {...field} />
+                    <Input placeholder="E.g., iPhone 14 Pro, PlayStation 5, Nike Air Max" {...field} />
                   </FormControl>
                   <FormDescription>
-                    Be as specific as possible for better AI analysis
+                    Be as specific as possible to help our AI identify your item
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="item.description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Describe the item, including condition, accessories, etc."
-                      className="min-h-[100px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="item.brand"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Brand</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Brand name (optional)" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="item.category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Category (optional)" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="item.condition"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Condition</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Condition (optional)" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Item Image</p>
-              <div className="mt-1 flex items-center">
-                <div className="border-2 border-dashed rounded-md px-6 py-8 w-full">
-                  <div className="text-center">
-                    <Camera className="h-12 w-12 mx-auto text-gray-400" />
-                    <div className="mt-2">
-                      <label
-                        htmlFor="file-upload"
-                        className="cursor-pointer bg-white rounded-md px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-500"
-                      >
-                        Upload a photo
-                      </label>
-                      <input
-                        id="file-upload"
-                        name="file-upload"
-                        type="file"
-                        accept="image/*"
-                        className="sr-only"
-                        onChange={handleFileChange}
-                      />
-                      <p className="text-xs text-gray-500">
-                        Upload a clear image of the item for AI analysis
-                      </p>
-                    </div>
-                    
-                    {imagePreview && (
+            <div className="mt-6">
+              <p className="text-sm font-medium mb-2">Item Image (required)</p>
+              <div className="border-2 border-dashed border-primary/20 rounded-md px-6 py-8 w-full">
+                <div className="text-center">
+                  {!imagePreview ? (
+                    <>
+                      <Camera className="h-12 w-12 mx-auto text-primary/50" />
                       <div className="mt-4">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Image Preview</p>
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="h-48 object-contain border rounded-md mx-auto"
+                        <label
+                          htmlFor="file-upload"
+                          className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                        >
+                          Upload a photo
+                        </label>
+                        <input
+                          id="file-upload"
+                          name="file-upload"
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          onChange={handleFileChange}
+                          required
                         />
+                        <p className="text-sm text-gray-500 mt-2">
+                          Upload a clear image to get the most accurate AI analysis
+                        </p>
                       </div>
-                    )}
-                  </div>
+                    </>
+                  ) : (
+                    <div className="mt-2">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="h-48 object-contain rounded-md mx-auto"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-4"
+                        onClick={() => {
+                          setImagePreview(null);
+                          setImageBase64(null);
+                        }}
+                      >
+                        Change image
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -320,9 +269,13 @@ export default function ConsignorSubmitItem() {
         <Separator />
         
         <CardFooter className="flex justify-end p-0">
-          <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto">
+          <Button 
+            type="submit" 
+            disabled={isSubmitting || !imageBase64} 
+            className="w-full md:w-auto"
+          >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Submit for Analysis
+            Analyze Item
           </Button>
         </CardFooter>
       </form>
@@ -346,100 +299,118 @@ export default function ConsignorSubmitItem() {
       : "N/A";
     
     return (
-      <div className="space-y-6">
-        <h3 className="text-lg font-medium">AI Analysis Results</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Product Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="font-medium">Reference ID:</span>
-                <span>{analysisResult.referenceId}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Product Type:</span>
-                <span>{analysisResult.analysis?.productType || "Not detected"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Brand:</span>
-                <span>{analysisResult.analysis?.brand || analysisResult.brand || "Not detected"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Model:</span>
-                <span>{analysisResult.analysis?.model || "Not detected"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Condition:</span>
-                <span>{analysisResult.analysis?.condition || analysisResult.condition || "Not detected"}</span>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="space-y-8">
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg">
+          <h3 className="text-xl font-bold mb-6 text-center">AI Analysis Complete</h3>
           
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Market Value & Payout</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="font-medium">Market Value:</span>
-                <span>€{marketValue}</span>
+          <div className="mb-8">
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-sm text-gray-600">Item Reference</span>
+              <span className="text-sm font-medium">{analysisResult.referenceId}</span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left side: Image */}
+            <div>
+              {imagePreview && (
+                <div className="mb-6">
+                  <img
+                    src={imagePreview}
+                    alt="Item"
+                    className="rounded-md w-full object-contain h-48 border bg-white"
+                  />
+                </div>
+              )}
+              
+              <div className="rounded-md border bg-white p-4">
+                <h4 className="font-medium text-sm mb-3">AI-Generated Details</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Product Type:</span>
+                    <span className="font-medium">{analysisResult.analysis?.productType || "Not detected"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Brand:</span>
+                    <span className="font-medium">{analysisResult.analysis?.brand || analysisResult.brand || "Not detected"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Model:</span>
+                    <span className="font-medium">{analysisResult.analysis?.model || "Not detected"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Condition:</span>
+                    <span className="font-medium">{analysisResult.analysis?.condition || analysisResult.condition || "Not detected"}</span>
+                  </div>
+                </div>
+                
+                {analysisResult.analysis?.accessories && analysisResult.analysis.accessories.length > 0 && (
+                  <div className="mt-3 pt-3 border-t">
+                    <h4 className="text-sm font-medium mb-2">Included Accessories</h4>
+                    <ul className="list-disc pl-4 text-sm">
+                      {analysisResult.analysis.accessories.map((accessory, index) => (
+                        <li key={index}>{accessory}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Recommended Price:</span>
-                <span>€{recommendedPrice}</span>
+            </div>
+            
+            {/* Right side: Pricing */}
+            <div className="flex flex-col">
+              <div className="bg-white rounded-md border p-4 mb-6">
+                <h4 className="font-medium text-sm mb-4">Market Value & Payout</h4>
+                
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Market Value</span>
+                    <span className="text-lg font-semibold">€{marketValue}</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Selling Price</span>
+                    <span className="text-lg font-semibold">€{recommendedPrice}</span>
+                  </div>
+                  
+                  <div className="h-px bg-gray-200 my-2"></div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Your Payout</span>
+                    <span className="text-xl font-bold text-green-600">€{estimatedPayout}</span>
+                  </div>
+                  
+                  <div className="text-sm text-gray-500 mt-2">
+                    <p>Payout Method: {analysisResult.pricing?.payoutMethod || "Standard"}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between font-semibold text-green-600">
-                <span>Estimated Payout:</span>
-                <span>€{estimatedPayout}</span>
+              
+              {analysisResult.analysis?.additionalNotes && (
+                <div className="bg-white rounded-md border p-4 mb-6">
+                  <h4 className="font-medium text-sm mb-2">Additional Notes</h4>
+                  <p className="text-sm text-gray-600">{analysisResult.analysis.additionalNotes}</p>
+                </div>
+              )}
+              
+              <div className="mt-auto">
+                <div className="bg-green-50 border border-green-100 rounded-md p-3 mb-4">
+                  <p className="text-sm text-green-800">
+                    Our AI analysis indicates this item will likely sell quickly and bring you a fair payout.
+                  </p>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Payout Method:</span>
-                <span>{analysisResult.pricing?.payoutMethod || "Standard"}</span>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
         
-        {imagePreview && (
-          <div className="mt-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">Item Image</p>
-            <img
-              src={imagePreview}
-              alt="Item"
-              className="h-48 object-contain border rounded-md"
-            />
-          </div>
-        )}
-        
-        {analysisResult.analysis?.accessories && analysisResult.analysis.accessories.length > 0 && (
-          <div>
-            <h4 className="text-sm font-medium mb-2">Included Accessories</h4>
-            <ul className="list-disc pl-4 text-sm">
-              {analysisResult.analysis.accessories.map((accessory, index) => (
-                <li key={index}>{accessory}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        
-        {analysisResult.analysis?.additionalNotes && (
-          <div>
-            <h4 className="text-sm font-medium mb-2">Additional Notes</h4>
-            <p className="text-sm">{analysisResult.analysis.additionalNotes}</p>
-          </div>
-        )}
-        
-        <Separator />
-        
-        <div className="flex flex-col md:flex-row gap-2 justify-end">
+        <div className="flex flex-col md:flex-row gap-3 justify-end">
           <Button 
             type="button" 
             variant="outline"
             onClick={() => setStep('form')}
             disabled={isSubmitting}
+            className="md:w-auto w-full"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Edit
@@ -448,9 +419,10 @@ export default function ConsignorSubmitItem() {
             type="button"
             onClick={handleConfirm}
             disabled={isSubmitting}
+            className="md:w-auto w-full bg-green-600 hover:bg-green-700"
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirm & Add to Inventory
+            Submit Item for Consignment
           </Button>
         </div>
       </div>
@@ -458,22 +430,37 @@ export default function ConsignorSubmitItem() {
   };
   
   const renderConfirmationStep = () => (
-    <div className="space-y-6">
-      <Alert className="bg-green-50 border-green-200">
-        <AlertTitle className="text-green-800">Item Successfully Submitted!</AlertTitle>
-        <AlertDescription className="text-green-700">
+    <div className="space-y-8">
+      <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h3 className="text-xl font-bold text-green-800 mb-2">Item Successfully Submitted!</h3>
+        <p className="text-green-700 mb-6">
           Your item has been added to your inventory. You'll be notified when it's been reviewed by our team.
-        </AlertDescription>
-      </Alert>
+        </p>
+        
+        <div className="bg-white border rounded-md p-4 max-w-md mx-auto">
+          <p className="text-sm font-medium text-gray-600">Item Reference:</p>
+          <p className="text-2xl font-bold text-gray-800">{analysisResult?.referenceId || "Generated"}</p>
+          <p className="text-xs text-gray-500 mt-1">Use this reference number if you need to contact support about this item.</p>
+        </div>
+      </div>
       
-      <div className="border rounded-md p-4">
-        <p className="text-sm font-medium">Item Reference:</p>
-        <p className="text-2xl font-bold">{analysisResult?.referenceId || "Generated"}</p>
-        <p className="text-xs text-gray-500 mt-1">Use this reference number if you need to contact support about this item.</p>
+      <div className="bg-blue-50 border border-blue-100 rounded-md p-4">
+        <p className="text-sm text-blue-800">
+          <strong>What happens next?</strong> Our team will review your submission, verify the item details, and prepare it for listing. You'll be notified at each step of the process.
+        </p>
       </div>
       
       <div className="flex justify-center">
-        <Button onClick={() => navigate("/consignor/dashboard")}>
+        <Button 
+          onClick={() => navigate("/consignor/dashboard")}
+          className="px-6"
+          size="lg"
+        >
           Return to Dashboard
         </Button>
       </div>
