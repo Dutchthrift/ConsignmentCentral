@@ -8,22 +8,22 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-console.log('Using Supabase direct connection with correct parameters');
+console.log('Using Neon fallback connection for development');
 
-// Supabase direct connection with parameters from dashboard
+// Temporarily fall back to Neon while we develop a working Supabase solution
+// This ensures the application continues to function during the transition
+import { neonConfig } from '@neondatabase/serverless';
+import ws from 'ws';
+neonConfig.webSocketConstructor = ws;
+
+// Use the existing Neon database for now
 export const pool = new Pool({
-  user: 'postgres',
-  password: 'Prinsesseweg79!', 
-  host: 'db.pkktakjpjytfxkkyuvrk.supabase.co',
-  port: 5432,
-  database: 'postgres',
-  ssl: {
-    rejectUnauthorized: false // Required for SSL connections
-  },
-  max: 2, // Limited pool size
-  idleTimeoutMillis: 30000, // 30 seconds idle timeout
-  connectionTimeoutMillis: 30000, // 30 seconds connection timeout
-  allowExitOnIdle: true,
+  connectionString: process.env.DATABASE_URL,
+  ssl: true,
+  max: 1,
+  idleTimeoutMillis: 120000,
+  connectionTimeoutMillis: 30000,
+  allowExitOnIdle: false
 });
 
 // Add error handler to prevent app crashes on connection issues
