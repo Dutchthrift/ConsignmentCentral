@@ -122,6 +122,9 @@ export default function ItemDetailModal({ referenceId, onClose, isAdmin = false 
   // Safely extract item data from the API response
   const item = data.data?.item || data.data;
   
+  // Debug the data structure to console
+  console.log("API response:", data);
+  
   // Safety check in case the item doesn't have all properties
   if (!item || !item.status) {
     return (
