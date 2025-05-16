@@ -134,6 +134,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register consignor items routes
   app.use('/api/consignor/items', consignorItemsRoutes);
+  
+  // Item detail route for consignors
+  app.get('/api/consignor/item/:id', async (req, res) => {
+    try {
+      // Check for JWT authentication
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, message: "Authentication required" });
+      }
+      
+      const token = authHeader.split(' ')[1];
+      const decoded = await authService.verifyToken(token);
+      
+      if (!decoded || !decoded.id) {
+        return res.status(401).json({ success: false, message: "Invalid authentication token" });
+      }
+      
+      // Find the customer associated with this user
+      const customer = await storage.getCustomerByUserId(decoded.id);
+      
+      if (!customer) {
+        return res.status(403).json({ success: false, message: "Not registered as a consignor" });
+      }
+      
+      // Get the item
+      const item = await storage.getItemWithDetailsByReferenceId(req.params.id);
+      
+      // Check if item exists and belongs to this consignor
+      if (!item || item.customerId !== customer.id) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Item not found or you don't have permission to access it" 
+        });
+      }
+      
+      res.json({ success: true, data: item });
+      
+    } catch (error) {
+      console.error("Error accessing consignor item:", error);
+      res.status(500).json({ success: false, message: "Internal server error" });
+    }
+  });
 
   // ===== ITEM ROUTES =====
   

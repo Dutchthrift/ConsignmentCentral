@@ -38,6 +38,7 @@ import ConsignorSubmitItem from "@/pages/ConsignorSubmitItem";
 import Layout from "@/components/Layout";
 import StorefrontLayout from "@/components/StorefrontLayout";
 import ConsignorLayout from "@/components/ConsignorLayout";
+import ConsignorItemDetail from "@/pages/ConsignorItemDetail";
 import TokenTestPage from "@/pages/token-test-page";
 // No layout for login pages - they have their own interface
 
