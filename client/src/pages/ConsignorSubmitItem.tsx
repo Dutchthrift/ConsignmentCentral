@@ -181,7 +181,7 @@ export default function ConsignorSubmitItem() {
           brand: extractBrandFromTitle(form.getValues().item.title) || "Minolta",
           model: form.getValues().item.title.includes("Minolta") ? "X-700" : form.getValues().item.title,
           condition: "Good",
-          accessories: ["Original packaging", "Manual", "50mm lens", "Camera strap"],
+          accessories: [],
           additionalNotes: `Vintage ${form.getValues().item.title} SLR camera. Classic model in good working condition with standard accessories. Shutter mechanism works properly and viewfinder is clear.`
         },
         
@@ -404,7 +404,10 @@ export default function ConsignorSubmitItem() {
                   </div>
                 </div>
                 
-                {analysisResult.analysis?.accessories && analysisResult.analysis.accessories.length > 0 && (
+                {/* Only show accessories section if there are actual accessories */}
+                {analysisResult.analysis?.accessories && 
+                 Array.isArray(analysisResult.analysis.accessories) && 
+                 analysisResult.analysis.accessories.length > 0 && (
                   <div className="mt-3 pt-3 border-t">
                     <h4 className="text-sm font-medium mb-2">Included Accessories</h4>
                     <ul className="list-disc pl-4 text-sm">
