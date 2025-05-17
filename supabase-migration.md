@@ -1,107 +1,85 @@
-# Supabase Migration Guide
+# Supabase Database Migration Guide
 
-This document provides instructions for migrating the DutchThrift application from the current database to Supabase.
+This guide explains how to migrate the DutchThrift application from in-memory storage to Supabase persistent database storage.
 
 ## Prerequisites
 
-1. A Supabase account with a project created
-2. The Supabase connection string (available in your Supabase dashboard)
-3. Access to the current application codebase
+1. A Supabase account and project
+2. The DATABASE_URL environment variable set in your `.env` file
 
-## Connection Information
+## Migration Steps
 
-Use the connection pooling URL from Supabase for better reliability:
+### 1. Create Database Schema
 
-```
-postgresql://postgres.pkktakjpjytfxkkyuvrk:Prinsesseweg79!@aws-0-eu-central-1.pooler.supabase.com:6543/postgres
-```
+The database schema has been created using the `create-supabase-schema.js` script. This script creates all necessary tables:
 
-This connection string should be set as the `DATABASE_URL` environment variable.
+- admin_users: For admin user accounts
+- users: For consignor user accounts
+- customers: For consignor details
+- items: For consignment items
+- analysis: For item analysis data
+- pricing: For item pricing information
+- shipping: For shipping details
+- orders: For customer orders
+- order_items: For items in orders
+- ml_training_examples: For ML training data
+- ml_model_configs: For ML model configurations
+- ml_training_sessions: For ML training session records
 
-## Migration Process
+To run the script:
 
-### Step 1: Configure the Environment
-
-Make sure your `.env` file contains the correct Supabase connection string:
-
-```
-DATABASE_URL="postgresql://postgres.pkktakjpjytfxkkyuvrk:Prinsesseweg79!@aws-0-eu-central-1.pooler.supabase.com:6543/postgres"
-```
-
-### Step 2: Run the Migration Script
-
-We've created a migration script that will:
-- Create the necessary tables in Supabase
-- Migrate existing data to Supabase
-- Set up test data for development
-
-Run the migration script:
-
-```
-node migrate-to-supabase.js
+```bash
+node create-supabase-schema.js
 ```
 
-### Step 3: Switch to Supabase Storage
+### 2. Seed Initial Data
 
-After a successful migration, update the application to use the Supabase storage:
+To seed the database with initial test data, run:
 
-1. In `server/routes.ts`, change:
-   ```javascript
-   // From:
-   import { storage } from "./memory-storage";
-   // To:
-   import { storage } from "./storage-supabase";
-   ```
-
-2. Update any other files that reference `memory-storage.ts` to use `storage-supabase.ts` instead.
-
-### Step 4: Test the Application
-
-After switching to Supabase storage, thoroughly test the application:
-
-1. Test user authentication (admin and consignor logins)
-2. Test item creation and management
-3. Test order processing
-4. Verify that all data is being correctly stored and retrieved
-
-## Troubleshooting
-
-### Connection Issues
-
-If you experience connection issues with Supabase:
-
-1. Verify the connection string is correct
-2. Check that Supabase services are running (status.supabase.com)
-3. Ensure your IP is not being blocked by any firewalls
-4. Try using the connection pooling URL instead of direct connection
-
-### Data Migration Issues
-
-If data migration fails:
-
-1. Check the error messages for specific table or constraint issues
-2. Verify that the schema in `shared/schema.ts` matches the tables being created
-3. Run the migration script with added debugging output to identify specific failures
-4. If necessary, manually create tables or fix constraint issues in the Supabase dashboard
-
-## Fallback Strategy
-
-If Supabase connection continues to be problematic, the application includes an in-memory storage implementation that can be used for development and testing:
-
-```javascript
-import { storage } from "./memory-storage";
+```bash
+node seed-supabase-data.js
 ```
 
-This allows development to continue while database connectivity issues are resolved.
+This creates:
+- An admin user (admin@dutchthrift.com / admin123)
+- A test consignor (consignor@example.com / password123)
+- Sample items and an order
 
-## Testing Credentials
+### 3. Switch to Supabase Storage
 
-For testing purposes, the following accounts are available:
+To switch the application to use Supabase instead of in-memory storage:
 
-### Admin Account
-- Email: admin@dutchthrift.com
-- Password: admin123
+```bash
+node run-supabase-migration.js
+```
 
-### Consignor Account
-- Email: consignor@example.com
-- Password: password123
+This script will:
+1. Check if the DATABASE_URL is configured
+2. Run the database schema migration if needed
+3. Switch the application to use Supabase storage (DatabaseStorage implementation)
+
+### Troubleshooting
+
+If you encounter issues:
+
+1. Check that the DATABASE_URL is correctly set in your `.env` file
+2. Ensure your Supabase database is accessible
+3. Check the PostgreSQL version compatibility (9.6 or higher required)
+4. Examine any error messages for specific table or column issues
+
+### Test Accounts
+
+After migration, you can log in with:
+
+- Admin: admin@dutchthrift.com / admin123
+- Consignor: consignor@example.com / password123
+
+### Manual Database Operation
+
+If needed, you can connect to your Supabase database directly using the psql command:
+
+```bash
+psql "postgres://username:password@hostname:port/database"
+```
+
+Replace the connection details with your Supabase connection string.

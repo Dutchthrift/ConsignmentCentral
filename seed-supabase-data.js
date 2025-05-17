@@ -1,7 +1,4 @@
 // Seed Supabase Data Script
-// This script inserts sample data into your Supabase database
-// for testing the Dutch Thrift application
-
 import pg from 'pg';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -21,7 +18,6 @@ const __dirname = path.dirname(__filename);
 if (!process.env.DATABASE_URL) {
   console.error("❌ ERROR: DATABASE_URL environment variable is not defined");
   console.log("Please add your Supabase connection string to the .env file");
-  console.log("Example: DATABASE_URL=\"postgresql://postgres.user:password@aws-0-region.pooler.supabase.com:6543/postgres\"");
   process.exit(1);
 }
 
@@ -129,7 +125,21 @@ async function createConsignorUser() {
     
     if (existingUser.rows.length > 0) {
       console.log("Consignor user already exists, skipping creation");
-      return existingUser.rows[0];
+      
+      // Get the associated customer record
+      const customerResult = await executeQuery(
+        "SELECT * FROM customers WHERE email = $1",
+        ['consignor@example.com']
+      );
+      
+      if (customerResult.rows.length > 0) {
+        return { 
+          user: existingUser.rows[0], 
+          customer: customerResult.rows[0] 
+        };
+      } else {
+        return { user: existingUser.rows[0] };
+      }
     }
     
     // Create consignor user
@@ -163,7 +173,10 @@ async function createConsignorUser() {
     );
     
     console.log("✅ Created consignor user: consignor@example.com (password: password123)");
-    return { user: userResult.rows[0], customer: customerResult.rows[0] };
+    return { 
+      user: userResult.rows[0], 
+      customer: customerResult.rows[0] 
+    };
   } catch (error) {
     console.error("❌ Failed to create consignor user:", error.message);
     throw error;
@@ -397,7 +410,6 @@ async function seedData() {
     console.log("\nUse the following credentials to test the application:");
     console.log("Admin: admin@dutchthrift.com / admin123");
     console.log("Consignor: consignor@example.com / password123");
-    
   } catch (error) {
     console.error("\n❌ Data seeding failed:", error.message);
     process.exit(1);
