@@ -234,8 +234,8 @@ async function migrateData() {
     
     // First create the customer
     const customerResult = await executeQuery(supabasePool, `
-      INSERT INTO customers (email, name, phone, address, city, postal_code, country, created_at, updated_at) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO customers (email, name, phone, address, city, postal_code, country, created_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       ON CONFLICT (email) DO UPDATE 
       SET name = EXCLUDED.name, phone = EXCLUDED.phone
       RETURNING id
@@ -247,7 +247,6 @@ async function migrateData() {
       'Amsterdam',
       '1000AA',
       'Netherlands',
-      new Date(),
       new Date()
     ]);
     
