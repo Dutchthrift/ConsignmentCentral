@@ -314,24 +314,20 @@ async function createSampleOrder(customer, items) {
       return existingOrders.rows[0];
     }
     
-    // Create order
+    // Create order - with fields matching the actual schema in database
     const orderResult = await executeQuery(
       `INSERT INTO orders (
-        order_number, customer_id, order_date, status, shipping_address, 
-        billing_address, total_amount, shipping_cost, tracking_code, 
-        payment_method, notes, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+        order_number, customer_id, status, submission_date, 
+        total_value, total_payout, tracking_code, notes, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [
         'ORD-2023-001',
         customerId,
-        new Date(),
         'Paid',
-        '123 Buyer Street, Amsterdam',
-        '123 Buyer Street, Amsterdam',
+        new Date(),
         120.00,
-        5.00,
+        72.00,
         'TR123456789NL',
-        'Credit Card',
         'Please ship with care',
         new Date()
       ]
@@ -339,16 +335,14 @@ async function createSampleOrder(customer, items) {
     
     const order = orderResult.rows[0];
     
-    // Add first item to order
+    // Add first item to order with the actual schema
     if (items && items.length > 0) {
       await executeQuery(
-        `INSERT INTO order_items (order_id, item_id, price, quantity, created_at) 
-         VALUES ($1, $2, $3, $4, $5)`,
+        `INSERT INTO order_items (order_id, item_id, created_at) 
+         VALUES ($1, $2, $3)`,
         [
           order.id,
           items[0].id,
-          120.00,
-          1,
           new Date()
         ]
       );
