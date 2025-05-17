@@ -87,12 +87,12 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getCustomerByUserId(userId: number): Promise<Customer | undefined> {
-    // First get the user to find the customer ID
+    // First get the user to find the customer email
     const user = await this.getUserById(userId);
-    if (!user || !user.customerId) return undefined;
+    if (!user) return undefined;
     
-    // Then get the customer with that ID
-    return await this.getCustomer(user.customerId);
+    // Then get the customer with that email
+    return await this.getCustomerByEmail(user.email);
   }
 
   // Item methods
@@ -117,7 +117,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateItemStatus(id: number, status: string): Promise<Item | undefined> {
     const [updatedItem] = await db.update(items)
-      .set({ status, updatedAt: new Date() })
+      .set({ status })
       .where(eq(items.id, id))
       .returning();
     return updatedItem;
@@ -614,22 +614,8 @@ export class DatabaseStorage implements IStorage {
 
   // User methods
   async getUserById(id: number): Promise<User | undefined> {
-    // For compatibility with older database schema, use a simplified query
-    // that doesn't include the user_type column
-    const [user] = await db.select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      password: users.password,
-      role: users.role,
-      provider: users.provider,
-      externalId: users.externalId,
-      profileImageUrl: users.profileImageUrl,
-      lastLogin: users.lastLogin,
-      createdAt: users.createdAt,
-      customerId: users.customerId,
-    }).from(users).where(eq(users.id, id));
-    
+    // Use a direct select that matches the schema
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
