@@ -1,4 +1,5 @@
-import { DatabaseStorage, IStorage } from './database-storage';
+import { DatabaseStorage } from './database-storage';
+import { IStorage } from './storage-interface';
 import connectPg from 'connect-pg-simple';
 import session from 'express-session';
 import { pool } from './db-supabase';
@@ -10,7 +11,7 @@ const PostgresSessionStore = connectPg(session);
  * Supabase-specific database storage implementation
  * This extends the base DatabaseStorage class with Supabase-specific customizations
  */
-class SupabaseDatabaseStorage extends DatabaseStorage {
+class SupabaseDatabaseStorage extends DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {

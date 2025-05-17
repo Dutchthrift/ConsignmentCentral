@@ -1,172 +1,411 @@
-// Migration script to transfer data from Neon to Supabase
-require('dotenv').config();
+// Migration script to move data from in-memory or existing database to Supabase
 const { Pool } = require('pg');
-const fs = require('fs');
+require('dotenv').config();
 
-// Source database (Neon)
-const sourcePool = new Pool({
-  connectionString: process.env.NEON_DATABASE_URL || process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  max: 3,
-  idleTimeoutMillis: 60000,
-  connectionTimeoutMillis: 10000
-});
-
-// Target database (Supabase)
-const targetPool = new Pool({
-  connectionString: process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  max: 3,
-  idleTimeoutMillis: 60000,
-  connectionTimeoutMillis: 10000
-});
-
-// Function to execute queries with better error handling
+// Retry utility for database operations
 async function executeQuery(pool, query, params = [], retries = 3) {
   let lastError;
-  for (let attempt = 1; attempt <= retries; attempt++) {
+  for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const client = await pool.connect();
       try {
-        return await client.query(query, params);
+        const result = await client.query(query, params);
+        return result;
       } finally {
         client.release();
       }
     } catch (error) {
-      console.error(`Attempt ${attempt}/${retries} failed:`, error.message);
+      console.error(`Query attempt ${attempt + 1}/${retries} failed:`, error.message);
       lastError = error;
-      // Wait before retrying with exponential backoff
-      if (attempt < retries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+      
+      // Wait before retrying (exponential backoff)
+      if (attempt < retries - 1) {
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`Retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
-  throw lastError;
+  
+  throw new Error(`Failed after ${retries} attempts. Last error: ${lastError.message}`);
 }
 
-// Tables to migrate in order (respecting foreign key dependencies)
-const tablesToMigrate = [
-  'users',
-  'admin_users',
-  'customers',
-  'items',
-  'ml_training_examples',
-  'ml_model_configs',
-  'ml_training_sessions',
-  'orders',
-  'order_items',
-  'analysis',
-  'pricing',
-  'shipping'
-];
-
-// Main migration function
 async function migrateData() {
+  // Supabase connection pool using the pooled connection URL
+  const supabasePool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false
+    },
+    max: 3, 
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 15000
+  });
+  
+  // Source data - if we're already using a database, we could connect to it here
+  // For now, we'll use hard-coded data similar to what's in our in-memory implementation
+  
   try {
-    console.log('Starting migration from Neon to Supabase...');
+    console.log("Starting migration to Supabase");
     
-    // Verify connections
-    try {
-      const sourceResult = await executeQuery(sourcePool, 'SELECT NOW() as time');
-      console.log('Source database connected, current time:', sourceResult.rows[0].time);
-      
-      const targetResult = await executeQuery(targetPool, 'SELECT NOW() as time');
-      console.log('Target database connected, current time:', targetResult.rows[0].time);
-    } catch (error) {
-      console.error('Failed to connect to databases:', error.message);
-      return;
-    }
+    // Step 1: Create tables if they don't exist
+    console.log("Creating tables...");
     
-    // Process each table
-    for (const table of tablesToMigrate) {
-      try {
-        console.log(`Migrating table: ${table}`);
-        
-        // Get table schema
-        const schemaQuery = `
-          SELECT column_name, data_type 
-          FROM information_schema.columns 
-          WHERE table_name = $1 
-          ORDER BY ordinal_position
-        `;
-        const schemaResult = await executeQuery(sourcePool, schemaQuery, [table]);
-        
-        if (schemaResult.rows.length === 0) {
-          console.log(`Table ${table} not found in source database, skipping...`);
-          continue;
-        }
-        
-        // Get column names
-        const columns = schemaResult.rows.map(row => row.column_name);
-        
-        // Get data from source
-        const sourceDataQuery = `SELECT * FROM ${table}`;
-        const sourceData = await executeQuery(sourcePool, sourceDataQuery);
-        console.log(`Found ${sourceData.rows.length} rows in ${table}`);
-        
-        // Skip if no data
-        if (sourceData.rows.length === 0) {
-          console.log(`No data in table ${table}, skipping...`);
-          continue;
-        }
-        
-        // Save data to JSON file as backup
-        const backupFilePath = `./backup_${table}.json`;
-        fs.writeFileSync(backupFilePath, JSON.stringify(sourceData.rows, null, 2));
-        console.log(`Backup saved to ${backupFilePath}`);
-        
-        // Clear target table
-        await executeQuery(targetPool, `TRUNCATE TABLE ${table} CASCADE`);
-        console.log(`Cleared target table ${table}`);
-        
-        // Insert data into target
-        let insertedCount = 0;
-        for (const row of sourceData.rows) {
-          const values = columns.map(col => row[col]);
-          const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
-          const insertQuery = `
-            INSERT INTO ${table} (${columns.join(', ')}) 
-            VALUES (${placeholders})
-            ON CONFLICT DO NOTHING
-          `;
-          
-          try {
-            await executeQuery(targetPool, insertQuery, values);
-            insertedCount++;
-            
-            // Progress indicator for large tables
-            if (insertedCount % 100 === 0) {
-              console.log(`Inserted ${insertedCount}/${sourceData.rows.length} rows in ${table}...`);
-            }
-          } catch (error) {
-            console.error(`Error inserting row in ${table}:`, error.message);
-            console.error('Row data:', JSON.stringify(row));
-          }
-        }
-        
-        console.log(`Completed migrating ${insertedCount}/${sourceData.rows.length} rows in ${table}`);
-      } catch (error) {
-        console.error(`Error migrating table ${table}:`, error.message);
-      }
-    }
+    // Create users table
+    await executeQuery(supabasePool, `
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL,
+        provider TEXT NOT NULL DEFAULT 'local',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        last_login TIMESTAMP WITH TIME ZONE
+      )
+    `);
     
-    console.log('Migration completed successfully!');
+    // Create admin_users table
+    await executeQuery(supabasePool, `
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL,
+        provider TEXT NOT NULL DEFAULT 'local',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        last_login TIMESTAMP WITH TIME ZONE
+      )
+    `);
+    
+    // Create customers table
+    await executeQuery(supabasePool, `
+      CREATE TABLE IF NOT EXISTS customers (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        phone TEXT,
+        address TEXT,
+        city TEXT,
+        postal_code TEXT,
+        country TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    // Create items table
+    await executeQuery(supabasePool, `
+      CREATE TABLE IF NOT EXISTS items (
+        id SERIAL PRIMARY KEY,
+        customer_id INTEGER NOT NULL REFERENCES customers(id),
+        reference_id TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        description TEXT,
+        brand TEXT,
+        category TEXT,
+        condition TEXT,
+        size TEXT,
+        color TEXT,
+        materials TEXT,
+        status TEXT NOT NULL,
+        image_urls TEXT[],
+        notes TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    // Create analysis table
+    await executeQuery(supabasePool, `
+      CREATE TABLE IF NOT EXISTS analysis (
+        id SERIAL PRIMARY KEY,
+        item_id INTEGER NOT NULL REFERENCES items(id),
+        authenticity_score NUMERIC,
+        condition_score NUMERIC,
+        market_demand_score NUMERIC,
+        style_analysis TEXT,
+        material_analysis TEXT,
+        brand_analysis TEXT,
+        ai_detection_results JSONB,
+        notes TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    // Create pricing table
+    await executeQuery(supabasePool, `
+      CREATE TABLE IF NOT EXISTS pricing (
+        id SERIAL PRIMARY KEY,
+        item_id INTEGER NOT NULL REFERENCES items(id),
+        suggested_price NUMERIC NOT NULL,
+        actual_price NUMERIC NOT NULL,
+        commission_rate NUMERIC NOT NULL,
+        payout_amount NUMERIC NOT NULL,
+        currency_code TEXT NOT NULL DEFAULT 'EUR',
+        accepted_by_customer BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    // Create shipping table
+    await executeQuery(supabasePool, `
+      CREATE TABLE IF NOT EXISTS shipping (
+        id SERIAL PRIMARY KEY,
+        item_id INTEGER NOT NULL REFERENCES items(id),
+        label_url TEXT,
+        tracking_code TEXT,
+        carrier TEXT,
+        shipping_method TEXT,
+        weight NUMERIC,
+        dimensions TEXT,
+        shipping_cost NUMERIC,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    // Create orders table
+    await executeQuery(supabasePool, `
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        order_number TEXT NOT NULL UNIQUE,
+        customer_id INTEGER NOT NULL REFERENCES customers(id),
+        order_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        status TEXT NOT NULL,
+        shipping_address TEXT,
+        billing_address TEXT,
+        total_amount NUMERIC NOT NULL,
+        shipping_cost NUMERIC,
+        tracking_code TEXT,
+        payment_method TEXT,
+        notes TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    // Create order_items table
+    await executeQuery(supabasePool, `
+      CREATE TABLE IF NOT EXISTS order_items (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER NOT NULL REFERENCES orders(id),
+        item_id INTEGER NOT NULL REFERENCES items(id),
+        price NUMERIC NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    
+    // Step 2: Migrate admin user(s)
+    console.log("Migrating admin users...");
+    
+    // Admin user - admin@dutchthrift.com / admin123
+    await executeQuery(supabasePool, `
+      INSERT INTO admin_users (email, password, name, role, provider, created_at) 
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (email) DO UPDATE 
+      SET name = EXCLUDED.name, role = EXCLUDED.role
+      RETURNING id
+    `, [
+      'admin@dutchthrift.com', 
+      '$2b$10$hVAw5gAzSgCbIUgxYqQlYek5iQeAZxAtXpGSFxK1mHfhrp4YdRzZu', // admin123
+      'Admin User',
+      'admin',
+      'local',
+      new Date()
+    ]);
+    
+    // Step 3: Migrate test consignor user
+    console.log("Migrating test users and customers...");
+    
+    // First create the customer
+    const customerResult = await executeQuery(supabasePool, `
+      INSERT INTO customers (email, name, phone, address, city, postal_code, country, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (email) DO UPDATE 
+      SET name = EXCLUDED.name, phone = EXCLUDED.phone
+      RETURNING id
+    `, [
+      'consignor@example.com',
+      'Test Consignor',
+      '1234567890',
+      '123 Test Street',
+      'Amsterdam',
+      '1000AA',
+      'Netherlands',
+      new Date(),
+      new Date()
+    ]);
+    
+    const customerId = customerResult.rows[0].id;
+    
+    // Then create the user linked to the customer
+    await executeQuery(supabasePool, `
+      INSERT INTO users (email, password, name, role, provider, created_at) 
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (email) DO UPDATE 
+      SET name = EXCLUDED.name, role = EXCLUDED.role
+      RETURNING id
+    `, [
+      'consignor@example.com',
+      '$2b$10$hVAw5gAzSgCbIUgxYqQlYek5iQeAZxAtXpGSFxK1mHfhrp4YdRzZu', // password123
+      'Test Consignor',
+      'consignor',
+      'local',
+      new Date()
+    ]);
+    
+    // Step 4: Migrate sample items
+    console.log("Migrating sample items and related data...");
+    
+    // Sample item 1
+    const item1Result = await executeQuery(supabasePool, `
+      INSERT INTO items (customer_id, reference_id, name, description, brand, category, condition, size, color, materials, status, image_urls, notes, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ON CONFLICT (reference_id) DO UPDATE 
+      SET name = EXCLUDED.name, status = EXCLUDED.status
+      RETURNING id
+    `, [
+      customerId,
+      'DT-2023-001',
+      'Vintage Levi\'s 501 Jeans',
+      'Excellent condition vintage Levi\'s 501 jeans from the 1990s',
+      'Levi\'s',
+      'Clothing',
+      'Excellent',
+      '32x34',
+      'Blue',
+      'Denim, Cotton',
+      'Received',
+      ['https://example.com/image1.jpg'],
+      'Authentic vintage with red tab',
+      new Date(),
+      new Date()
+    ]);
+    
+    const item1Id = item1Result.rows[0].id;
+    
+    // Sample item 2
+    const item2Result = await executeQuery(supabasePool, `
+      INSERT INTO items (customer_id, reference_id, name, description, brand, category, condition, size, color, materials, status, image_urls, notes, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ON CONFLICT (reference_id) DO UPDATE 
+      SET name = EXCLUDED.name, status = EXCLUDED.status
+      RETURNING id
+    `, [
+      customerId,
+      'DT-2023-002',
+      'Nike Air Jordan 1 Retro High',
+      'Used but excellent condition Nike Air Jordan 1 Retro High OG Chicago',
+      'Nike',
+      'Footwear',
+      'Good',
+      'EU 42',
+      'Red/White/Black',
+      'Leather, Rubber',
+      'Listed',
+      ['https://example.com/shoes1.jpg'],
+      'Original box included',
+      new Date(),
+      new Date()
+    ]);
+    
+    const item2Id = item2Result.rows[0].id;
+    
+    // Step 5: Migrate pricing data
+    console.log("Migrating pricing data...");
+    
+    await executeQuery(supabasePool, `
+      INSERT INTO pricing (item_id, suggested_price, actual_price, commission_rate, payout_amount, currency_code, accepted_by_customer, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `, [
+      item1Id,
+      120.00,
+      120.00,
+      0.4,
+      72.00,
+      'EUR',
+      true,
+      new Date(),
+      new Date()
+    ]);
+    
+    await executeQuery(supabasePool, `
+      INSERT INTO pricing (item_id, suggested_price, actual_price, commission_rate, payout_amount, currency_code, accepted_by_customer, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `, [
+      item2Id,
+      250.00,
+      250.00,
+      0.4,
+      150.00,
+      'EUR',
+      true,
+      new Date(),
+      new Date()
+    ]);
+    
+    // Step 6: Migrate sample order
+    console.log("Migrating sample orders...");
+    
+    const orderResult = await executeQuery(supabasePool, `
+      INSERT INTO orders (order_number, customer_id, order_date, status, shipping_address, billing_address, total_amount, shipping_cost, tracking_code, payment_method, notes, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      ON CONFLICT (order_number) DO UPDATE 
+      SET status = EXCLUDED.status
+      RETURNING id
+    `, [
+      'ORD-2023-001',
+      customerId,
+      new Date(),
+      'Paid',
+      '123 Buyer Street, Amsterdam',
+      '123 Buyer Street, Amsterdam',
+      120.00,
+      5.00,
+      'TR123456789NL',
+      'Credit Card',
+      'Please ship with care',
+      new Date(),
+      new Date()
+    ]);
+    
+    const orderId = orderResult.rows[0].id;
+    
+    // Link item to order
+    await executeQuery(supabasePool, `
+      INSERT INTO order_items (order_id, item_id, price, quantity, created_at) 
+      VALUES ($1, $2, $3, $4, $5)
+    `, [
+      orderId,
+      item1Id,
+      120.00,
+      1,
+      new Date()
+    ]);
+    
+    console.log("Migration completed successfully");
+    
   } catch (error) {
-    console.error('Migration failed:', error.message);
+    console.error("Error during migration:", error);
+    throw error;
   } finally {
-    // Close connections
-    sourcePool.end();
-    targetPool.end();
+    // Close the connection pool
+    await supabasePool.end();
   }
 }
 
 // Run the migration
-migrateData().catch(error => {
-  console.error('Unhandled error during migration:', error);
-  process.exit(1);
-});
+migrateData()
+  .then(() => {
+    console.log("Migration to Supabase complete!");
+    process.exit(0);
+  })
+  .catch(error => {
+    console.error("Migration failed:", error);
+    process.exit(1);
+  });

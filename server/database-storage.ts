@@ -15,12 +15,14 @@ import {
   UserRole, UserType,
   ItemWithDetails, DashboardStats
 } from "@shared/schema";
-// Import from the new Supabase adapter instead of Neon
-import { db } from "./supabase-db";
-import { IStorage } from "./storage";
+// Import from the drizzle database instance
+import { db } from "./db-supabase";
+import { IStorage } from "./storage-interface";
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
+  // Session store for authentication
+  sessionStore: any; // This will be properly implemented in the extending classes
   // Direct method for consignor dashboard
   async getItemsForConsignorDashboard(customerId: number): Promise<any[]> {
     try {
