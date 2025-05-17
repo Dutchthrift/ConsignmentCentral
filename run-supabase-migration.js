@@ -1,8 +1,13 @@
 // Script to run the Supabase migration process
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import readline from 'readline';
+import { fileURLToPath } from 'url';
+
+// Get the directory name in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Create interface for user input
 const rl = readline.createInterface({
@@ -67,10 +72,11 @@ function updateDatabaseUrl(url) {
 }
 
 // Run the migration script
-function runMigration() {
+async function runMigration() {
   console.log('Running migration script...');
   try {
-    execSync('node migrate-to-supabase.js', { stdio: 'inherit' });
+    const module = await import('./migrate-to-supabase.js');
+    await module.migrateData();
     console.log('Migration completed successfully.');
     return true;
   } catch (error) {
@@ -111,6 +117,13 @@ function switchToSupabaseStorage() {
   }
 }
 
+// Promisify readline question
+function question(rl, query) {
+  return new Promise(resolve => {
+    rl.question(query, resolve);
+  });
+}
+
 // Main function to run the migration process
 async function main() {
   console.log('=== Supabase Migration Tool ===');
@@ -119,67 +132,36 @@ async function main() {
   const hasDbUrl = checkEnvFile();
   
   if (!hasDbUrl) {
-    // Prompt user for DATABASE_URL
-    rl.question('Please enter the Supabase connection string (DATABASE_URL): ', (url) => {
+    try {
+      // Prompt user for DATABASE_URL
+      const url = await question(rl, 'Please enter the Supabase connection string (DATABASE_URL): ');
+      
       if (!url.trim()) {
         console.error('No connection string provided. Migration cancelled.');
-        rl.close();
         return;
       }
       
       // Update .env with the provided URL
       if (!updateDatabaseUrl(url)) {
         console.error('Failed to update DATABASE_URL. Migration cancelled.');
-        rl.close();
         return;
       }
       
       console.log('Connection string saved. Starting migration...');
       
       // Run migration
-      if (!runMigration()) {
+      const migrationSuccess = await runMigration();
+      if (!migrationSuccess) {
         console.error('Migration failed. Please check the error messages above.');
-        rl.close();
         return;
       }
       
       // Ask user if they want to switch to Supabase storage
-      rl.question('Migration successful! Do you want to switch to using Supabase storage now? (y/n): ', (answer) => {
-        if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
-          if (!switchToSupabaseStorage()) {
-            console.error('Failed to switch to Supabase storage.');
-            rl.close();
-            return;
-          }
-          
-          console.log('Great! The application is now using Supabase for storage.');
-          console.log('Please restart your application for changes to take effect.');
-        } else {
-          console.log('Staying with current storage implementation. You can manually switch later by:');
-          console.log('1. Updating import statements to use ./storage-supabase instead of ./memory-storage');
-          console.log('2. Restarting the application');
-        }
-        
-        rl.close();
-      });
-    });
-  } else {
-    // DATABASE_URL already exists, proceed with migration
-    console.log('DATABASE_URL already configured. Starting migration...');
-    
-    // Run migration
-    if (!runMigration()) {
-      console.error('Migration failed. Please check the error messages above.');
-      rl.close();
-      return;
-    }
-    
-    // Ask user if they want to switch to Supabase storage
-    rl.question('Migration successful! Do you want to switch to using Supabase storage now? (y/n): ', (answer) => {
+      const answer = await question(rl, 'Migration successful! Do you want to switch to using Supabase storage now? (y/n): ');
+      
       if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
         if (!switchToSupabaseStorage()) {
           console.error('Failed to switch to Supabase storage.');
-          rl.close();
           return;
         }
         
@@ -190,9 +172,44 @@ async function main() {
         console.log('1. Updating import statements to use ./storage-supabase instead of ./memory-storage');
         console.log('2. Restarting the application');
       }
-      
+    } catch (error) {
+      console.error('Error during migration process:', error);
+    } finally {
       rl.close();
-    });
+    }
+  } else {
+    try {
+      // DATABASE_URL already exists, proceed with migration
+      console.log('DATABASE_URL already configured. Starting migration...');
+      
+      // Run migration
+      const migrationSuccess = await runMigration();
+      if (!migrationSuccess) {
+        console.error('Migration failed. Please check the error messages above.');
+        return;
+      }
+      
+      // Ask user if they want to switch to Supabase storage
+      const answer = await question(rl, 'Migration successful! Do you want to switch to using Supabase storage now? (y/n): ');
+      
+      if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
+        if (!switchToSupabaseStorage()) {
+          console.error('Failed to switch to Supabase storage.');
+          return;
+        }
+        
+        console.log('Great! The application is now using Supabase for storage.');
+        console.log('Please restart your application for changes to take effect.');
+      } else {
+        console.log('Staying with current storage implementation. You can manually switch later by:');
+        console.log('1. Updating import statements to use ./storage-supabase instead of ./memory-storage');
+        console.log('2. Restarting the application');
+      }
+    } catch (error) {
+      console.error('Error during migration process:', error);
+    } finally {
+      rl.close();
+    }
   }
 }
 

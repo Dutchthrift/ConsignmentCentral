@@ -1,6 +1,17 @@
 // Migration script to move data from in-memory or existing database to Supabase
-const { Pool } = require('pg');
-require('dotenv').config();
+import pg from 'pg';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+// Initialize environment variables
+dotenv.config();
+
+const { Pool } = pg;
+
+// Get the directory name in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Retry utility for database operations
 async function executeQuery(pool, query, params = [], retries = 3) {
@@ -90,8 +101,7 @@ async function migrateData() {
         city TEXT,
         postal_code TEXT,
         country TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `);
     
@@ -399,13 +409,18 @@ async function migrateData() {
   }
 }
 
-// Run the migration
-migrateData()
-  .then(() => {
-    console.log("Migration to Supabase complete!");
-    process.exit(0);
-  })
-  .catch(error => {
-    console.error("Migration failed:", error);
-    process.exit(1);
-  });
+// Export the migration function
+export { migrateData };
+
+// Run the migration if this script is executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  migrateData()
+    .then(() => {
+      console.log("Migration to Supabase complete!");
+      process.exit(0);
+    })
+    .catch(error => {
+      console.error("Migration failed:", error);
+      process.exit(1);
+    });
+}
