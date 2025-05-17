@@ -1,36 +1,31 @@
 import { DatabaseStorage } from './database-storage';
 import { IStorage } from './storage-interface';
-import connectPg from 'connect-pg-simple';
 import session from 'express-session';
+import connectPg from 'connect-pg-simple';
 import { pool } from './db-supabase';
 
-// Create PostgreSQL session store for Express sessions
 const PostgresSessionStore = connectPg(session);
 
 /**
- * Supabase-specific database storage implementation
- * This extends the base DatabaseStorage class with Supabase-specific customizations
+ * Supabase Storage implementation for DutchThrift
+ * Uses Postgres database for data storage and session management
  */
-class SupabaseDatabaseStorage extends DatabaseStorage implements IStorage {
+class SupabaseStorage extends DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    // Initialize the base database storage with the pool
     super();
     
-    // Initialize the session store with appropriate configuration
+    // Initialize the session store with our database connection pool
     this.sessionStore = new PostgresSessionStore({
       pool,
-      createTableIfMissing: true,
-      tableName: 'session',
-      schemaName: 'public'
+      tableName: 'sessions', // Uses the sessions table defined in our schema
+      createTableIfMissing: true
     });
-    
-    console.log('Supabase database storage initialized with session store');
+
+    console.log('✅ Initialized Supabase storage with PostgreSQL session store');
   }
-  
-  // Override methods if needed for Supabase-specific functionality
 }
 
 // Export a singleton instance
-export const storage: IStorage = new SupabaseDatabaseStorage();
+export const storage = new SupabaseStorage();

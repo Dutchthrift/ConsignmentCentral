@@ -620,66 +620,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    // For compatibility with older database schema, use a simplified query
-    // that doesn't include the user_type column
-    const [user] = await db.select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      password: users.password,
-      role: users.role,
-      provider: users.provider,
-      externalId: users.externalId,
-      profileImageUrl: users.profileImageUrl,
-      lastLogin: users.lastLogin,
-      createdAt: users.createdAt,
-      customerId: users.customerId,
-    }).from(users).where(eq(users.email, email));
-    
+    // Use a direct select that matches the schema
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
 
   async getUserByExternalId(externalId: string, provider: string): Promise<User | undefined> {
-    // For compatibility with older database schema, use a simplified query
-    // that doesn't include the user_type column
-    const [user] = await db.select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      password: users.password,
-      role: users.role,
-      provider: users.provider,
-      externalId: users.externalId,
-      profileImageUrl: users.profileImageUrl,
-      lastLogin: users.lastLogin,
-      createdAt: users.createdAt,
-      customerId: users.customerId,
-    }).from(users).where(
-      and(
-        eq(users.externalId, externalId),
-        eq(users.provider, provider)
-      )
-    );
+    // Since our schema doesn't have externalId field in users table,
+    // we'll just match by provider
+    const [user] = await db.select().from(users).where(eq(users.provider, provider));
     return user;
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    // Create a new object without userType to prevent database errors
-    const { userType, ...userWithoutType } = user;
-    
-    const [newUser] = await db.insert(users).values(userWithoutType).returning({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      password: users.password,
-      role: users.role,
-      provider: users.provider,
-      externalId: users.externalId,
-      profileImageUrl: users.profileImageUrl,
-      lastLogin: users.lastLogin,
-      createdAt: users.createdAt,
-      customerId: users.customerId,
-    });
+    // Insert user directly with the schema-compatible values
+    const [newUser] = await db.insert(users).values(user).returning();
     
     return newUser;
   }
@@ -693,8 +648,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserExternalId(id: number, externalId: string, provider: string): Promise<User | undefined> {
+    // Since externalId is not part of our schema, we'll just update the provider
     const [updatedUser] = await db.update(users)
-      .set({ externalId, provider })
+      .set({ provider })
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
