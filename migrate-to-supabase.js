@@ -273,54 +273,42 @@ async function migrateData() {
     
     // Sample item 1
     const item1Result = await executeQuery(supabasePool, `
-      INSERT INTO items (customer_id, reference_id, name, description, brand, category, condition, size, color, materials, status, image_urls, notes, created_at, updated_at) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      INSERT INTO items (customer_id, reference_id, title, description, category, status, created_at, updated_at, image_url) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (reference_id) DO UPDATE 
-      SET name = EXCLUDED.name, status = EXCLUDED.status
+      SET title = EXCLUDED.title, status = EXCLUDED.status
       RETURNING id
     `, [
       customerId,
       'DT-2023-001',
       'Vintage Levi\'s 501 Jeans',
       'Excellent condition vintage Levi\'s 501 jeans from the 1990s',
-      'Levi\'s',
       'Clothing',
-      'Excellent',
-      '32x34',
-      'Blue',
-      'Denim, Cotton',
       'Received',
-      ['https://example.com/image1.jpg'],
-      'Authentic vintage with red tab',
       new Date(),
-      new Date()
+      new Date(),
+      'https://example.com/image1.jpg'
     ]);
     
     const item1Id = item1Result.rows[0].id;
     
     // Sample item 2
     const item2Result = await executeQuery(supabasePool, `
-      INSERT INTO items (customer_id, reference_id, name, description, brand, category, condition, size, color, materials, status, image_urls, notes, created_at, updated_at) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      INSERT INTO items (customer_id, reference_id, title, description, category, status, created_at, updated_at, image_url) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (reference_id) DO UPDATE 
-      SET name = EXCLUDED.name, status = EXCLUDED.status
+      SET title = EXCLUDED.title, status = EXCLUDED.status
       RETURNING id
     `, [
       customerId,
       'DT-2023-002',
       'Nike Air Jordan 1 Retro High',
       'Used but excellent condition Nike Air Jordan 1 Retro High OG Chicago',
-      'Nike',
       'Footwear',
-      'Good',
-      'EU 42',
-      'Red/White/Black',
-      'Leather, Rubber',
       'Listed',
-      ['https://example.com/shoes1.jpg'],
-      'Original box included',
       new Date(),
-      new Date()
+      new Date(),
+      'https://example.com/shoes1.jpg'
     ]);
     
     const item2Id = item2Result.rows[0].id;
@@ -362,8 +350,8 @@ async function migrateData() {
     console.log("Migrating sample orders...");
     
     const orderResult = await executeQuery(supabasePool, `
-      INSERT INTO orders (order_number, customer_id, order_date, status, shipping_address, billing_address, total_amount, shipping_cost, tracking_code, payment_method, notes, created_at, updated_at) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      INSERT INTO orders (order_number, customer_id, submission_date, status, tracking_code, total_value, total_payout, notes, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       ON CONFLICT (order_number) DO UPDATE 
       SET status = EXCLUDED.status
       RETURNING id
@@ -372,12 +360,9 @@ async function migrateData() {
       customerId,
       new Date(),
       'Paid',
-      '123 Buyer Street, Amsterdam',
-      '123 Buyer Street, Amsterdam',
-      120.00,
-      5.00,
       'TR123456789NL',
-      'Credit Card',
+      120.00,
+      72.00,
       'Please ship with care',
       new Date(),
       new Date()
@@ -387,13 +372,11 @@ async function migrateData() {
     
     // Link item to order
     await executeQuery(supabasePool, `
-      INSERT INTO order_items (order_id, item_id, price, quantity, created_at) 
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO order_items (order_id, item_id, created_at) 
+      VALUES ($1, $2, $3)
     `, [
       orderId,
       item1Id,
-      120.00,
-      1,
       new Date()
     ]);
     
