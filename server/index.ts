@@ -1,8 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-// Using in-memory storage, no need to check database connection
-// import { checkDatabaseConnection } from "./supabase-db";
+// Check database connection to ensure Supabase is working properly
+import { getDatabaseStatus } from "./db-supabase";
 import "dotenv/config";
 
 const app = express();

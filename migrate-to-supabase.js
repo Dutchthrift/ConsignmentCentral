@@ -317,31 +317,37 @@ async function migrateData() {
     console.log("Migrating pricing data...");
     
     await executeQuery(supabasePool, `
-      INSERT INTO pricing (item_id, suggested_price, actual_price, commission_rate, payout_amount, currency_code, accepted_by_customer, created_at, updated_at) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO pricing (item_id, average_market_price, suggested_listing_price, suggested_payout, final_sale_price, final_payout, 
+      commission_rate, payout_type, store_credit_amount, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     `, [
       item1Id,
+      130.00,
       120.00,
-      120.00,
-      0.4,
       72.00,
-      'EUR',
-      true,
+      120.00,
+      72.00,
+      40,
+      'cash',
+      0,
       new Date(),
       new Date()
     ]);
     
     await executeQuery(supabasePool, `
-      INSERT INTO pricing (item_id, suggested_price, actual_price, commission_rate, payout_amount, currency_code, accepted_by_customer, created_at, updated_at) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO pricing (item_id, average_market_price, suggested_listing_price, suggested_payout, final_sale_price, final_payout, 
+      commission_rate, payout_type, store_credit_amount, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     `, [
       item2Id,
+      260.00,
       250.00,
-      250.00,
-      0.4,
       150.00,
-      'EUR',
-      true,
+      250.00,
+      150.00,
+      40,
+      'cash',
+      0,
       new Date(),
       new Date()
     ]);
