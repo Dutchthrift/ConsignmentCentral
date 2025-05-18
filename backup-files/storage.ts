@@ -849,10 +849,23 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Export the storage instance
+// Import the storage implementations
+import { SupabaseStorage } from './storage-supabase';
 import { DatabaseStorage } from './database-storage';
+import { MemStorage } from './memory-storage';
 
-// Use DatabaseStorage for persistence 
-// This will now connect to Supabase via the updated db.ts connection
-console.log('Using database for persistent storage');
-export const storage = new DatabaseStorage();
+// Choose the right storage implementation based on environment
+let selectedStorage;
+if (process.env.DATABASE_URL && process.env.USE_SUPABASE === 'true') {
+  console.log('Using Supabase database for persistent storage');
+  selectedStorage = new SupabaseStorage();
+} else if (process.env.DATABASE_URL) {
+  console.log('Using Replit database for persistent storage');
+  selectedStorage = new DatabaseStorage();
+} else {
+  console.log('Using in-memory storage for development');
+  selectedStorage = new MemStorage();
+}
+
+// Export the selected storage instance
+export const storage = selectedStorage;
