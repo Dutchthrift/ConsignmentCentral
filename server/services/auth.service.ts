@@ -50,11 +50,11 @@ export class AuthService {
   }
   
   // Generate a JWT token for an admin user
-  generateAdminToken(adminUser: AdminUser): string {
+  generateAdminToken(adminUser: AdminUser | any): string {
     const payload = {
       id: adminUser.id,
       email: adminUser.email,
-      role: adminUser.role,
+      role: adminUser.role || 'admin',
       name: adminUser.name,
       isAdmin: true
     };
@@ -321,7 +321,7 @@ export class AuthService {
       // Check if this is a formatted entity from direct DB query
       if (user.role === 'admin' || user.role === UserRole.ADMIN) {
         userType = 'admin';
-      } else if (user.role === 'customer' || user.role === UserRole.CUSTOMER || user.postal_code !== undefined) {
+      } else if (user.role === 'customer' || user.role === 'consignor' || user.postal_code !== undefined) {
         userType = 'customer';
       } else {
         // Fallback check: fields specific to each type
