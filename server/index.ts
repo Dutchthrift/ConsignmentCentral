@@ -1,8 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-// Check database connection to ensure Supabase is working properly
-import { getDatabaseStatus } from "./db-supabase";
+// Check database connection to ensure database is working properly
+import { getDatabaseStatus } from "./db";
 import "dotenv/config";
 
 const app = express();
