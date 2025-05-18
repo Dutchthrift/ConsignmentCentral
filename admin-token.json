@@ -1,1 +1,10 @@
-{"id":1,"externalId":null,"email":"admin@dutchthrift.com","password":"fe8c56a31fc45078e1de47f006cfc4e20243349cb2e2d54293771c19072489ba66ca393d7bc97a3e035138d13ae4122f7e484e8210b1b63975934508b7c8dcb0.8d3383145933ae39b30e2e4a694e0a40","name":"Administrator","role":"admin","provider":"local","profileImageUrl":null,"lastLogin":"2025-05-15T16:40:49.357Z","createdAt":"2025-05-15T15:29:31.186Z","userType":"admin","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhZG1pbkBkdXRjaHRocmlmdC5jb20iLCJyb2xlIjoiYWRtaW4iLCJuYW1lIjoiQWRtaW5pc3RyYXRvciIsImlzQWRtaW4iOnRydWUsImlhdCI6MTc0NzMyNzI5MCwiZXhwIjoxNzQ3OTMyMDkwfQ.-1yHK_F7fdsc551If5xrpnoogakZ3O2nst01eIJ0Fy4"}
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhZG1pbkBkdXRjaHRocmlmdC5jb20iLCJyb2xlIjoiYWRtaW4iLCJuYW1lIjoiQWRtaW4gVXNlciIsImlzQWRtaW4iOnRydWUsImlhdCI6MTc0NzU2NDU1NSwiZXhwIjoxNzUwMTU2NTU1fQ.vXA3NHNhstnkLm2dyhLCdYEUavqOEUuddalK7KcRt1Y",
+  "user": {
+    "id": 1,
+    "email": "admin@dutchthrift.com",
+    "name": "Admin User",
+    "role": "admin"
+  },
+  "instructions": "Add this token to localStorage in your browser with the key 'authToken'"
+}
