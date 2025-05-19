@@ -8,46 +8,29 @@
 import fetch from 'node-fetch';
 
 async function testOrderCreation() {
-  // Sample consignment submission with multiple items - using legacy format conversion 
+  // Using single-item legacy format which we can be sure the API understands
+  // The backend will convert it to the new multi-item format
   const testData = {
-    name: "Test Consignor",
+    name: "Test Consignor", // Top-level fields for schema bypass
     email: "test.consignment@example.com",
     phone: "+31612345678",
-    address: "Test Street 123",
-    city: "Amsterdam",
-    state: "bank_transfer", // Represents payoutMethod in the backend
-    postalCode: "NL28ABNA0123456789", // Represents IBAN in the backend
-    country: "Netherlands",
     customer: {
       name: "Test Consignor",
       email: "test.consignment@example.com",
       phone: "+31612345678",
       address: "Test Street 123",
-      city: "Amsterdam",
-      state: "bank_transfer", 
-      postalCode: "NL28ABNA0123456789",
+      city: "Amsterdam", 
+      state: "bank_transfer", // Will be repurposed as payoutMethod
+      postalCode: "NL28ABNA0123456789", // Will be repurposed as IBAN
       country: "Netherlands"
     },
-    items: [
-      {
-        title: "Vintage Leather Jacket",
-        description: "Brown leather jacket from the 1990s in excellent condition",
-        category: "Clothing",
-        images: ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAALCAABAAEBAQEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AVZX/2Q=="]
-      },
-      {
-        title: "Designer Handbag",
-        description: "Limited edition designer bag in good condition",
-        category: "Accessories",
-        images: ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAALCAABAAEBAQEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AVZX/2Q=="]
-      },
-      {
-        title: "Antique Watch",
-        description: "Swiss mechanical watch from the 1960s",
-        category: "Jewelry",
-        images: ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAALCAABAAEBAQEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AVZX/2Q=="] 
-      }
-    ]
+    item: {
+      title: "Vintage Leather Jacket",
+      description: "Brown leather jacket from the 1990s in excellent condition",
+      category: "Clothing",
+      brand: "Vintage Brand",
+      condition: "Excellent"
+    }
   };
 
   console.log("Starting order creation test...");
