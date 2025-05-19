@@ -1,7 +1,8 @@
 import { Pool } from '@neondatabase/serverless';
 import { 
-  customers, users, adminUsers, items, 
+  customers, users, adminUsers, items, analysis as analysisTable,
   mlTrainingExamples, mlModelConfigs, mlTrainingSessions,
+  orders, orderItems, pricing, shipping,
   Customer, InsertCustomer, 
   Item, InsertItem, 
   Analysis, InsertAnalysis, 
@@ -174,7 +175,7 @@ export class SupabaseStorage implements IStorage {
         // Direct SQL update using the correct column name
         const query = `
           UPDATE items 
-          SET image_urls = $1, 
+          SET image_url = $1, 
               updated_at = NOW() 
           WHERE id = $2 
           RETURNING *
@@ -210,12 +211,12 @@ export class SupabaseStorage implements IStorage {
 
   // Analysis methods
   async getAnalysisByItemId(itemId: number): Promise<Analysis | undefined> {
-    const [analysisResult] = await db.select().from(analysis).where(eq(analysis.itemId, itemId));
+    const [analysisResult] = await db.select().from(analysisTable).where(eq(analysisTable.itemId, itemId));
     return analysisResult;
   }
 
   async createAnalysis(analysisData: InsertAnalysis): Promise<Analysis> {
-    const [newAnalysis] = await db.insert(analysis).values(analysisData).returning();
+    const [newAnalysis] = await db.insert(analysisTable).values(analysisData).returning();
     return newAnalysis;
   }
 
