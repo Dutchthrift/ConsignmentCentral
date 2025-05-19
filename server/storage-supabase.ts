@@ -157,7 +157,7 @@ export class SupabaseStorage implements IStorage {
   }
   
   async updateItemImage(id: number, imageBase64: string): Promise<Item | undefined> {
-    // Use direct SQL update for image since we know the correct column name
+    // Use direct SQL update for image since we know the correct column name from the schema
     try {
       // Use the existing pool connection
       const client = await pool.connect();
@@ -166,10 +166,23 @@ export class SupabaseStorage implements IStorage {
         // Log the query parameters for debugging
         console.log(`Updating image for item ${id}, image data length: ${imageBase64 ? imageBase64.length : 0}`);
         
-        // Direct SQL update using the correct column name (image_url)
+        // First, check if the column image_url exists
+        const checkQuery = `
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'items' AND column_name = 'image_url'
+        `;
+        
+        const checkResult = await client.query(checkQuery);
+        
+        // Determine the correct column name (image_url or image_urls)
+        const columnName = checkResult.rows.length > 0 ? 'image_url' : 'image_urls';
+        console.log(`Using column name: ${columnName} for image update`);
+        
+        // Direct SQL update using the correct column name
         const query = `
           UPDATE items 
-          SET image_url = $1, 
+          SET ${columnName} = $1, 
               updated_at = NOW() 
           WHERE id = $2 
           RETURNING *
@@ -258,6 +271,25 @@ export class SupabaseStorage implements IStorage {
 
   async getOrdersByCustomerId(customerId: number): Promise<Order[]> {
     return await db.select().from(orders).where(eq(orders.customerId, customerId));
+  }
+  
+  async getOrderByCustomerIdAndStatus(customerId: number, status: string): Promise<Order | undefined> {
+    // Find an open order with the specified status for this customer
+    try {
+      const [order] = await db.select()
+        .from(orders)
+        .where(and(
+          eq(orders.customerId, customerId), 
+          eq(orders.status, status)
+        ))
+        .orderBy(desc(orders.createdAt))
+        .limit(1);
+      
+      return order;
+    } catch (error) {
+      console.error("Error finding order by customer and status:", error);
+      return undefined;
+    }
   }
 
   async createOrder(order: InsertOrder): Promise<Order> {
