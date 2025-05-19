@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowUpRight, PackageOpen, ShoppingCart, Users, TrendingUp, CreditCard, AlertCircle } from "lucide-react";
@@ -8,6 +9,8 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import AllIntakes from "@/components/AllIntakes";
+import ItemDetailsModal from "@/components/ItemDetailsModal";
 
 interface DashboardStats {
   totalItems: number;
