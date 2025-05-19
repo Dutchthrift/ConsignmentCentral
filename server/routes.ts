@@ -386,16 +386,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (imageBase64) {
           try {
-            // Update the item's image URL using direct SQL to avoid column name issues
+            // Update the item's image URL using direct SQL with the correct column name
             console.log(`Updating image for item ID ${item.id}`);
             
             // Direct SQL approach to update the image
             const client = await storage.getClient();
             try {
-              // Use correct column name "image_urls" instead of "image_url"
+              // Use correct column name "image_url" (singular) as per database schema
               const query = `
                 UPDATE items 
-                SET image_urls = $1, 
+                SET image_url = $1, 
                     updated_at = NOW() 
                 WHERE id = $2 
                 RETURNING *

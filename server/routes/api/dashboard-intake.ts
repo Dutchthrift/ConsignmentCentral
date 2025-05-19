@@ -114,10 +114,10 @@ router.post('/intake', async (req, res) => {
           // Get a database client
           const client = await storage.getClient();
           try {
-            // Use correct column name "image_urls" instead of "image_url"
+            // Use correct column name "image_url" (singular) as per database schema
             const query = `
               UPDATE items 
-              SET image_urls = $1, 
+              SET image_url = $1, 
                   updated_at = NOW() 
               WHERE id = $2 
               RETURNING *
