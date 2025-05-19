@@ -4,27 +4,56 @@ import { pool } from "../../db";
 const router = Router();
 
 // Endpoint to get order details by ID with fallback data
+
+// Endpoint to get order details by ID with item relationships
 router.get("/:id", async (req: Request, res: Response) => {
   const orderId = parseInt(req.params.id);
   
   try {
     const client = await pool.connect();
     try {
-      // Try to get real order data
+      // Use the improved database function to get order with items
       const result = await client.query(`
-        SELECT o.*, 
-               c.first_name || ' ' || c.last_name AS customer_name,
-               c.email AS customer_email
-        FROM orders o
-        LEFT JOIN customers c ON o.customer_id = c.id
-        WHERE o.id = $1
+        SELECT * FROM get_order_with_items($1)
       `, [orderId]);
       
-      if (result.rows.length === 0) {
+      if (!result.rows[0] || !result.rows[0].order_data) {
         return res.status(404).json({
           success: false,
           message: "Order not found"
         });
+      }
+      
+      // Format the response
+      const orderData = result.rows[0].order_data;
+      const itemsData = result.rows[0].items_data || [];
+      
+      const response = {
+        ...orderData,
+        items: itemsData
+      };
+      
+      return res.status(200).json({
+        success: true,
+        data: response
+      });
+    } catch (dbError) {
+      console.error("Database error getting order details:", dbError);
+      return res.status(500).json({
+        success: false,
+        message: "Database error"
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error("Error connecting to database:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Database connection error"
+    });
+  }
+});;
       }
       
       // Get order items

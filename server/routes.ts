@@ -41,6 +41,7 @@ import consignorItemsRoutes from "./routes/consignor/items";
 import consignorRegistrationRoutes from "./routes/consignor-registration";
 import mlTrainingRoutes from "./routes/ml-training.ts";
 import ordersViewRoutes from "./routes/api/orders-view"; // Added direct view access for orders
+import ordersDirectRoutes from "./routes/api/orders-direct"; // Added direct orders API
 import demoLoginRoutes from "./routes/demo-login"; // Added demo login for when database is unavailable
 import { calculateCommission, checkEligibility } from "./utils/commission.ts";
 
@@ -212,7 +213,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/consignor/orders', consignorOrdersRoutes);
   
   // Register direct orders view route
-  app.use('/api/orders-direct', ordersViewRoutes);
+  app.use('/api/orders-view', ordersViewRoutes);
+  
+  // Register direct orders API route with item details
+  app.use('/api/orders-direct', ordersDirectRoutes);
 
   // Register consignor items routes
   app.use('/api/consignor/items', consignorItemsRoutes);
