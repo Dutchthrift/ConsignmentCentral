@@ -187,7 +187,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { referenceId } = req.params;
       
-      const item = await storage.getItemWithDetailsByReferenceId(referenceId);
+      // Use our direct SQL query function for reliability
+      const { getItemDetailsByReferenceId } = await import('./getConsignorItems');
+      const item = await getItemDetailsByReferenceId(referenceId);
       
       if (!item) {
         return res.status(404).json({
@@ -196,37 +198,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Format the response to include pricing information
-      const response = {
-        item: {
-          id: item.id,
-          referenceId: item.referenceId,
-          title: item.title,
-          description: item.description,
-          imageUrl: item.imageUrl,
-          status: item.status,
-          createdAt: item.createdAt
-        },
-        customer: {
-          id: item.customer.id,
-          name: item.customer.name,
-          email: item.customer.email
-        },
-        pricing: item.pricing ? {
-          averageMarketPrice: item.pricing.averageMarketPrice ? item.pricing.averageMarketPrice / 100 : 0,
-          estimatedSalePrice: item.pricing.suggestedListingPrice ? item.pricing.suggestedListingPrice / 100 : 0,
-          yourPayout: item.pricing.suggestedPayout ? item.pricing.suggestedPayout / 100 : 0,
-          commissionRate: item.pricing.commissionRate || 0
-        } : null,
-        analysis: item.analysis || null
-      };
-      
       res.json({
         success: true,
-        data: response
+        data: item
       });
     } catch (err) {
-      handleValidationError(err, res);
+      console.error("Error getting item details:", err);
+      res.status(500).json({
+        success: false,
+        message: "Error retrieving item details"
+      });
     }
   });
   
