@@ -157,36 +157,43 @@ export class SupabaseStorage implements IStorage {
   }
   
   async updateItemImage(id: number, imageBase64: string): Promise<Item | undefined> {
-    // Use our dedicated SQL function to update the image
+    // Use direct SQL update for image since we know the correct column name
     try {
-      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      // Use the existing pool connection
+      const client = await pool.connect();
       
-      // Log the query parameters for debugging
-      console.log(`Updating image for item ${id}, image data length: ${imageBase64 ? imageBase64.length : 0}`);
-      
-      // Call the SQL function we created that handles this operation
-      const query = `
-        SELECT * FROM update_item_image($1, $2)
-      `;
-      
-      const result = await pool.query(query, [id, imageBase64]);
-      
-      await pool.end();
-      
-      if (result.rows && result.rows.length > 0) {
-        // Convert snake_case column names to camelCase for our application
-        const row = result.rows[0];
-        const updatedItem: any = {};
+      try {
+        // Log the query parameters for debugging
+        console.log(`Updating image for item ${id}, image data length: ${imageBase64 ? imageBase64.length : 0}`);
         
-        Object.keys(row).forEach(key => {
-          const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-          updatedItem[camelKey] = row[key];
-        });
+        // Direct SQL update using the correct column name (image_url)
+        const query = `
+          UPDATE items 
+          SET image_url = $1, 
+              updated_at = NOW() 
+          WHERE id = $2 
+          RETURNING *
+        `;
         
-        return updatedItem as Item;
+        const result = await client.query(query, [imageBase64, id]);
+        
+        if (result.rows && result.rows.length > 0) {
+          // Convert snake_case column names to camelCase for our application
+          const row = result.rows[0];
+          const updatedItem: any = {};
+          
+          Object.keys(row).forEach(key => {
+            const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+            updatedItem[camelKey] = row[key];
+          });
+          
+          return updatedItem as Item;
+        }
+        
+        return undefined;
+      } finally {
+        client.release(); // Return the client to the pool
       }
-      
-      return undefined;
     } catch (error) {
       console.error('Error updating item image:', error);
       throw error;
