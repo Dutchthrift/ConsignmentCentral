@@ -39,6 +39,7 @@ import consignorOrdersRoutes from "./routes/consignor/orders";
 import consignorItemsRoutes from "./routes/consignor/items";
 import consignorRegistrationRoutes from "./routes/consignor-registration";
 import mlTrainingRoutes from "./routes/ml-training.ts";
+import ordersViewRoutes from "./routes/api/orders-view"; // Added direct view access for orders
 import { calculateCommission, checkEligibility } from "./utils/commission.ts";
 
 // Generate unique reference ID for new items
@@ -136,6 +137,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register consignor orders routes
   app.use('/api/consignor/orders', consignorOrdersRoutes);
+  
+  // Register direct orders view route
+  app.use('/api/orders-direct', ordersViewRoutes);
 
   // Register consignor items routes
   app.use('/api/consignor/items', consignorItemsRoutes);

@@ -69,9 +69,11 @@ export default function OrdersPage() {
   const { user } = useAuth();
   
   // Determine the appropriate endpoint based on user role
-  const ordersEndpoint = user?.role === 'admin' ? '/api/admin/orders' : '/api/consignor/orders';
+  // First try using the direct view endpoint for more reliable data access
+  const ordersEndpoint = '/api/orders-direct';
+  const backupEndpoint = user?.role === 'admin' ? '/api/admin/orders' : '/api/consignor/orders';
 
-  // Fetch orders
+  // Fetch orders from direct view first
   const {
     data: orders,
     isLoading,
@@ -81,13 +83,26 @@ export default function OrdersPage() {
     queryKey: [ordersEndpoint],
     gcTime: 5 * 60 * 1000,
     staleTime: 1 * 60 * 1000,
+    retry: 1,
+    retryDelay: 1000
+  });
+  
+  // If direct view fails, try the backup endpoint
+  const {
+    data: backupOrders,
+    isLoading: isLoadingBackup,
+  } = useQuery<{ success: boolean; data: OrderSummary[] }>({
+    queryKey: [backupEndpoint],
+    gcTime: 5 * 60 * 1000,
+    staleTime: 1 * 60 * 1000,
+    enabled: !!error, // Only run if the first query fails
     retry: 2,
     retryDelay: 1000
   });
   
   // Debugging the orders data
   useEffect(() => {
-    if (orders) {
+    if (orders && 'success' in orders && 'data' in orders) {
       console.log("Orders data retrieved:", { 
         success: orders.success, 
         dataCount: orders.data?.length || 0,
@@ -125,17 +140,22 @@ export default function OrdersPage() {
     }
   };
 
+  // Safely combine data from both sources, preferring the primary source
+  const orderData: OrderSummary[] = orders?.success && Array.isArray(orders.data) 
+    ? orders.data 
+    : backupOrders?.success && Array.isArray(backupOrders.data)
+      ? backupOrders.data 
+      : [];
+      
   // Filter and sort orders - safely handle potentially missing data
-  const filteredOrders = orders?.success && orders?.data
-    ? orders.data.filter(
-        (order: OrderSummary) =>
-          order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (order.trackingCode &&
-            order.trackingCode.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-    : [];
+  const filteredOrders = orderData.filter(
+    (order: OrderSummary) =>
+      order.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.customerName && order.customerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (order.customerEmail && order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (order.trackingCode &&
+        order.trackingCode.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   // Log filtered orders for debugging  
   useEffect(() => {
