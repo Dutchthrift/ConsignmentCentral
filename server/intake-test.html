@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intake Testing Tool</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+      background-color: #f7f7f7;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #2563eb;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    .button-group {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    #preview {
+      margin-top: 20px;
+      max-width: 300px;
+      max-height: 300px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      display: none;
+    }
+    .results {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f0f9ff;
+      border-radius: 4px;
+      border-left: 4px solid #2563eb;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+    .error {
+      background-color: #fff5f5;
+      border-left-color: #e53e3e;
+    }
+    .success {
+      background-color: #f0fff4;
+      border-left-color: #38a169;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Intake Testing Tool</h1>
+    <p>Use this tool to test the intake process and AI analysis.</p>
+    
+    <div id="login-section">
+      <h2>Login</h2>
+      <label for="email">Email</label>
+      <input type="email" id="email" value="theooenema@hotmail.com">
+      
+      <label for="password">Password</label>
+      <input type="password" id="password" value="password123">
+      
+      <div class="button-group">
+        <button id="login-btn">Login</button>
+      </div>
+      
+      <div id="login-result" class="results hidden"></div>
+    </div>
+    
+    <div id="intake-section" class="hidden">
+      <h2>Create Test Item</h2>
+      <label for="title">Item Title</label>
+      <input type="text" id="title" value="Nike Air Jordan Sneakers">
+      
+      <label for="description">Description</label>
+      <textarea id="description">Barely worn Nike Air Jordan sneakers in excellent condition. Size 42, blue and white colorway. Comes with original box.</textarea>
+      
+      <label for="image">Upload Image</label>
+      <input type="file" id="image" accept="image/*">
+      
+      <img id="preview" src="" alt="Preview">
+      
+      <div class="button-group">
+        <button id="submit-btn">Submit Item</button>
+      </div>
+      
+      <div id="submit-result" class="results hidden"></div>
+    </div>
+  </div>
+
+  <script>
+    // DOM elements
+    const loginSection = document.getElementById('login-section');
+    const intakeSection = document.getElementById('intake-section');
+    const loginBtn = document.getElementById('login-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const loginResult = document.getElementById('login-result');
+    const submitResult = document.getElementById('submit-result');
+    const imageInput = document.getElementById('image');
+    const preview = document.getElementById('preview');
+    
+    // User token
+    let userToken = '';
+    
+    // Login handler
+    loginBtn.addEventListener('click', async () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      loginResult.classList.remove('hidden', 'error', 'success');
+      loginResult.textContent = 'Logging in...';
+      
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          loginResult.classList.add('success');
+          loginResult.textContent = 'Login successful! User data: ' + JSON.stringify(data, null, 2);
+          
+          // Store token if available
+          if (data.token) {
+            userToken = data.token;
+          }
+          
+          // Show intake section
+          loginSection.classList.add('hidden');
+          intakeSection.classList.remove('hidden');
+        } else {
+          loginResult.classList.add('error');
+          loginResult.textContent = 'Login failed: ' + JSON.stringify(data, null, 2);
+        }
+      } catch (error) {
+        loginResult.classList.add('error');
+        loginResult.textContent = 'Error: ' + error.message;
+      }
+    });
+    
+    // Image preview handler
+    imageInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    
+    // Submit handler
+    submitBtn.addEventListener('click', async () => {
+      const title = document.getElementById('title').value;
+      const description = document.getElementById('description').value;
+      const file = imageInput.files[0];
+      
+      if (!title || !file) {
+        submitResult.classList.remove('hidden');
+        submitResult.classList.add('error');
+        submitResult.textContent = 'Please provide a title and image';
+        return;
+      }
+      
+      submitResult.classList.remove('hidden', 'error', 'success');
+      submitResult.textContent = 'Submitting...';
+      
+      try {
+        // Convert image to base64
+        const base64Image = await getBase64(file);
+        const imageBase64 = base64Image.split(',')[1]; // Remove data URL prefix
+        
+        // Prepare item data
+        const itemData = {
+          items: [
+            {
+              title,
+              description,
+              imageBase64
+            }
+          ]
+        };
+        
+        // Set headers based on authentication type
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        
+        if (userToken) {
+          headers['Authorization'] = `Bearer ${userToken}`;
+        }
+        
+        // Submit item
+        const response = await fetch('/api/intake', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(itemData)
+        });
+        
+        // Handle response
+        const data = await response.json();
+        
+        if (response.ok) {
+          submitResult.classList.add('success');
+          submitResult.textContent = 'Item submitted successfully!\n\nResponse data: ' + JSON.stringify(data, null, 2);
+        } else {
+          submitResult.classList.add('error');
+          submitResult.textContent = 'Submission failed: ' + JSON.stringify(data, null, 2);
+        }
+      } catch (error) {
+        submitResult.classList.add('error');
+        submitResult.textContent = 'Error: ' + error.message;
+      }
+    });
+    
+    // Helper function to convert file to base64
+    function getBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+    }
+  </script>
+</body>
+</html>

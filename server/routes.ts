@@ -1106,6 +1106,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register our new dashboard intake route
   app.use('/api/dashboard', dashboardIntakeRouter);
   
+  // Serve test page for debugging the intake process
+  app.get('/intake-test', (req, res) => {
+    const path = require('path');
+    res.sendFile(path.join(__dirname, 'intake-test.html'));
+  });
+  
   // Create HTTP server with the Express app
   return createServer(app);
 }
