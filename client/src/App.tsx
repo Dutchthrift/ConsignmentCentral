@@ -91,12 +91,12 @@ function Router() {
         {/* Admin Dashboard Routes */}
         <ProtectedRoute 
           path="/" 
-          component={Dashboard} 
+          component={AdminDashboardPage} 
           allowedRoles={[UserRole.ADMIN]} 
         />
         <ProtectedRoute 
           path="/dashboard" 
-          component={Dashboard}
+          component={AdminDashboardPage}
           allowedRoles={[UserRole.ADMIN]} 
         />
         <ProtectedRoute 
