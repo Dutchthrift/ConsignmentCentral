@@ -355,12 +355,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Generate reference ID for the item
         const referenceId = generateReferenceId();
         
-        // Create new item
+        // Create new item - Don't include imageUrl in initial creation
         const newItem = insertItemSchema.parse({
           customerId: customer.id, 
           title: itemData.title,
           description: itemData.description || null,
-          imageUrl: null, // Will be updated later if we have an image
           status: ItemStatus.PENDING,
           referenceId
         });
