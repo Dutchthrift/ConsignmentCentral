@@ -157,7 +157,7 @@ export class SupabaseStorage implements IStorage {
   }
   
   async updateItemImage(id: number, imageBase64: string): Promise<Item | undefined> {
-    // Use direct SQL update for image since we know the correct column name from the schema
+    // Use direct SQL update for image with the confirmed column name
     try {
       // Use the existing pool connection
       const client = await pool.connect();
@@ -166,31 +166,20 @@ export class SupabaseStorage implements IStorage {
         // Log the query parameters for debugging
         console.log(`Updating image for item ${id}, image data length: ${imageBase64 ? imageBase64.length : 0}`);
         
-        // First, check if the column image_url exists
-        const checkQuery = `
-          SELECT column_name 
-          FROM information_schema.columns 
-          WHERE table_name = 'items' AND column_name = 'image_url'
-        `;
-        
-        const checkResult = await client.query(checkQuery);
-        
-        // Determine the correct column name (image_url or image_urls)
-        const columnName = checkResult.rows.length > 0 ? 'image_url' : 'image_urls';
-        console.log(`Using column name: ${columnName} for image update`);
-        
-        // Direct SQL update using the correct column name
+        // Direct SQL update using the confirmed column name
         const query = `
           UPDATE items 
-          SET ${columnName} = $1, 
+          SET image_url = $1, 
               updated_at = NOW() 
           WHERE id = $2 
           RETURNING *
         `;
         
+        console.log(`Executing image update query for item ${id}`);
         const result = await client.query(query, [imageBase64, id]);
         
         if (result.rows && result.rows.length > 0) {
+          console.log(`Image updated successfully for item ${id}`);
           // Convert snake_case column names to camelCase for our application
           const row = result.rows[0];
           const updatedItem: any = {};
@@ -203,6 +192,7 @@ export class SupabaseStorage implements IStorage {
           return updatedItem as Item;
         }
         
+        console.log(`No rows returned from image update for item ${id}`);
         return undefined;
       } finally {
         client.release(); // Return the client to the pool

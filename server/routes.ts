@@ -503,34 +503,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedItems.push(itemResponseData);
       }
       
-      // Create a new order for this batch of items
+      // Check for existing open order or create a new one for this batch of items
       try {
-        // Generate unique order number in format ORD-YYYYMMDD-XXX
-        const today = new Date();
-        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-        const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        const orderNumber = `ORD-${dateStr}-${randomSuffix}`;
+        console.log(`Processing order for customer ID ${customer.id}`);
         
-        // Create the order record
-        const newOrder = insertOrderSchema.parse({
-          orderNumber,
-          customerId: customer.id,
-          status: OrderStatus.PENDING,
-          // These will be updated later when items are sold
-          totalAmount: 0,
-          payoutAmount: 0
-        });
+        // First check if the customer already has an open order with "Awaiting Shipment" status
+        let order;
+        let orderNumber;
         
-        const order = await storage.createOrder(newOrder);
-        console.log(`Created order ${orderNumber} with ${processedItems.length} items`);
+        try {
+          const existingOrder = await storage.getOrderByCustomerIdAndStatus(customer.id, "Awaiting Shipment");
+          
+          if (existingOrder) {
+            // Use the existing order
+            order = existingOrder;
+            orderNumber = existingOrder.orderNumber;
+            console.log(`Using existing open order ${orderNumber} (ID: ${order.id})`);
+          } else {
+            // No open order found, create a new one
+            console.log("No open order found, creating new order...");
+            
+            // Generate unique order number in format ORD-YYYYMMDD-XXX
+            const today = new Date();
+            const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+            const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            orderNumber = `ORD-${dateStr}-${randomSuffix}`;
+            
+            // Create the order record with standardized status
+            const newOrder = insertOrderSchema.parse({
+              orderNumber,
+              customerId: customer.id,
+              status: "Awaiting Shipment", // Use standardized status instead of PENDING
+              submissionDate: today,
+              // These will be updated later when items are sold
+              totalAmount: 0,
+              payoutAmount: 0
+            });
+            
+            order = await storage.createOrder(newOrder);
+            console.log(`Created new order ${orderNumber} (ID: ${order.id})`);
+          }
+        } catch (error) {
+          // If checking for existing orders fails, create a new one
+          console.error("Error checking for existing orders:", error);
+          
+          // Generate unique order number in format ORD-YYYYMMDD-XXX
+          const today = new Date();
+          const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+          const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+          orderNumber = `ORD-${dateStr}-${randomSuffix}`;
+          
+          // Create the order record with standardized status
+          const newOrder = insertOrderSchema.parse({
+            orderNumber,
+            customerId: customer.id,
+            status: "Awaiting Shipment", // Use standardized status
+            submissionDate: today,
+            // These will be updated later when items are sold
+            totalAmount: 0,
+            payoutAmount: 0
+          });
+          
+          order = await storage.createOrder(newOrder);
+          console.log(`Created new order ${orderNumber} after error`);
+        }
         
         // Add all items to the order
         const orderItems = [];
         for (const itemData of processedItems) {
           const item = await storage.getItemByReferenceId(itemData.referenceId);
           if (item) {
-            await storage.addItemToOrder(order.id, item.id);
-            orderItems.push(item);
+            try {
+              await storage.addItemToOrder(order.id, item.id);
+              orderItems.push(item);
+              console.log(`Added item ${item.id} to order ${order.id}`);
+            } catch (error) {
+              console.error(`Failed to add item ${item.id} to order ${order.id}:`, error);
+            }
           }
         }
         
@@ -557,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               },
               order: {
                 orderNumber,
-                status: OrderStatus.PENDING,
+                status: order.status || "Awaiting Shipment",
                 itemCount: processedItems.length
               },
               items: processedItems
