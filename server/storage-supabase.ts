@@ -114,15 +114,21 @@ export class SupabaseStorage implements IStorage {
   async updateItemImage(id: number, imageBase64: string): Promise<Item | undefined> {
     // Convert imageBase64 to a URL or path as needed
     // In this case, we're just storing the base64 string directly in the database
-    const [updatedItem] = await db
-      .update(items)
-      .set({ 
-        imageUrl: imageBase64,
-        updatedAt: new Date()
-      })
-      .where(eq(items.id, id))
-      .returning();
-    return updatedItem;
+    // Use raw SQL to update the image_url column directly since there seems to be a mismatch
+    try {
+      const result = await db.execute(
+        `UPDATE items SET image_url = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+        [imageBase64, id]
+      );
+      
+      if (result && result.length > 0) {
+        return result[0];
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Error updating item image:', error);
+      throw error;
+    }
   }
 
   // Analysis methods
