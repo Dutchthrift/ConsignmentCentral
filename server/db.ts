@@ -13,15 +13,15 @@ if (!process.env.DATABASE_URL) {
 
 console.log('Using Supabase connection pooling for reliable database access');
 
-// Configure the connection pool with appropriate settings for Supabase pooling
+// Configure the connection pool with appropriate settings for Supabase direct connection
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false // Required for SSL connections to Supabase
   },
-  max: 3, // Small pool size to prevent connection limits
-  idleTimeoutMillis: 30000, // 30 seconds idle timeout
-  connectionTimeoutMillis: 10000, // 10 seconds connection timeout
+  max: 2, // Very small pool size for Supabase direct connection limits
+  idleTimeoutMillis: 60000, // 60 seconds idle timeout
+  connectionTimeoutMillis: 30000, // 30 seconds connection timeout
   allowExitOnIdle: true
 });
 
