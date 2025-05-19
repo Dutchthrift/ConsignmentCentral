@@ -29,7 +29,7 @@ export default function Login() {
   // If user is already logged in, redirect to dashboard
   if (user) {
     if (user.role === UserRole.ADMIN) {
-      navigate("/");
+      navigate("/admin/dashboard");
     } else {
       navigate("/consignor/dashboard");
     }
