@@ -12,7 +12,10 @@ import {
   insertItemSchema,
   insertAnalysisSchema,
   insertPricingSchema,
-  insertShippingSchema
+  insertShippingSchema,
+  insertOrderSchema,
+  insertOrderItemSchema,
+  OrderStatus
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { generateShippingLabel } from "./services/sendcloud.service";
@@ -412,27 +415,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedItems.push(itemResponseData);
       }
       
-      // If using legacy format, return single item response
-      if (isLegacyFormat && processedItems.length === 1) {
-        res.json({
-          success: true,
-          message: "Item received successfully",
-          data: processedItems[0]
+      // Create a new order for this batch of items
+      try {
+        // Generate unique order number in format ORD-YYYYMMDD-XXX
+        const today = new Date();
+        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+        const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        const orderNumber = `ORD-${dateStr}-${randomSuffix}`;
+        
+        // Create the order record
+        const newOrder = insertOrderSchema.parse({
+          orderNumber,
+          customerId: customer.id,
+          status: OrderStatus.PENDING,
+          // These will be updated later when items are sold
+          totalAmount: 0,
+          payoutAmount: 0
         });
-      } else {
-        // Return response with all items
-        res.json({
-          success: true,
-          message: `${processedItems.length} item(s) received successfully`,
-          data: {
-            customer: {
-              id: customer.id,
-              name: customer.name,
-              email: customer.email
-            },
-            items: processedItems
+        
+        const order = await storage.createOrder(newOrder);
+        console.log(`Created order ${orderNumber} with ${processedItems.length} items`);
+        
+        // Add all items to the order
+        const orderItems = [];
+        for (const itemData of processedItems) {
+          const item = await storage.getItemByReferenceId(itemData.referenceId);
+          if (item) {
+            await storage.addItemToOrder(order.id, item.id);
+            orderItems.push(item);
           }
-        });
+        }
+        
+        // If using legacy format, return single item response
+        if (isLegacyFormat && processedItems.length === 1) {
+          res.json({
+            success: true,
+            message: "Item received successfully",
+            data: {
+              ...processedItems[0],
+              orderNumber // Include the order number in the response
+            }
+          });
+        } else {
+          // Return response with all items and order info
+          res.json({
+            success: true,
+            message: `${processedItems.length} item(s) received successfully`,
+            data: {
+              customer: {
+                id: customer.id,
+                name: customer.name,
+                email: customer.email
+              },
+              order: {
+                orderNumber,
+                status: OrderStatus.PENDING,
+                itemCount: processedItems.length
+              },
+              items: processedItems
+            }
+          });
+        }
+      } catch (orderError) {
+        console.error("Error creating order:", orderError);
+        
+        // If order creation fails, still return the processed items without order info
+        if (isLegacyFormat && processedItems.length === 1) {
+          res.json({
+            success: true,
+            message: "Item received successfully, but order creation failed",
+            data: processedItems[0]
+          });
+        } else {
+          res.json({
+            success: true,
+            message: `${processedItems.length} item(s) received successfully, but order creation failed`,
+            data: {
+              customer: {
+                id: customer.id,
+                name: customer.name,
+                email: customer.email
+              },
+              items: processedItems
+            }
+          });
+        }
       }
     } catch (err) {
       handleValidationError(err, res);
