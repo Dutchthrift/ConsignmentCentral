@@ -8,15 +8,23 @@
 import fetch from 'node-fetch';
 
 async function testOrderCreation() {
-  // Sample consignment submission with multiple items - following intakeFormSchema format
+  // Sample consignment submission with multiple items - using legacy format conversion 
   const testData = {
+    name: "Test Consignor",
+    email: "test.consignment@example.com",
+    phone: "+31612345678",
+    address: "Test Street 123",
+    city: "Amsterdam",
+    state: "bank_transfer", // Represents payoutMethod in the backend
+    postalCode: "NL28ABNA0123456789", // Represents IBAN in the backend
+    country: "Netherlands",
     customer: {
       name: "Test Consignor",
       email: "test.consignment@example.com",
       phone: "+31612345678",
       address: "Test Street 123",
       city: "Amsterdam",
-      state: "North Holland", 
+      state: "bank_transfer", 
       postalCode: "NL28ABNA0123456789",
       country: "Netherlands"
     },
