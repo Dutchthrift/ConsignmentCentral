@@ -146,7 +146,7 @@ async function getAllItems() {
       SELECT 
         i.id, i.reference_id, i.title, i.description, i.category, i.status, i.image_url, 
         i.created_at, i.updated_at, i.customer_id,
-        c.email AS customer_email, c.full_name AS customer_full_name, c.phone AS customer_phone, 
+        c.email AS customer_email, c.name AS customer_name, c.phone AS customer_phone, 
         c.country AS customer_country,
         p.id AS pricing_id, p.suggested_listing_price, p.commission_rate, p.suggested_payout, 
         p.final_sale_price, p.final_payout, p.payout_type,
@@ -270,7 +270,7 @@ async function getItemById(itemId: number) {
       SELECT 
         i.id, i.reference_id, i.title, i.description, i.category, i.status, i.image_url, 
         i.created_at, i.updated_at, i.customer_id,
-        c.email AS customer_email, c.full_name AS customer_full_name, c.phone AS customer_phone, 
+        c.email AS customer_email, c.name AS customer_name, c.phone AS customer_phone, 
         c.country AS customer_country,
         p.id AS pricing_id, p.suggested_listing_price, p.commission_rate, p.suggested_payout, 
         p.final_sale_price, p.final_payout, p.payout_type,

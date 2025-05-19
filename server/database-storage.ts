@@ -327,7 +327,6 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
-  }
 
   async searchOrders(query: string): Promise<OrderSummary[]> {
     // Get all order summaries
