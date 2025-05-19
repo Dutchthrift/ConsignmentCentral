@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { storage } from "../../storage";
+import { pool } from "../../db";
 import { z } from "zod";
 import {
   insertOrderSchema,
@@ -11,12 +12,29 @@ const router = Router();
 // Get all orders with summary information
 router.get("/", async (req: Request, res: Response) => {
   try {
-    const summaries = await storage.getOrderSummaries();
-    
-    return res.status(200).json({
-      success: true,
-      data: summaries
-    });
+    // Try using direct database access first for better reliability
+    const client = await pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT * FROM orders_summary
+      `);
+      
+      return res.status(200).json({
+        success: true,
+        data: result.rows
+      });
+    } catch (dbError) {
+      console.error("Direct DB query error:", dbError);
+      // Fall back to storage method if direct access fails
+      const summaries = await storage.getOrderSummaries();
+      
+      return res.status(200).json({
+        success: true,
+        data: summaries
+      });
+    } finally {
+      client.release();
+    }
   } catch (error) {
     console.error("Error fetching orders:", error);
     return res.status(500).json({
