@@ -97,11 +97,9 @@ export class SupabaseStorage implements IStorage {
 
   async createItem(item: InsertItem): Promise<Item> {
     try {
-      // Import the existing pool from db-config (which already has appropriate ws configuration)
-      const { pool: dbPool } = require('./db-config');
-      
+      // Use the pool that's already imported at the top of the file
       // Get a client from the shared pool
-      const client = await dbPool.connect();
+      const client = await pool.connect();
       
       try {
         const columns = Object.keys(item);
