@@ -3,17 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Trash2, AlertTriangle, Loader2 } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import ItemDetailModal from "@/components/ItemDetailModal";
 import { apiRequest } from "@/lib/queryClient";
@@ -29,46 +20,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-
-// Helper to format date
-function formatDate(dateString: string) {
-  if (!dateString) return "-";
-  try {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch (e) {
-    return dateString;
-  }
-}
-
-// Helper to get status badge color
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "pending":
-      return <Badge variant="outline" className="bg-neutral-100">Pending</Badge>;
-    case "analyzed":
-      return <Badge variant="outline" className="bg-purple-100 text-purple-800">Analyzed</Badge>;
-    case "shipped":
-      return <Badge variant="outline" className="bg-blue-100 text-blue-800">Shipped</Badge>;
-    case "received":
-      return <Badge variant="outline" className="bg-indigo-100 text-indigo-800">Received</Badge>;
-    case "tested":
-      return <Badge variant="outline" className="bg-cyan-100 text-cyan-800">Tested</Badge>;
-    case "listed":
-      return <Badge variant="outline" className="bg-green-100 text-green-800">Listed</Badge>;
-    case "sold":
-      return <Badge variant="outline" className="bg-amber-100 text-amber-800">Sold</Badge>;
-    case "paid":
-      return <Badge variant="outline" className="bg-green-100 text-green-800">Paid</Badge>;
-    case "rejected":
-      return <Badge variant="outline" className="bg-red-100 text-red-800">Rejected</Badge>;
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
-}
 
 export default function ConsignorItems() {
   const { user } = useAuth();
@@ -175,75 +126,50 @@ export default function ConsignorItems() {
             </div>
           ) : filteredItems.length > 0 ? (
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Reference ID</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date Added</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredItems.map((item: any) => {
-                    const isRejected = item.status === "rejected";
-                    
-                    return (
-                      <TableRow 
-                        key={item.id}
-                        className={isRejected ? "bg-red-50" : undefined}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            {item.imageUrl && (
-                              <img
-                                src={item.imageUrl}
-                                alt={item.title}
-                                className="h-10 w-10 rounded-md object-cover"
-                              />
-                            )}
-                            <div>
-                              <span className="font-medium">{item.title || "Unnamed Item"}</span>
-                              {isRejected && (
-                                <div className="text-xs text-red-600 mt-1 flex items-center">
-                                  <AlertTriangle className="h-3 w-3 mr-1" />
-                                  Item not eligible for consignment
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{item.referenceId}</TableCell>
-                        <TableCell>{getStatusBadge(item.status)}</TableCell>
-                        <TableCell>{formatDate(item.createdAt)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleItemClick(item.referenceId)}
-                            >
-                              Details
-                            </Button>
-                            
-                            {isRejected && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleDeleteClick({ id: item.id, referenceId: item.referenceId })}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium">Item</th>
+                    <th className="text-left py-3 px-4 font-medium">Reference ID</th>
+                    <th className="text-left py-3 px-4 font-medium">Status</th>
+                    <th className="text-left py-3 px-4 font-medium">Date Added</th>
+                    <th className="text-left py-3 px-4 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredItems.map((item: any) => (
+                    <tr key={item.id} className="border-b hover:bg-slate-50">
+                      <td className="py-3 px-4">{item.title || "Unnamed Item"}</td>
+                      <td className="py-3 px-4">{item.referenceId}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          item.status === 'pending' ? 'bg-gray-100' :
+                          item.status === 'analyzing' ? 'bg-purple-100 text-purple-800' :
+                          item.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          item.status === 'listed' ? 'bg-blue-100 text-blue-800' :
+                          item.status === 'sold' ? 'bg-amber-100 text-amber-800' :
+                          item.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100'
+                        }`}>
+                          {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleItemClick(item.referenceId)}
+                        >
+                          View Details
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div className="text-center py-8">
