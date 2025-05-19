@@ -98,14 +98,13 @@ export default function OrderDetailPage() {
   const [isEditingTracking, setIsEditingTracking] = useState(false);
   const queryClient = useQueryClient();
 
-  // Get order details
+  // Get order details using the direct endpoint which includes all related items
   const {
     data: orderData,
     isLoading,
     error,
   } = useQuery<{ success: boolean; data: OrderWithDetails }>({
-    queryKey: ["/api/admin/orders", id],
-    // Use latest TanStack Query v5 format for callbacks 
+    queryKey: ["/api/orders-direct", id],
     gcTime: 5 * 60 * 1000,
     staleTime: 1 * 60 * 1000,
   });

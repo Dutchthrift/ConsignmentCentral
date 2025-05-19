@@ -590,7 +590,10 @@ export class SupabaseStorage implements IStorage {
   async getDashboardStats(): Promise<DashboardStats> {
     // Get total counts
     const itemsCount = await db.select({ count: sql<number>`count(*)` }).from(items);
-    const ordersCount = await db.select({ count: sql<number>`count(*)` }).from(orders);
+    
+    // Use raw SQL query for orders count to avoid table reference issue
+    const ordersCountResult = await db.execute(sql`SELECT COUNT(*) FROM orders`);
+    const ordersCount = { count: parseInt(ordersCountResult.rows[0].count) };
     
     // Get total sales and payout
     const totalSales = await db
