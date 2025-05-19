@@ -673,14 +673,14 @@ export class SupabaseStorage implements IStorage {
     const ordersCountResult = await db.execute(sql`SELECT COUNT(*) FROM orders`);
     const ordersCount = parseInt(ordersCountResult.rows[0].count) || 0;
     
-    // Get total sales and payout with the correct column names
+    // Get total sales and payout using the correct database column names
     const totalSalesResult = await db.execute(sql`
-      SELECT COALESCE(SUM(total_amount), 0) as sum FROM orders
+      SELECT COALESCE(SUM(total_value), 0) as sum FROM orders
     `);
     const totalSales = parseInt(totalSalesResult.rows[0].sum) || 0;
     
     const totalPayoutResult = await db.execute(sql`
-      SELECT COALESCE(SUM(payout_amount), 0) as sum FROM orders
+      SELECT COALESCE(SUM(total_payout), 0) as sum FROM orders
     `);
     const totalPayout = parseInt(totalPayoutResult.rows[0].sum) || 0;
     
@@ -693,11 +693,11 @@ export class SupabaseStorage implements IStorage {
       .from(items)
       .groupBy(items.status);
     
-    // Get monthly sales with raw SQL using the correct date column
+    // Get monthly sales with raw SQL using the correct date and amount columns
     const monthlySalesResult = await db.execute(sql`
       SELECT 
         to_char(submission_date, 'YYYY-MM') as month,
-        COALESCE(SUM(total_amount), 0) as sales
+        COALESCE(SUM(total_value), 0) as sales
       FROM orders
       GROUP BY to_char(submission_date, 'YYYY-MM')
       ORDER BY to_char(submission_date, 'YYYY-MM')
