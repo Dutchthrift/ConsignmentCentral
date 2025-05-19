@@ -2,6 +2,11 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
 import dotenv from 'dotenv';
+import ws from 'ws';
+import { neonConfig } from '@neondatabase/serverless';
+
+// Configure WebSocket support for Supabase/Neon connections
+neonConfig.webSocketConstructor = ws;
 
 dotenv.config();
 
@@ -11,7 +16,7 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-console.log('Using Supabase connection pooling for reliable database access');
+console.log('Using Supabase connection with WebSocket support for improved reliability');
 
 // Configure the connection pool with appropriate settings for Supabase direct connection
 export const pool = new Pool({
