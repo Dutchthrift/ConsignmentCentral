@@ -131,22 +131,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.setQueryData(["/api/auth/user"], userData);
       }
       
+      // Handle customer role (from Supabase) as consignor
+      let userRole = userData.role;
+      if (userData.role === 'customer') {
+        console.log("Converting customer role to consignor for UI");
+        userRole = UserRole.CONSIGNOR;
+        // Update the userData with consignor role for client-side use
+        const updatedUser = {...userData, role: UserRole.CONSIGNOR};
+        queryClient.setQueryData(["/api/auth/user"], updatedUser);
+      }
+      
       // Navigate based on user role - use setTimeout to ensure state is updated first
       setTimeout(() => {
-        if (userData.role === UserRole.ADMIN) {
+        if (userRole === UserRole.ADMIN) {
           console.log("Redirecting to admin dashboard");
           navigate("/");
-        } else if (userData.role === UserRole.CONSIGNOR) {
+        } else if (userRole === UserRole.CONSIGNOR || userRole === 'customer') {
           console.log("Redirecting to consignor dashboard");
           navigate("/consignor/dashboard");
         } else {
-          console.log("Unknown role:", userData.role);
+          console.log("Unknown role:", userRole);
         }
-      }, 100);
+      }, 500); // Increased timeout for more reliable redirect
       
       toast({
         title: "Login successful",
-        description: `Welcome back, ${userData.name || "user"}!`,
+        description: `Welcome back, ${userData.name || userData.email || "user"}!`,
       });
     },
     onError: (error: Error) => {

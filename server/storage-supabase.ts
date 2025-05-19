@@ -55,12 +55,18 @@ export class SupabaseStorage implements IStorage {
   }
 
   async updateCustomerByEmail(email: string, updates: Partial<Customer>): Promise<Customer | undefined> {
-    const [updatedCustomer] = await db
-      .update(customers)
-      .set(updates)
-      .where(eq(customers.email, email))
-      .returning();
-    return updatedCustomer;
+    try {
+      const [updatedCustomer] = await db
+        .update(customers)
+        .set(updates)
+        .where(eq(customers.email, email))
+        .returning();
+      return updatedCustomer;
+    } catch (error) {
+      console.error("Error updating customer:", error);
+      // Return the existing customer without updates as fallback
+      return this.getCustomerByEmail(email);
+    }
   }
 
   async getAllCustomers(): Promise<Customer[]> {
