@@ -290,31 +290,43 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOrderSummaries(): Promise<OrderSummary[]> {
-    // Get all orders with their details
-    const ordersWithDetails = await this.getAllOrdersWithDetails();
+    try {
+      // Get all orders with their details
+      const ordersWithDetails = await this.getAllOrdersWithDetails();
 
-    // Map to order summaries
-    return ordersWithDetails.map(order => {
-      const totalValue = order.totalValue || 
-        order.items.reduce((sum, item) => sum + (item.pricing?.suggestedListingPrice || 0), 0);
-      
-      const totalPayout = order.totalPayout || 
-        order.items.reduce((sum, item) => sum + (item.pricing?.suggestedPayout || 0), 0);
+      // Map to order summaries with safe defaults
+      return ordersWithDetails.map(order => {
+        // Safely calculate totals with fallbacks
+        const items = order.items || [];
+        const totalValue = items.reduce((sum, item) => {
+          const price = item.pricing?.suggestedListingPrice || 0;
+          return sum + price;
+        }, 0);
+        
+        const totalPayout = items.reduce((sum, item) => {
+          const payout = item.pricing?.payoutAmount || 0;
+          return sum + payout;
+        }, 0);
 
-      return {
-        id: order.id,
-        orderNumber: order.orderNumber,
-        customerId: order.customerId,
-        customerName: order.customer.name,
-        customerEmail: order.customer.email,
-        submissionDate: order.submissionDate.toISOString(),
-        status: order.status,
-        trackingCode: order.trackingCode || undefined,
-        totalValue,
-        totalPayout,
-        itemCount: order.items.length
-      };
-    });
+        return {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          customerId: order.customerId,
+          customerName: order.customer?.name || 'Unknown',
+          customerEmail: order.customer?.email || 'Unknown',
+          submissionDate: order.submissionDate?.toISOString() || new Date().toISOString(),
+          status: order.status,
+          trackingCode: order.trackingCode || undefined,
+          totalValue,
+          totalPayout,
+          itemCount: items.length
+        };
+      });
+    } catch (error) {
+      console.error("Error getting order summaries:", error);
+      return [];
+    }
+  }
   }
 
   async searchOrders(query: string): Promise<OrderSummary[]> {
