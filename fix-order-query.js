@@ -1,67 +1,165 @@
+/**
+ * This script fixes the query that fetches order details to properly include items
+ */
+
 import pg from 'pg';
+import dotenv from 'dotenv';
+
 const { Pool } = pg;
+dotenv.config();
+
+// Ensure DATABASE_URL is available
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL environment variable is required');
+  process.exit(1);
+}
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Required for SSL connections to Supabase
+  }
 });
 
 async function fixOrdersQuery() {
+  const client = await pool.connect();
+  
   try {
-    console.log("Checking for and fixing any SQL queries related to orders...");
+    console.log('Creating orders_with_items view...');
     
-    // Check if the getOrderSummaries function exists in the database
-    const queryResult = await pool.query(`
-      SELECT routine_definition
-      FROM information_schema.routines
-      WHERE routine_name = 'get_order_summaries'
-      AND routine_type = 'FUNCTION'
+    // Create a view that properly joins orders, items, and related tables
+    await client.query(`
+      CREATE OR REPLACE VIEW orders_with_items AS
+      SELECT 
+        o.id AS order_id,
+        o.order_number,
+        o.customer_id,
+        o.status AS order_status,
+        o.submission_date,
+        o.tracking_code,
+        o.total_value,
+        o.total_payout,
+        c.first_name || ' ' || c.last_name AS customer_name,
+        c.email AS customer_email,
+        i.id AS item_id,
+        i.reference_id,
+        i.title,
+        i.brand,
+        i.status AS item_status,
+        i.intake_date,
+        a.id AS analysis_id,
+        a.product_type,
+        a.brand AS analysis_brand,
+        a.description AS analysis_description,
+        p.id AS pricing_id,
+        p.suggested_listing_price,
+        p.commission_rate,
+        p.suggested_payout AS payout_amount
+      FROM 
+        orders o
+      JOIN 
+        customers c ON o.customer_id = c.id
+      LEFT JOIN 
+        order_items oi ON o.id = oi.order_id
+      LEFT JOIN 
+        items i ON oi.item_id = i.id
+      LEFT JOIN 
+        analysis a ON i.id = a.item_id
+      LEFT JOIN 
+        pricing p ON i.id = p.item_id
     `);
     
-    if (queryResult.rows.length > 0) {
-      console.log("Found getOrderSummaries function in database, updating it...");
-      
-      // Update the function to use total_value and total_payout instead of total_amount
-      await pool.query(`
-        CREATE OR REPLACE FUNCTION get_order_summaries()
-        RETURNS SETOF json AS $$
-        BEGIN
-          RETURN QUERY
-          SELECT json_agg(
-            json_build_object(
-              'id', o.id,
-              'orderNumber', o.order_number,
-              'customerId', o.customer_id,
-              'customerName', c.name,
-              'customerEmail', c.email,
-              'submissionDate', o.submission_date,
-              'status', o.status,
-              'trackingCode', o.tracking_code,
-              'totalValue', o.total_value,
-              'totalPayout', o.total_payout,
-              'itemCount', (
-                SELECT COUNT(*)
-                FROM order_items oi
-                WHERE oi.order_id = o.id
-              )
-            )
-          )
-          FROM orders o
-          JOIN customers c ON o.customer_id = c.id;
-        END;
-        $$ LANGUAGE plpgsql;
-      `);
-      
-      console.log("✅ Updated getOrderSummaries function to use correct column names");
-    } else {
-      console.log("No stored function found, no update needed");
-    }
+    console.log('View created successfully');
     
-    console.log("✅ All orders query fixes completed successfully");
+    // Create a function to get order with items
+    console.log('Creating get_order_with_items function...');
+    await client.query(`
+      CREATE OR REPLACE FUNCTION get_order_with_items(order_id_param INTEGER)
+      RETURNS TABLE (
+        order_data JSON,
+        items_data JSON
+      ) AS $$
+      DECLARE
+        order_record RECORD;
+        items_json JSON;
+      BEGIN
+        -- Get the order details
+        SELECT 
+          json_build_object(
+            'id', o.id,
+            'order_number', o.order_number,
+            'customer_id', o.customer_id,
+            'status', o.status,
+            'submission_date', o.submission_date,
+            'tracking_code', o.tracking_code,
+            'total_value', o.total_value,
+            'total_payout', o.total_payout,
+            'customer_name', c.first_name || ' ' || c.last_name,
+            'customer_email', c.email
+          ) INTO order_data
+        FROM 
+          orders o
+        JOIN 
+          customers c ON o.customer_id = c.id
+        WHERE 
+          o.id = order_id_param;
+          
+        -- Get all items for this order
+        SELECT 
+          json_agg(
+            json_build_object(
+              'id', i.id,
+              'reference_id', i.reference_id,
+              'title', i.title,
+              'brand', i.brand,
+              'status', i.status,
+              'intake_date', i.intake_date,
+              'analysis_id', a.id,
+              'product_type', a.product_type,
+              'analysis_brand', a.brand,
+              'analysis_description', a.description,
+              'pricing_id', p.id,
+              'suggested_listing_price', p.suggested_listing_price,
+              'commission_rate', p.commission_rate,
+              'payout_amount', p.suggested_payout
+            )
+          ) INTO items_data
+        FROM 
+          order_items oi
+        JOIN 
+          items i ON oi.item_id = i.id
+        LEFT JOIN 
+          analysis a ON i.id = a.item_id
+        LEFT JOIN 
+          pricing p ON i.id = p.item_id
+        WHERE 
+          oi.order_id = order_id_param;
+          
+        -- Return the data
+        RETURN NEXT;
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+    
+    console.log('Function created successfully');
+    
+    console.log('Order query fixes completed successfully');
   } catch (error) {
-    console.error("Error fixing orders query:", error);
+    console.error('Error fixing order queries:', error);
+    throw error;
   } finally {
-    await pool.end();
+    client.release();
   }
 }
 
-fixOrdersQuery();
+// Execute the function
+fixOrdersQuery()
+  .then(() => {
+    console.log('Completed successfully');
+    pool.end();
+  })
+  .catch(error => {
+    console.error('Script failed:', error);
+    pool.end();
+    process.exit(1);
+  });
