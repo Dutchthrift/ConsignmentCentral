@@ -2,11 +2,6 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
 import dotenv from 'dotenv';
-import ws from 'ws';
-import { neonConfig } from '@neondatabase/serverless';
-
-// Configure WebSocket support for Supabase/Neon connections
-neonConfig.webSocketConstructor = ws;
 
 dotenv.config();
 
@@ -16,23 +11,32 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-console.log('Using Supabase connection with WebSocket support for improved reliability');
+console.log('Using direct Supabase pooler connection');
 
-// Configure the connection pool with appropriate settings for Supabase pooler connection
+// Create a fresh connection pool with the same settings that worked in our test
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false // Required for SSL connections to Supabase
   },
-  max: 1, // Single connection for reliability with Supabase pooler
-  idleTimeoutMillis: 30000, // 30 seconds idle timeout (better for pooler)
+  max: 1, // Using a single connection to avoid exceeding limits
   connectionTimeoutMillis: 10000, // 10 seconds connection timeout
+  idleTimeoutMillis: 30000, // 30 seconds idle timeout
   allowExitOnIdle: true
 });
 
 // Add error handler to prevent app crashes on connection issues
 pool.on('error', (err) => {
   console.error('Unexpected database pool error:', err);
+});
+
+// Do an immediate test query to verify connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Database connection test failed:', err);
+  } else {
+    console.log('Database connection test successful:', res.rows[0]);
+  }
 });
 
 // Create a Drizzle client instance
@@ -49,30 +53,12 @@ export async function executeRawQuery<T = any>(query: string, params: any[] = []
   }
 }
 
-// Keep-alive function to keep the connection alive
-let connectionStatus = false;
-
-async function keepAliveQuery() {
-  try {
-    await executeRawQuery('SELECT 1');
-    connectionStatus = true;
-    console.log('Database connection check: OK');
-  } catch (error) {
-    connectionStatus = false;
-    console.error('Database connection check: Failed', error);
-  }
-}
-
-// Setup connection monitoring
-// Set up the initial check and periodic checks
-keepAliveQuery().catch(err => console.error('Initial database connection check failed:', err));
-
-// Check the connection every 5 minutes
-setInterval(() => {
-  keepAliveQuery().catch(err => console.error('Periodic database connection check failed:', err));
-}, 5 * 60 * 1000);
-
 // Export status checking function
 export function getDatabaseStatus() {
-  return connectionStatus;
+  try {
+    // Simple synchronous check
+    return pool.totalCount > 0;
+  } catch (error) {
+    return false;
+  }
 }
