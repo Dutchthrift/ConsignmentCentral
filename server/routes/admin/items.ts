@@ -191,7 +191,7 @@ async function getAllItems() {
         customer: row.customer_email ? {
           id: row.customer_id,
           email: row.customer_email,
-          fullName: row.customer_full_name,
+          name: row.customer_name,
           phone: row.customer_phone,
           country: row.customer_country
         } : null,
