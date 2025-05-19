@@ -73,8 +73,22 @@ export default function ConsignorItems() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [itemToDelete, setItemToDelete] = useState<{id: number, referenceId: string} | null>(null);
 
-  // Fetch consignor's data
-  const { data: consignorData, isLoading } = useQuery<any>({
+  // Fetch consignor's items directly from the items endpoint
+  const { data: items = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/consignor/items"],
+    enabled: !!user?.id,
+    onError: (error) => {
+      console.error("Error fetching consignor items:", error);
+      toast({
+        title: "Error loading items",
+        description: "Could not load your items. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Also fetch the dashboard data for additional information
+  const { data: consignorData } = useQuery<any>({
     queryKey: ["/api/consignor/dashboard"],
     enabled: !!user?.id,
   });
@@ -90,6 +104,7 @@ export default function ConsignorItems() {
         title: "Item deleted",
         description: "The rejected item has been removed from your account.",
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/consignor/items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/consignor/dashboard"] });
       setItemToDelete(null);
     },
@@ -102,8 +117,6 @@ export default function ConsignorItems() {
       console.error("Delete error:", error);
     }
   });
-
-  const items = consignorData?.data?.items || [];
   
   // Filter items based on search term
   const filteredItems = items.filter((item: any) => 
