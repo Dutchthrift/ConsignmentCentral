@@ -160,6 +160,9 @@ export default function Inventory() {
                         Customer
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">
+                        Order Number
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">
                         Status
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-neutral-600">
@@ -191,6 +194,9 @@ export default function Inventory() {
                             </td>
                             <td className="py-3 px-4">
                               <Skeleton className="h-4 w-24" />
+                            </td>
+                            <td className="py-3 px-4">
+                              <Skeleton className="h-4 w-28" />
                             </td>
                             <td className="py-3 px-4">
                               <Skeleton className="h-5 w-16 rounded-full" />
@@ -237,6 +243,13 @@ export default function Inventory() {
                           </td>
                           <td className="py-3 px-4 text-sm">
                             {item.customer?.name || "N/A"}
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {item.orderNumber ? (
+                              <span className="text-blue-600 font-medium">{item.orderNumber}</span>
+                            ) : (
+                              <span className="text-gray-400 italic">Not assigned</span>
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             {getStatusBadge(item.status)}
