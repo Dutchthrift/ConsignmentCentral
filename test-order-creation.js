@@ -5,10 +5,10 @@
  * which should result in a single order being created that contains all items.
  */
 
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 async function testOrderCreation() {
-  // Sample consignment submission with multiple items
+  // Sample consignment submission with multiple items - following intakeFormSchema format
   const testData = {
     customer: {
       name: "Test Consignor",
@@ -16,8 +16,8 @@ async function testOrderCreation() {
       phone: "+31612345678",
       address: "Test Street 123",
       city: "Amsterdam",
-      state: "North Holland", // Repurposed as payoutMethod in the backend
-      postalCode: "NL28ABNA0123456789", // Repurposed as IBAN in the backend
+      state: "North Holland", 
+      postalCode: "NL28ABNA0123456789",
       country: "Netherlands"
     },
     items: [
@@ -88,3 +88,6 @@ testOrderCreation().then(() => {
 }).catch(err => {
   console.error("Test failed:", err);
 });
+
+// Add type module export for ES modules
+export {};
