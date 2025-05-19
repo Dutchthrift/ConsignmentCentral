@@ -8,18 +8,15 @@
 import fetch from 'node-fetch';
 
 async function testOrderCreation() {
-  // Using single-item legacy format which we can be sure the API understands
-  // The backend will convert it to the new multi-item format
+  // Using the legacyIntakeFormSchema format defined in shared/schema.ts
+  // This format is explicitly supported by the API
   const testData = {
-    name: "Test Consignor", // Top-level fields for schema bypass
-    email: "test.consignment@example.com",
-    phone: "+31612345678",
     customer: {
       name: "Test Consignor",
       email: "test.consignment@example.com",
       phone: "+31612345678",
-      address: "Test Street 123",
-      city: "Amsterdam", 
+      address: "Test Street 123", 
+      city: "Amsterdam",
       state: "bank_transfer", // Will be repurposed as payoutMethod
       postalCode: "NL28ABNA0123456789", // Will be repurposed as IBAN
       country: "Netherlands"
