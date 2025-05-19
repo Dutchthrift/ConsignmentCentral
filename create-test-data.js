@@ -243,11 +243,12 @@ async function createOrderForCustomer(customerId, items) {
   for (const item of items) {
     await executeQuery(`
       INSERT INTO order_items (
-        order_id, item_id
-      ) VALUES ($1, $2)
+        order_id, item_id, created_at
+      ) VALUES ($1, $2, $3)
     `, [
       order.id,
-      item.id
+      item.id,
+      submissionDate
     ]);
     console.log(`Linked item ${item.id} to order ${order.id}`);
   }
