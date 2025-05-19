@@ -407,24 +407,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             // Analyze the item with OpenAI
+            console.log(`Starting AI analysis for item ${item.id}: ${itemData.title}`);
             const analysisResult = await analyzeProduct(
               itemData.title,
               itemData.description || "",
               imageBase64
             );
-
-            // Create analysis record
-            const newAnalysis = insertAnalysisSchema.parse({
-              itemId: item.id,
-              brand: analysisResult.brand,
-              productType: analysisResult.productType,
-              model: analysisResult.model,
-              condition: analysisResult.condition,
-              accessories: analysisResult.accessories,
-              additionalNotes: analysisResult.additionalNotes
-            });
             
-            const analysis = await storage.createAnalysis(newAnalysis);
+            // Log the full analysis result for debugging
+            console.log('AI analysis result:', JSON.stringify(analysisResult, null, 2));
+
+            try {
+              // Create analysis record with complete field mapping
+              const newAnalysis = {
+                itemId: item.id,
+                brand: analysisResult.brand || null,
+                productType: analysisResult.productType || null,
+                model: analysisResult.model || null,
+                condition: analysisResult.condition || null,
+                category: analysisResult.category || null,
+                accessories: analysisResult.accessories || null,
+                analysisSummary: analysisResult.analysisSummary || null,
+                additionalNotes: analysisResult.additionalNotes || null,
+                features: analysisResult.features ? JSON.stringify(analysisResult.features) : null,
+                manufactureYear: analysisResult.manufactureYear || null,
+                color: analysisResult.color || null,
+                dimensions: analysisResult.dimensions || null,
+                weight: analysisResult.weight || null,
+                materials: analysisResult.materials || null,
+                authenticity: analysisResult.authenticity || null,
+                rarity: analysisResult.rarity || null,
+                confidenceScore: analysisResult.confidenceScore ? parseFloat(analysisResult.confidenceScore) : null
+              };
+              
+              console.log('Storing analysis in database:', JSON.stringify(newAnalysis, null, 2));
+              
+              // Parse the analysis data to ensure it matches the schema
+              const validatedAnalysis = insertAnalysisSchema.parse(newAnalysis);
+              
+              // Store analysis in the database with error handling
+              try {
+                const analysis = await storage.createAnalysis(validatedAnalysis);
+                console.log(`Analysis stored successfully for item ${item.id}`);
+              } catch (analysisError) {
+                console.error(`Error storing analysis for item ${item.id}:`, analysisError);
+                // Continue with the process, don't let analysis storage failure stop the item creation
+              }
+            } catch (schemaError) {
+              console.error(`Error validating analysis schema for item ${item.id}:`, schemaError);
+              // Continue with the process, don't let analysis validation failure stop the item creation
+            }
             
             try {
               // Get market pricing from eBay

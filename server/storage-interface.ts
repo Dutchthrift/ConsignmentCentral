@@ -23,6 +23,9 @@ import session from 'express-session';
 export interface IStorage {
   // Session store
   sessionStore: session.Store;
+  
+  // Database client for direct queries
+  getClient(): Promise<any>;
 
   // Customer methods
   getCustomer(id: number): Promise<Customer | undefined>;
