@@ -95,8 +95,48 @@ export class SupabaseStorage implements IStorage {
   }
 
   async createItem(item: InsertItem): Promise<Item> {
-    const [newItem] = await db.insert(items).values(item).returning();
-    return newItem;
+    try {
+      // Use raw SQL query to directly access the database
+      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      const columns = Object.keys(item);
+      
+      // Convert camelCase to snake_case for SQL
+      const sqlColumns = columns.map(col => {
+        return col.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      });
+      
+      const values = Object.values(item);
+      const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+      
+      const query = `
+        INSERT INTO items (${sqlColumns.join(', ')}) 
+        VALUES (${placeholders}) 
+        RETURNING *
+      `;
+      
+      const result = await pool.query(query, values);
+      
+      if (result.rows && result.rows.length > 0) {
+        // Convert column names from snake_case back to camelCase for our application
+        const row = result.rows[0];
+        const newItem: any = {};
+        
+        // Convert snake_case column names back to camelCase
+        Object.keys(row).forEach(key => {
+          const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+          newItem[camelKey] = row[key];
+        });
+        
+        await pool.end();
+        return newItem as Item;
+      }
+      
+      await pool.end();
+      throw new Error("Failed to create item, no result returned");
+    } catch (error) {
+      console.error("Error creating item:", error);
+      throw error;
+    }
   }
 
   async updateItemStatus(id: number, status: string): Promise<Item | undefined> {
@@ -112,18 +152,38 @@ export class SupabaseStorage implements IStorage {
   }
   
   async updateItemImage(id: number, imageBase64: string): Promise<Item | undefined> {
-    // Convert imageBase64 to a URL or path as needed
-    // In this case, we're just storing the base64 string directly in the database
-    // Use raw SQL to update the image_url column directly since there seems to be a mismatch
+    // Use direct connection to the database to update the image
     try {
-      const result = await db.execute(
-        `UPDATE items SET image_url = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-        [imageBase64, id]
-      );
+      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
       
-      if (result && result.length > 0) {
-        return result[0];
+      // Log the query parameters for debugging
+      console.log(`Updating image for item ${id}, image data length: ${imageBase64 ? imageBase64.length : 0}`);
+      
+      // Use parameterized query to safely update the image_url
+      const query = `
+        UPDATE items 
+        SET image_url = $1, updated_at = NOW() 
+        WHERE id = $2 
+        RETURNING *
+      `;
+      
+      const result = await pool.query(query, [imageBase64, id]);
+      
+      await pool.end();
+      
+      if (result.rows && result.rows.length > 0) {
+        // Convert snake_case column names to camelCase for our application
+        const row = result.rows[0];
+        const updatedItem: any = {};
+        
+        Object.keys(row).forEach(key => {
+          const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+          updatedItem[camelKey] = row[key];
+        });
+        
+        return updatedItem as Item;
       }
+      
       return undefined;
     } catch (error) {
       console.error('Error updating item image:', error);
