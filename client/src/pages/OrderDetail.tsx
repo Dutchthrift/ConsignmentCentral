@@ -314,7 +314,7 @@ export default function OrderDetailPage() {
                     <Badge className={`${getStatusColor(value)} mr-2`}>
                       &nbsp;
                     </Badge>
-                    {value.replace(/_/g, " ")}
+                    {value?.replace(/_/g, " ") || value}
                   </span>
                 </SelectItem>
               ))}
@@ -364,7 +364,7 @@ export default function OrderDetailPage() {
                 <dt>Order Status:</dt>
                 <dd>
                   <Badge className={getStatusColor(order.status)}>
-                    {order.status.replace(/_/g, " ")}
+                    {order.status?.replace(/_/g, " ") || order.status || "Unknown"}
                   </Badge>
                 </dd>
               </div>
@@ -522,7 +522,7 @@ export default function OrderDetailPage() {
                           </TableCell>
                           <TableCell>
                             <Badge className={getStatusColor(item.status)}>
-                              {item.status.replace(/_/g, " ")}
+                              {item.status?.replace(/_/g, " ") || item.status || "Unknown"}
                             </Badge>
                           </TableCell>
                           <TableCell>
