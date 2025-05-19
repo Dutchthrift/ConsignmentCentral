@@ -298,7 +298,7 @@ export default function OrderDetailPage() {
             <h1 className="text-2xl font-bold">{order.orderNumber}</h1>
             <p className="text-muted-foreground">
               Submitted on{" "}
-              {format(new Date(order.submissionDate), "dd MMMM yyyy, HH:mm")}
+              {order.submissionDate ? format(new Date(order.submissionDate), "dd MMMM yyyy, HH:mm") : "N/A"}
             </p>
           </div>
         </div>
