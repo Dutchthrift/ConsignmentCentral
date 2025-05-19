@@ -1,43 +1,66 @@
-// Direct connection test with basic configuration
-import pg from 'pg';
-import dotenv from 'dotenv';
+import { Pool } from 'pg';
 
-// Load environment variables
-dotenv.config();
+// Hardcode the Supabase connection string for testing
+const SUPABASE_DB_URL = "postgresql://postgres.pkktakjpjytfxkkyuvrk:Prinsesseweg79!@aws-0-eu-central-1.pooler.supabase.com:6543/postgres";
 
-// Use direct Supabase connection string
-const connectionString = process.env.DATABASE_URL;
-console.log(`Using connection string: ${connectionString ? connectionString.replace(/:[^:]*@/, ':****@') : 'None found'}`);
+console.log(`Testing direct connection to Supabase: ${SUPABASE_DB_URL.replace(/:[^:]*@/, ':****@')}`);
 
-// Create a client directly instead of a pool
-const client = new pg.Client({
-  connectionString,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  // Reduced timeout to fail fast
-  connectionTimeoutMillis: 5000
+// Create a simple connection pool with minimal settings
+const pool = new Pool({
+  connectionString: SUPABASE_DB_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 1,
+  idleTimeoutMillis: 10000
 });
 
 async function testConnection() {
+  let client;
   try {
-    console.log('Attempting to connect directly...');
-    await client.connect();
-    console.log('Connection successful!');
-    
+    client = await pool.connect();
+    console.log('Connection established, running test query...');
     const result = await client.query('SELECT NOW() as time');
-    console.log('Database query successful. Current time:', result.rows[0].time);
+    console.log('Connection successful!', result.rows[0]);
     
-    await client.end();
-    console.log('Connection closed successfully');
-  } catch (error) {
-    console.error('Connection error:', error.message);
-    try {
-      await client.end();
-    } catch (e) {
-      // Ignore errors on close
+    // List all tables in the public schema
+    console.log('Listing all tables in public schema:');
+    const tablesResult = await client.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      ORDER BY table_name
+    `);
+    
+    if (tablesResult.rows.length === 0) {
+      console.log('No tables found in public schema');
+    } else {
+      console.log('Tables found:');
+      tablesResult.rows.forEach(row => {
+        console.log(`- ${row.table_name}`);
+      });
     }
+    
+    return true;
+  } catch (error) {
+    console.error('Connection test failed:', error);
+    return false;
+  } finally {
+    if (client) client.release();
+    await pool.end();
   }
 }
 
-testConnection();
+// Run the test
+testConnection()
+  .then(success => {
+    if (success) {
+      console.log('Database connection test completed successfully');
+      process.exit(0);
+    } else {
+      console.error('Database connection test failed');
+      process.exit(1);
+    }
+  })
+  .catch(error => {
+    console.error('Unhandled error:', error);
+    process.exit(1);
+  });
