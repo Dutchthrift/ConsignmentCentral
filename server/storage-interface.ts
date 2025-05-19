@@ -38,6 +38,7 @@ export interface IStorage {
   getItemsByCustomerId(customerId: number): Promise<Item[]>;
   createItem(item: InsertItem): Promise<Item>;
   updateItemStatus(id: number, status: string): Promise<Item | undefined>;
+  updateItemImage(id: number, imageBase64: string): Promise<Item | undefined>;
 
   // Analysis methods
   getAnalysisByItemId(itemId: number): Promise<Analysis | undefined>;

@@ -110,6 +110,20 @@ export class SupabaseStorage implements IStorage {
       .returning();
     return updatedItem;
   }
+  
+  async updateItemImage(id: number, imageBase64: string): Promise<Item | undefined> {
+    // Convert imageBase64 to a URL or path as needed
+    // In this case, we're just storing the base64 string directly in the database
+    const [updatedItem] = await db
+      .update(items)
+      .set({ 
+        imageUrl: imageBase64,
+        updatedAt: new Date()
+      })
+      .where(eq(items.id, id))
+      .returning();
+    return updatedItem;
+  }
 
   // Analysis methods
   async getAnalysisByItemId(itemId: number): Promise<Analysis | undefined> {
