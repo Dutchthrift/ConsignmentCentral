@@ -26,28 +26,13 @@ router.get("/stats", async (req: Request, res: Response) => {
 // GET /api/dashboard/items/recent - get recent items for dashboard
 router.get("/items/recent", async (req: Request, res: Response) => {
   try {
-    // Get all items
-    const items = await storage.getAllItemsWithDetails();
-    
-    // Sort by creation date, newest first
-    items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    
-    // Take the 10 most recent items
-    const recentItems = items.slice(0, 10).map(item => ({
-      referenceId: item.referenceId,
-      title: item.title,
-      imageUrl: item.imageUrl,
-      status: item.status,
-      createdAt: item.createdAt,
-      pricing: item.pricing ? {
-        estimatedPrice: item.pricing.suggestedListingPrice ? item.pricing.suggestedListingPrice / 100 : null,
-        payout: item.pricing.suggestedPayout ? item.pricing.suggestedPayout / 100 : null
-      } : null
-    }));
+    // Using direct SQL query to avoid column mismatches
+    const { getAllItems } = await import('../getConsignorItems');
+    const items = await getAllItems();
     
     res.json({
       success: true,
-      data: recentItems
+      data: items
     });
   } catch (error) {
     console.error("Error getting recent items:", error);

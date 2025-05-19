@@ -43,6 +43,7 @@ const DEFAULT_STATS: DashboardStats = {
 const AdminDashboardPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   const { data: stats, isLoading, error } = useQuery<DashboardStats>({
     queryKey: ["/api/admin/stats"],
@@ -97,6 +98,16 @@ const AdminDashboardPage = () => {
   const progressPercentage = dashboardStats.totalItems > 0 
     ? Math.round((dashboardStats.approvedItems / dashboardStats.totalItems) * 100) 
     : 0;
+
+  // Handler for item click in the All Intakes section
+  const handleItemClick = (referenceId: string) => {
+    setSelectedItemId(referenceId);
+  };
+
+  // Handler for closing the item details modal
+  const handleCloseModal = () => {
+    setSelectedItemId(null);
+  };
 
   return (
     <div className="mx-auto max-w-7xl p-4">
@@ -222,6 +233,113 @@ const AdminDashboardPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* All Intakes Section (renamed from "My Items") */}
+      <div className="mt-6">
+        <AllIntakes onItemClick={handleItemClick} />
+      </div>
+      
+      {/* Sections moved to the bottom as requested */}
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Consignment Process Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Consignment Process</CardTitle>
+            <CardDescription>
+              The journey from intake to sale
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div className="flex flex-col items-center p-4 bg-orange-50 rounded-lg">
+                <div className="w-10 h-10 flex items-center justify-center rounded-full bg-orange-100 text-orange-600 mb-2">1</div>
+                <h3 className="text-sm font-medium">Intake Submission</h3>
+                <p className="text-xs text-muted-foreground mt-1">Customer uploads product photos</p>
+              </div>
+              
+              <div className="flex flex-col items-center p-4 bg-blue-50 rounded-lg">
+                <div className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 mb-2">2</div>
+                <h3 className="text-sm font-medium">AI Analysis</h3>
+                <p className="text-xs text-muted-foreground mt-1">GPT-4 identifies product details</p>
+              </div>
+              
+              <div className="flex flex-col items-center p-4 bg-green-50 rounded-lg">
+                <div className="w-10 h-10 flex items-center justify-center rounded-full bg-green-100 text-green-600 mb-2">3</div>
+                <h3 className="text-sm font-medium">Market Research</h3>
+                <p className="text-xs text-muted-foreground mt-1">eBay API checks market prices</p>
+              </div>
+              
+              <div className="flex flex-col items-center p-4 bg-purple-50 rounded-lg">
+                <div className="w-10 h-10 flex items-center justify-center rounded-full bg-purple-100 text-purple-600 mb-2">4</div>
+                <h3 className="text-sm font-medium">Shipping</h3>
+                <p className="text-xs text-muted-foreground mt-1">Label generation via SendCloud</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* API Integrations Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>API Integrations</CardTitle>
+            <CardDescription>
+              Status of external service connections
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+                  <span className="text-sm font-medium">OpenAI GPT-4 Vision</span>
+                </div>
+                <Badge variant="outline" className="bg-green-50">Operational</Badge>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+                  <span className="text-sm font-medium">eBay Price API</span>
+                </div>
+                <Badge variant="outline" className="bg-green-50">Operational</Badge>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500 mr-2"></div>
+                  <span className="text-sm font-medium">SendCloud API</span>
+                </div>
+                <Badge variant="outline" className="bg-yellow-50">Rate limited</Badge>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+                  <span className="text-sm font-medium">Shopify Webhooks</span>
+                </div>
+                <Badge variant="outline" className="bg-green-50">Operational</Badge>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 rounded-full bg-red-500 mr-2"></div>
+                  <span className="text-sm font-medium">Stripe Connect</span>
+                </div>
+                <Badge variant="outline" className="bg-red-50">Configuration needed</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Item details modal - shown when an item is clicked */}
+      {selectedItemId && (
+        <ItemDetailsModal
+          referenceId={selectedItemId}
+          isOpen={!!selectedItemId}
+          onClose={handleCloseModal}
+        />
+      )}
     </div>
   );
 };

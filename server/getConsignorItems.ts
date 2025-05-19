@@ -1,128 +1,156 @@
-import { db } from './db';
-import { items, pricing, analyses, shipping } from '@shared/schema';
+import { db, pool } from './db';
+import { items } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
-// Direct SQL query to get all items for a consignor with related details
-export async function getConsignorItems(customerId: number) {
+// Direct database query function to get consignor items
+// This avoids the complex joins that might cause SQL errors
+export async function getConsignorItems(consignorId: number) {
   try {
-    // Get all items for this customer
-    const customerItems = await db.select().from(items).where(eq(items.customerId, customerId));
+    // First get all items for this consignor
+    const consignorItems = await db.select().from(items).where(eq(items.customerId, consignorId));
     
-    if (!customerItems || customerItems.length === 0) {
-      return {
-        success: true,
-        data: []
-      };
-    }
-    
-    // Get all related data in bulk to minimize database queries
-    const itemIds = customerItems.map(item => item.id);
-    
-    // Get pricing data for all items
-    let pricingData: typeof pricing.$inferSelect[] = [];
-    if (itemIds.length > 0) {
-      for (const itemId of itemIds) {
-        const data = await db.select().from(pricing).where(eq(pricing.itemId, itemId));
-        pricingData = [...pricingData, ...data];
-      }
-    }
-        
-    // Get analysis data for all items
-    let analysisData: typeof analyses.$inferSelect[] = [];
-    if (itemIds.length > 0) {
-      for (const itemId of itemIds) {
-        const data = await db.select().from(analyses).where(eq(analyses.itemId, itemId));
-        analysisData = [...analysisData, ...data];
-      }
-    }
-        
-    // Get shipping data for all items
-    let shippingData: typeof shipping.$inferSelect[] = [];
-    if (itemIds.length > 0) {
-      for (const itemId of itemIds) {
-        const data = await db.select().from(shipping).where(eq(shipping.itemId, itemId));
-        shippingData = [...shippingData, ...data];
-      }
-    }
-    
-    // Create lookup maps for quick access
-    const pricingMap = pricingData.reduce((map, price) => {
-      map[price.itemId] = price;
-      return map;
-    }, {} as Record<number, typeof pricing.$inferSelect>);
-    
-    const analysisMap = analysisData.reduce((map, analysis) => {
-      map[analysis.itemId] = analysis;
-      return map;
-    }, {} as Record<number, typeof analyses.$inferSelect>);
-    
-    const shippingMap = shippingData.reduce((map, ship) => {
-      map[ship.itemId] = ship;
-      return map;
-    }, {} as Record<number, typeof shipping.$inferSelect>);
-    
-    // Format the items with all their relations
-    const formattedItems = customerItems.map(item => {
-      const itemPricing = pricingMap[item.id];
-      const itemAnalysis = analysisMap[item.id];
-      const itemShipping = shippingMap[item.id];
+    // Return formatted items
+    return consignorItems.map(item => ({
+      id: item.id,
+      referenceId: item.referenceId,
+      title: item.title || 'Unnamed Item',
+      description: item.description || '',
+      status: item.status || 'pending',
+      imageUrl: item.imageUrl || null,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
+    }));
+  } catch (error) {
+    console.error('Error in getConsignorItems:', error);
+    throw error;
+  }
+}
+
+// Get all items with basic details for admin dashboard
+export async function getAllItems() {
+  try {
+    // Use direct SQL query with joins to avoid the ORM layer issues
+    const client = await pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT 
+          i.id, 
+          i.reference_id, 
+          i.title, 
+          i.status, 
+          i.created_at, 
+          i.updated_at,
+          c.id as customer_id, 
+          c.name as customer_name, 
+          c.email as customer_email
+        FROM 
+          items i
+        LEFT JOIN 
+          customers c ON i.customer_id = c.id
+        ORDER BY 
+          i.created_at DESC
+        LIMIT 50
+      `);
       
+      return result.rows.map(row => ({
+        id: row.id,
+        referenceId: row.reference_id,
+        title: row.title || 'Unnamed Item',
+        status: row.status || 'pending',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        customerName: row.customer_name,
+        customerEmail: row.customer_email,
+        customerId: row.customer_id
+      }));
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error in getAllItems:', error);
+    throw error;
+  }
+}
+
+// Get single item details by reference ID
+export async function getItemDetailsByReferenceId(referenceId: string) {
+  try {
+    const client = await pool.connect();
+    try {
+      // First get the item
+      const itemResult = await client.query(`
+        SELECT 
+          i.*, 
+          c.id as customer_id, 
+          c.name as customer_name, 
+          c.email as customer_email,
+          c.phone as customer_phone
+        FROM 
+          items i
+        LEFT JOIN 
+          customers c ON i.customer_id = c.id
+        WHERE 
+          i.reference_id = $1
+      `, [referenceId]);
+      
+      if (itemResult.rows.length === 0) {
+        return null;
+      }
+      
+      const item = itemResult.rows[0];
+      
+      // Get analysis if available
+      const analysisResult = await client.query(`
+        SELECT * FROM analysis WHERE item_id = $1
+      `, [item.id]);
+      
+      // Get pricing if available
+      const pricingResult = await client.query(`
+        SELECT * FROM pricing WHERE item_id = $1
+      `, [item.id]);
+      
+      // Construct the full item details
       return {
         id: item.id,
-        referenceId: item.referenceId,
-        title: item.title,
-        description: item.description,
-        category: item.category,
+        referenceId: item.reference_id,
+        title: item.title || 'Unnamed Item',
+        description: item.description || '',
         status: item.status,
-        imageUrl: item.imageUrl,
-        customerId: item.customerId,
-        createdAt: item.createdAt ? item.createdAt.toISOString() : null,
-        updatedAt: item.updatedAt ? item.updatedAt.toISOString() : null,
-        
-        // Pricing details
-        averageMarketPrice: itemPricing?.averageMarketPrice,
-        suggestedListingPrice: itemPricing?.suggestedListingPrice,
-        commissionRate: itemPricing?.commissionRate,
-        suggestedPayout: itemPricing?.suggestedPayout,
-        finalSalePrice: itemPricing?.finalSalePrice,
-        finalPayout: itemPricing?.finalPayout,
-        payoutType: itemPricing?.payoutType,
-        
-        // Analysis summary if available
-        analysis: itemAnalysis ? {
-          id: itemAnalysis.id,
-          // Using item's category if analysis doesn't have it
-          category: item.category,
-          brand: itemAnalysis.brand,
-          condition: itemAnalysis.condition,
-          productType: itemAnalysis.productType,
-          model: itemAnalysis.model,
-          accessories: itemAnalysis.accessories,
-          additionalNotes: itemAnalysis.additionalNotes,
-          createdAt: itemAnalysis.createdAt ? itemAnalysis.createdAt.toISOString() : null
+        createdAt: item.created_at,
+        customer: {
+          id: item.customer_id,
+          name: item.customer_name,
+          email: item.customer_email,
+          phone: item.customer_phone
+        },
+        analysis: analysisResult.rows.length > 0 ? {
+          id: analysisResult.rows[0].id,
+          itemId: analysisResult.rows[0].item_id,
+          materialAnalysis: analysisResult.rows[0].material_analysis || null,
+          brandAnalysis: analysisResult.rows[0].brand_analysis || null,
+          styleAnalysis: analysisResult.rows[0].style_analysis || null,
+          authenticityScore: analysisResult.rows[0].authenticity_score || null,
+          conditionScore: analysisResult.rows[0].condition_score || null,
+          notes: analysisResult.rows[0].notes || null,
+          createdAt: analysisResult.rows[0].created_at
         } : null,
-        
-        // Shipping info if available
-        shipping: itemShipping ? {
-          id: itemShipping.id,
-          trackingNumber: itemShipping.trackingNumber,
-          carrier: itemShipping.carrier,
-          labelUrl: itemShipping.labelUrl,
-          createdAt: itemShipping.createdAt ? itemShipping.createdAt.toISOString() : null
+        pricing: pricingResult.rows.length > 0 ? {
+          id: pricingResult.rows[0].id,
+          itemId: pricingResult.rows[0].item_id,
+          suggestedPrice: pricingResult.rows[0].suggested_listing_price || null,
+          estimatedValue: pricingResult.rows[0].estimated_value || null,
+          listPrice: pricingResult.rows[0].final_listing_price || null,
+          consignmentRate: pricingResult.rows[0].commission_rate || null,
+          consignorPayout: pricingResult.rows[0].final_payout || null,
+          notes: pricingResult.rows[0].notes || null,
+          createdAt: pricingResult.rows[0].created_at
         } : null
       };
-    });
-    
-    return {
-      success: true,
-      data: formattedItems
-    };
+    } finally {
+      client.release();
+    }
   } catch (error) {
-    console.error("Error getting consignor items:", error);
-    return {
-      success: false,
-      message: "Error retrieving consignor items",
-      error: error instanceof Error ? error.message : String(error)
-    };
+    console.error('Error in getItemDetailsByReferenceId:', error);
+    throw error;
   }
 }
