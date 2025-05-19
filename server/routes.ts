@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-// Use in-memory storage for reliable testing while database issues are resolved
-import { storage } from "./memory-storage";
+// Import the storage implementation
+import { storage } from "./storage";
 import { 
   intakeFormSchema,
   legacyIntakeFormSchema,

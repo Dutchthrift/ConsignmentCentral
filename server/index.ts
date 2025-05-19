@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 // Check database connection to ensure database is working properly
-import { getDatabaseStatus } from "./db-unified";
+import { getDatabaseStatus } from "./db-config";
 import "dotenv/config";
 
 const app = express();

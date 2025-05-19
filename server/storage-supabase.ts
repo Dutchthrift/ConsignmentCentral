@@ -1,6 +1,5 @@
 import { 
   customers, users, adminUsers, items, 
-  analysis, pricing, shipping, orders, orderItems,
   mlTrainingExamples, mlModelConfigs, mlTrainingSessions,
   Customer, InsertCustomer, 
   Item, InsertItem, 

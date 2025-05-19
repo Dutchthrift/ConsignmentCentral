@@ -15,8 +15,8 @@ import {
   UserRole, UserType,
   ItemWithDetails, DashboardStats
 } from "@shared/schema";
-// Import from the drizzle database instance
-import { db } from "./db-supabase";
+// Import from the centralized database configuration
+import { db } from "./db-config";
 import { IStorage } from "./storage-interface";
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 

@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import type { Express } from 'express';
 import passport from 'passport';
-import { IStorage } from '../storage';
+import { IStorage } from '../storage-interface';
 import AuthService from '../services/auth.service';
 import { UserType, UserRole } from '@shared/schema';
 

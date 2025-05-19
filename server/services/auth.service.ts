@@ -2,7 +2,7 @@ import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as AppleStrategy } from 'passport-apple';
-import { IStorage } from '../storage';
+import { IStorage } from '../storage-interface';
 import { Request, Response, NextFunction } from 'express';
 import { User, AdminUser, Customer, UserType, UserRole } from '@shared/schema';
 import SessionService from './session.service';
