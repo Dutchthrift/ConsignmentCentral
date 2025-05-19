@@ -45,14 +45,13 @@ import ordersDirectRoutes from "./routes/api/orders-direct"; // Added direct ord
 import demoLoginRoutes from "./routes/demo-login"; // Added demo login for when database is unavailable
 import { calculateCommission, checkEligibility } from "./utils/commission.ts";
 
+// Import our improved reference ID generator
+import { generateUniqueReferenceId } from './fix-reference-id.js';
+
 // Generate unique reference ID for new items
 function generateReferenceId(): string {
-  const date = new Date();
-  const year = date.getFullYear().toString().substring(2);
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `CS-${year}${month}${day}-${random}`;
+  // Use the improved generator to avoid duplicate reference IDs
+  return generateUniqueReferenceId();
 }
 
 // Import our new dashboard intake router

@@ -18,16 +18,13 @@ const intakeRequestSchema = z.object({
   imageBase64: z.string().min(1, "Image is required")
 });
 
+// Import improved reference ID generator
+import { generateUniqueReferenceId } from '../../fix-reference-id.js';
+
 // Helper function to generate a unique reference ID
 function generateReferenceId(): string {
-  const now = new Date();
-  const year = now.getFullYear().toString().slice(-2);
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  const day = now.getDate().toString().padStart(2, '0');
-  const dateStr = `${year}${month}${day}`;
-  
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `CS-${dateStr}-${random}`;
+  // Use the improved generator to avoid duplicate reference IDs
+  return generateUniqueReferenceId();
 }
 
 // Helper function to generate a unique order number
