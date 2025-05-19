@@ -265,6 +265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Process all items
       const processedItems = [];
+      const itemIds = []; // Track item IDs for the order
       
       for (const itemData of data.items) {
         // Generate reference ID for the item
