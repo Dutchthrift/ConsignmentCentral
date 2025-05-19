@@ -166,10 +166,10 @@ export class SupabaseStorage implements IStorage {
         // Log the query parameters for debugging
         console.log(`Updating image for item ${id}, image data length: ${imageBase64 ? imageBase64.length : 0}`);
         
-        // Direct SQL update using the confirmed column name
+        // Direct SQL update using the correct column name
         const query = `
           UPDATE items 
-          SET image_url = $1, 
+          SET image_urls = $1, 
               updated_at = NOW() 
           WHERE id = $2 
           RETURNING *

@@ -71,7 +71,7 @@ export const items = pgTable("items", {
   description: text("description"),
   category: text("category"),
   status: text("status").notNull().default(ItemStatus.PENDING),
-  imageUrl: text("image_url"), // Using image_url as found in the database
+  imageUrl: text("image_urls"), // Changed to image_urls based on error message
   createdAt: timestamp("created_at").defaultNow(), // Using created_at field from DB
   updatedAt: timestamp("updated_at").defaultNow(), // Using updated_at field from DB
 });
