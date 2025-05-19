@@ -1,3 +1,4 @@
+import { Pool } from '@neondatabase/serverless';
 import { 
   customers, users, adminUsers, items, 
   mlTrainingExamples, mlModelConfigs, mlTrainingSessions,
@@ -152,22 +153,19 @@ export class SupabaseStorage implements IStorage {
   }
   
   async updateItemImage(id: number, imageBase64: string): Promise<Item | undefined> {
-    // Use direct connection to the database to update the image
+    // Use our dedicated SQL function to update the image
     try {
       const pool = new Pool({ connectionString: process.env.DATABASE_URL });
       
       // Log the query parameters for debugging
       console.log(`Updating image for item ${id}, image data length: ${imageBase64 ? imageBase64.length : 0}`);
       
-      // Use parameterized query to safely update the image_url
+      // Call the SQL function we created that handles this operation
       const query = `
-        UPDATE items 
-        SET image_url = $1, updated_at = NOW() 
-        WHERE id = $2 
-        RETURNING *
+        SELECT * FROM update_item_image($1, $2)
       `;
       
-      const result = await pool.query(query, [imageBase64, id]);
+      const result = await pool.query(query, [id, imageBase64]);
       
       await pool.end();
       
