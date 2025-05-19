@@ -55,6 +55,9 @@ function generateReferenceId(): string {
   return `CS-${year}${month}${day}-${random}`;
 }
 
+// Import our new dashboard intake router
+import dashboardIntakeRouter from './routes/api/dashboard-intake';
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Handle validation errors
   const handleValidationError = (err: unknown, res: Response) => {
