@@ -1,59 +1,69 @@
-import 'dotenv/config';
+// Simple database connection test script
 import pg from 'pg';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
 const { Pool } = pg;
 
-async function testDatabaseConnection() {
-  console.log('Testing database connection with the following URL:');
-  // Display the URL with password obscured for security
-  const dbUrl = process.env.DATABASE_URL;
-  const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':****@');
-  console.log(maskedUrl);
+// Get the database URL from environment variables
+const DATABASE_URL = process.env.DATABASE_URL;
 
+console.log(`Testing database connection with the following URL:`);
+console.log(`${DATABASE_URL ? DATABASE_URL.replace(/:[^:]*@/, ':****@') : 'No DATABASE_URL found in environment'}`);
+
+// If there's no database URL, exit
+if (!DATABASE_URL) {
+  console.error('No DATABASE_URL found in environment variables. Please set it in the .env file.');
+  process.exit(1);
+}
+
+// Create a connection pool
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  // Add longer timeouts for debugging
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 10000
+});
+
+async function testConnection() {
+  console.log('Attempting to connect to the database...');
+  let client;
+  
   try {
-    // Create a simple connection pool with minimal configuration
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-      // Very short timeouts for quick feedback
-      connectionTimeoutMillis: 10000,
-      idleTimeoutMillis: 10000,
-      max: 1
-    });
-
-    // Test the connection with a simple query
-    console.log('Attempting to connect to the database...');
-    const result = await pool.query('SELECT NOW() as current_time');
-    console.log('Connection successful!');
-    console.log('Server time:', result.rows[0].current_time);
+    // Get a client from the pool
+    client = await pool.connect();
+    console.log('Successfully connected to the database!');
     
-    // Test if we can access specific tables
-    console.log('\nTesting access to admin_users table...');
-    try {
-      const adminResult = await pool.query('SELECT COUNT(*) FROM admin_users');
-      console.log('Admin users count:', adminResult.rows[0].count);
-    } catch (error) {
-      console.error('Could not access admin_users table:', error.message);
-    }
-
-    // Close the connection pool
+    // Execute a simple query
+    const result = await client.query('SELECT NOW() as time');
+    console.log('Database is responsive. Current time:', result.rows[0].time);
+    
+    // Release the client back to the pool
+    client.release();
+    
+    // Close the pool
     await pool.end();
-    console.log('\nDatabase connection test completed.');
-  } catch (error) {
-    console.error('Database connection failed:', error);
     
-    // Provide more specific error information based on the error type
-    if (error.code === 'ENOTFOUND') {
-      console.error('DNS lookup failed. The hostname could not be resolved.');
-    } else if (error.code === 'ETIMEDOUT') {
-      console.error('Connection timed out. The server may be down or blocking connections.');
-    } else if (error.code === 'ECONNREFUSED') {
-      console.error('Connection refused. The server may not be accepting connections on that port.');
+    console.log('Database connection test completed successfully!');
+  } catch (error) {
+    console.error('Database connection test failed:', error);
+    
+    if (client) {
+      client.release();
+    }
+    
+    try {
+      await pool.end();
+    } catch (e) {
+      console.error('Error closing pool:', e);
     }
   }
 }
 
 // Run the test
-testDatabaseConnection().catch(err => {
-  console.error('Uncaught error:', err);
-  process.exit(1);
-});
+testConnection();
