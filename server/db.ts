@@ -18,15 +18,15 @@ if (!process.env.DATABASE_URL) {
 
 console.log('Using Supabase connection with WebSocket support for improved reliability');
 
-// Configure the connection pool with appropriate settings for Supabase direct connection
+// Configure the connection pool with appropriate settings for Supabase pooler connection
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false // Required for SSL connections to Supabase
   },
-  max: 1, // Minimum pool size for Supabase direct connection 
-  idleTimeoutMillis: 120000, // 120 seconds idle timeout
-  connectionTimeoutMillis: 60000, // 60 seconds connection timeout
+  max: 1, // Single connection for reliability with Supabase pooler
+  idleTimeoutMillis: 30000, // 30 seconds idle timeout (better for pooler)
+  connectionTimeoutMillis: 10000, // 10 seconds connection timeout
   allowExitOnIdle: true
 });
 
