@@ -25,9 +25,9 @@ export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   
-  // Fetch all items
+  // Fetch all items from the admin endpoint
   const { data: inventoryData, isLoading: isInventoryLoading } = useQuery<any>({
-    queryKey: ["/api/dashboard/items/recent"],
+    queryKey: ["/api/admin/items"],
   });
   
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
