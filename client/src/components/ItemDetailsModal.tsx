@@ -26,9 +26,6 @@ interface ItemDetail {
   referenceId: string;
   title: string;
   description: string;
-  brand?: string;
-  category?: string;
-  condition?: string;
   status: string;
   createdAt: string;
   customer: {
@@ -40,13 +37,12 @@ interface ItemDetail {
   analysis?: {
     id: number;
     itemId: number;
-    productType?: string;
-    material?: string;
-    color?: string;
-    size?: string;
-    condition?: string;
-    details?: string;
-    authenticity?: string;
+    materialAnalysis?: string;
+    brandAnalysis?: string;
+    styleAnalysis?: string;
+    authenticityScore?: number;
+    conditionScore?: number;
+    notes?: string;
     createdAt: string;
   };
   pricing?: {
@@ -57,7 +53,6 @@ interface ItemDetail {
     listPrice?: number;
     consignmentRate?: number;
     consignorPayout?: number;
-    platform?: string;
     notes?: string;
     createdAt: string;
   };
@@ -178,16 +173,8 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
                         <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.title || "N/A"}</dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Brand</dt>
-                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.brand || "N/A"}</dd>
-                      </div>
-                      <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Category</dt>
-                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.category || "N/A"}</dd>
-                      </div>
-                      <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Condition</dt>
-                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.condition || "N/A"}</dd>
+                        <dt className="text-sm font-medium text-muted-foreground">Reference ID</dt>
+                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.referenceId || "N/A"}</dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                         <dt className="text-sm font-medium text-muted-foreground">Status</dt>
@@ -236,28 +223,32 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
                   <CardContent className="pt-6">
                     <dl className="divide-y">
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Product Type</dt>
-                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.analysis.productType || "N/A"}</dd>
+                        <dt className="text-sm font-medium text-muted-foreground">Material Analysis</dt>
+                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.analysis.materialAnalysis || "N/A"}</dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Material</dt>
-                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.analysis.material || "N/A"}</dd>
+                        <dt className="text-sm font-medium text-muted-foreground">Brand Analysis</dt>
+                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.analysis.brandAnalysis || "N/A"}</dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Color</dt>
-                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.analysis.color || "N/A"}</dd>
+                        <dt className="text-sm font-medium text-muted-foreground">Style Analysis</dt>
+                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.analysis.styleAnalysis || "N/A"}</dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Size</dt>
-                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.analysis.size || "N/A"}</dd>
+                        <dt className="text-sm font-medium text-muted-foreground">Authenticity Score</dt>
+                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">
+                          {item.analysis.authenticityScore !== undefined && item.analysis.authenticityScore !== null 
+                            ? `${item.analysis.authenticityScore}/100` 
+                            : "N/A"}
+                        </dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Condition</dt>
-                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.analysis.condition || "N/A"}</dd>
-                      </div>
-                      <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Authenticity</dt>
-                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.analysis.authenticity || "N/A"}</dd>
+                        <dt className="text-sm font-medium text-muted-foreground">Condition Score</dt>
+                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">
+                          {item.analysis.conditionScore !== undefined && item.analysis.conditionScore !== null 
+                            ? `${item.analysis.conditionScore}/100` 
+                            : "N/A"}
+                        </dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                         <dt className="text-sm font-medium text-muted-foreground">Analysis Date</dt>
@@ -265,12 +256,12 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
                       </div>
                     </dl>
                     
-                    {item.analysis.details && (
+                    {item.analysis.notes && (
                       <div className="mt-4">
                         <Separator className="mb-4" />
-                        <h3 className="text-sm font-medium mb-2">Additional Details</h3>
+                        <h3 className="text-sm font-medium mb-2">Analysis Notes</h3>
                         <p className="text-sm text-muted-foreground whitespace-pre-line">
-                          {item.analysis.details}
+                          {item.analysis.notes}
                         </p>
                       </div>
                     )}
@@ -289,19 +280,19 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
                   <CardContent className="pt-6">
                     <dl className="divide-y">
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Estimated Value</dt>
+                        <dt className="text-sm font-medium text-muted-foreground">Average Market Price</dt>
                         <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{formatCurrency(item.pricing.estimatedValue)}</dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Suggested Price</dt>
+                        <dt className="text-sm font-medium text-muted-foreground">Suggested Listing Price</dt>
                         <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{formatCurrency(item.pricing.suggestedPrice)}</dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">List Price</dt>
+                        <dt className="text-sm font-medium text-muted-foreground">Final List Price</dt>
                         <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{formatCurrency(item.pricing.listPrice)}</dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Consignment Rate</dt>
+                        <dt className="text-sm font-medium text-muted-foreground">Commission Rate</dt>
                         <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">
                           {item.pricing.consignmentRate ? `${item.pricing.consignmentRate}%` : "N/A"}
                         </dd>
@@ -309,10 +300,6 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                         <dt className="text-sm font-medium text-muted-foreground">Consignor Payout</dt>
                         <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{formatCurrency(item.pricing.consignorPayout)}</dd>
-                      </div>
-                      <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                        <dt className="text-sm font-medium text-muted-foreground">Selling Platform</dt>
-                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.pricing.platform || "N/A"}</dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                         <dt className="text-sm font-medium text-muted-foreground">Pricing Date</dt>
