@@ -83,7 +83,7 @@ export const insertItemSchema = createInsertSchema(items).omit({
 });
 
 // Analysis table
-export const analyses = pgTable("analyses", {
+export const analyses = pgTable("analysis", {
   id: serial("id").primaryKey(),
   itemId: integer("item_id").notNull().references(() => items.id),
   brand: text("brand"),

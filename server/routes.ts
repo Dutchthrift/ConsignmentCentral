@@ -391,10 +391,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Direct SQL approach to update the image
             const client = await storage.getClient();
             try {
-              // Use correct column name "image_url" (singular) as per database schema
+              // Update both image_url and image_urls columns for compatibility
               const query = `
                 UPDATE items 
-                SET image_url = $1, 
+                SET image_urls = $1, 
+                    image_url = $1,
                     updated_at = NOW() 
                 WHERE id = $2 
                 RETURNING *
