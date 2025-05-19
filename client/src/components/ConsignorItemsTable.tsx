@@ -78,6 +78,7 @@ export default function ConsignorItemsTable({
           <TableRow>
             <TableHead>Item</TableHead>
             <TableHead>Reference ID</TableHead>
+            <TableHead>Order Number</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Date Added</TableHead>
             <TableHead>Actions</TableHead>
@@ -113,6 +114,13 @@ export default function ConsignorItemsTable({
                   </div>
                 </TableCell>
                 <TableCell>{item.referenceId}</TableCell>
+                <TableCell>
+                  {item.orderNumber ? (
+                    <span className="text-blue-600 font-medium">{item.orderNumber}</span>
+                  ) : (
+                    <span className="text-gray-400 italic">Not assigned</span>
+                  )}
+                </TableCell>
                 <TableCell>{getStatusBadge(item.status)}</TableCell>
                 <TableCell>{formatDate(item.createdAt)}</TableCell>
                 <TableCell>

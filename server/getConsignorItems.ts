@@ -6,20 +6,47 @@ import { eq } from 'drizzle-orm';
 // This avoids the complex joins that might cause SQL errors
 export async function getConsignorItems(consignorId: number) {
   try {
-    // First get all items for this consignor
-    const consignorItems = await db.select().from(items).where(eq(items.customerId, consignorId));
-    
-    // Return formatted items
-    return consignorItems.map(item => ({
-      id: item.id,
-      referenceId: item.referenceId,
-      title: item.title || 'Unnamed Item',
-      description: item.description || '',
-      status: item.status || 'pending',
-      imageUrl: item.imageUrl || null,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt
-    }));
+    // Use direct SQL query to get items and their associated order information
+    const client = await pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT 
+          i.id, 
+          i.reference_id, 
+          i.title, 
+          i.description,
+          i.status, 
+          i.image_url,
+          i.created_at, 
+          i.updated_at,
+          o.order_number
+        FROM 
+          items i
+        LEFT JOIN 
+          order_items oi ON i.id = oi.item_id
+        LEFT JOIN 
+          orders o ON oi.order_id = o.id
+        WHERE 
+          i.customer_id = $1
+        ORDER BY 
+          i.created_at DESC
+      `, [consignorId]);
+      
+      // Return formatted items with order information
+      return result.rows.map(item => ({
+        id: item.id,
+        referenceId: item.reference_id,
+        title: item.title || 'Unnamed Item',
+        description: item.description || '',
+        status: item.status || 'pending',
+        imageUrl: item.image_url || null,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+        orderNumber: item.order_number || null
+      }));
+    } finally {
+      client.release();
+    }
   } catch (error) {
     console.error('Error in getConsignorItems:', error);
     throw error;
@@ -42,11 +69,16 @@ export async function getAllItems() {
           i.updated_at,
           c.id as customer_id, 
           c.name as customer_name, 
-          c.email as customer_email
+          c.email as customer_email,
+          o.order_number
         FROM 
           items i
         LEFT JOIN 
           customers c ON i.customer_id = c.id
+        LEFT JOIN 
+          order_items oi ON i.id = oi.item_id
+        LEFT JOIN 
+          orders o ON oi.order_id = o.id
         ORDER BY 
           i.created_at DESC
         LIMIT 50
@@ -61,7 +93,8 @@ export async function getAllItems() {
         updatedAt: row.updated_at,
         customerName: row.customer_name,
         customerEmail: row.customer_email,
-        customerId: row.customer_id
+        customerId: row.customer_id,
+        orderNumber: row.order_number || null
       }));
     } finally {
       client.release();
