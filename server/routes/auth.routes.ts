@@ -496,6 +496,8 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
     });
   });
   
+  // We'll register the demo login route separately in the main routes file
+  
   // Mount the router to the app
   app.use(router);
   

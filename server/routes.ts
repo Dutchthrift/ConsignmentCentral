@@ -25,6 +25,7 @@ import SessionService from "./services/session.service";
 import { registerAuthRoutes } from "./routes/auth.routes";
 import insightsRoutes from "./routes/insights.ts";
 import { requireAdmin } from "./middleware/auth.middleware";
+import jwt from "jsonwebtoken";
 
 // Import route handlers
 import adminRoutes from "./routes/admin.ts";
@@ -40,6 +41,7 @@ import consignorItemsRoutes from "./routes/consignor/items";
 import consignorRegistrationRoutes from "./routes/consignor-registration";
 import mlTrainingRoutes from "./routes/ml-training.ts";
 import ordersViewRoutes from "./routes/api/orders-view"; // Added direct view access for orders
+import demoLoginRoutes from "./routes/demo-login"; // Added demo login for when database is unavailable
 import { calculateCommission, checkEligibility } from "./utils/commission.ts";
 
 // Generate unique reference ID for new items
@@ -73,6 +75,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register authentication routes
   const authService = registerAuthRoutes(app, storage);
+  
+  // Demo login route - fallback when database is unavailable
+  app.post('/api/auth/demo-login', (req, res) => {
+    const { email, password } = req.body;
+    
+    console.log('Demo login attempt:', { email });
+    
+    // Only allow specific demo credentials
+    if (email === 'admin@dutchthrift.com' && password === 'admin123') {
+      // Create a JWT token with admin privileges
+      const token = jwt.sign(
+        { 
+          id: 1, 
+          email: 'admin@dutchthrift.com', 
+          role: 'admin',
+          name: 'Admin User',
+          isAdmin: true 
+        },
+        process.env.JWT_SECRET || 'dutch-thrift-secret-key',
+        { expiresIn: '7d' }
+      );
+      
+      console.log('Demo admin login successful');
+      
+      return res.status(200).json({
+        success: true,
+        data: {
+          id: 1,
+          email: 'admin@dutchthrift.com',
+          role: 'admin',
+          name: 'Admin User',
+          token
+        }
+      });
+    }
+    
+    // Demo consignor login
+    if (email === 'theooenema@hotmail.com' && password === 'password123') {
+      // Create a JWT token for consignor
+      const token = jwt.sign(
+        { 
+          id: 2, 
+          email: 'theooenema@hotmail.com', 
+          role: 'consignor',
+          name: 'Theo Oenema',
+          isAdmin: false 
+        },
+        process.env.JWT_SECRET || 'dutch-thrift-secret-key',
+        { expiresIn: '7d' }
+      );
+      
+      console.log('Demo consignor login successful');
+      
+      return res.status(200).json({
+        success: true,
+        data: {
+          id: 2,
+          email: 'theooenema@hotmail.com',
+          role: 'consignor',
+          name: 'Theo Oenema',
+          token
+        }
+      });
+    }
+    
+    // If credentials don't match, return error
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid email or password'
+    });
+  });
 
   // ===== API Routes =====
   
