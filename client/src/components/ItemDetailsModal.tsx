@@ -29,6 +29,7 @@ interface ItemDetail {
   description: string;
   status: string;
   createdAt: string;
+  orderNumber?: string;
   customer: {
     id: number;
     name: string;
@@ -205,6 +206,16 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                         <dt className="text-sm font-medium text-muted-foreground">Reference ID</dt>
                         <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.referenceId || "N/A"}</dd>
+                      </div>
+                      <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                        <dt className="text-sm font-medium text-muted-foreground">Order Number</dt>
+                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">
+                          {item.orderNumber ? (
+                            <span className="text-blue-600 font-medium">{item.orderNumber}</span>
+                          ) : (
+                            <span className="text-neutral-400 italic">Not assigned</span>
+                          )}
+                        </dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                         <dt className="text-sm font-medium text-muted-foreground">Status</dt>

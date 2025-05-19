@@ -110,18 +110,23 @@ export async function getItemDetailsByReferenceId(referenceId: string) {
   try {
     const client = await pool.connect();
     try {
-      // First get the item
+      // First get the item with order information
       const itemResult = await client.query(`
         SELECT 
           i.*, 
           c.id as customer_id, 
           c.name as customer_name, 
           c.email as customer_email,
-          c.phone as customer_phone
+          c.phone as customer_phone,
+          o.order_number
         FROM 
           items i
         LEFT JOIN 
           customers c ON i.customer_id = c.id
+        LEFT JOIN 
+          order_items oi ON i.id = oi.item_id
+        LEFT JOIN 
+          orders o ON oi.order_id = o.id
         WHERE 
           i.reference_id = $1
       `, [referenceId]);
@@ -150,6 +155,7 @@ export async function getItemDetailsByReferenceId(referenceId: string) {
         description: item.description || '',
         status: item.status,
         createdAt: item.created_at,
+        orderNumber: item.order_number || null,
         customer: {
           id: item.customer_id,
           name: item.customer_name,
