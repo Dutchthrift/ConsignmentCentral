@@ -38,6 +38,11 @@ export class SupabaseStorage implements IStorage {
       tableName: 'session' // Use a custom table name for sessions
     });
   }
+  
+  // Helper method to get a database client for direct SQL operations
+  async getClient() {
+    return await pool.connect();
+  }
 
   // Customer methods
   async getCustomer(id: number): Promise<Customer | undefined> {
