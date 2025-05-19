@@ -21,6 +21,7 @@ interface ItemDetailsProps {
   onClose: () => void;
 }
 
+// This interface matches exactly what the API returns
 interface ItemDetail {
   id: number;
   referenceId: string;
@@ -32,31 +33,30 @@ interface ItemDetail {
     id: number;
     name: string;
     email: string;
-    phone?: string;
+    phone?: string | null;
   };
-  analysis?: {
+  analysis: {
     id: number;
     itemId: number;
-    materialAnalysis?: string;
-    brandAnalysis?: string;
-    styleAnalysis?: string;
-    authenticityScore?: number;
-    conditionScore?: number;
-    notes?: string;
+    materialAnalysis: string | null;
+    brandAnalysis: string | null;
+    styleAnalysis: string | null;
+    authenticityScore: number | null;
+    conditionScore: number | null;
+    notes: string | null;
     createdAt: string;
-  };
-  pricing?: {
+  } | null;
+  pricing: {
     id: number;
     itemId: number;
-    estimatedValue?: number;
-    suggestedPrice?: number;
-    listPrice?: number;
-    consignmentRate?: number;
-    consignorPayout?: number;
-    notes?: string;
+    suggestedPrice: number | null;
+    estimatedValue: number | null;
+    listPrice: number | null;
+    consignmentRate: number | null;
+    consignorPayout: number | null;
+    notes: string | null;
     createdAt: string;
-  };
-  images?: string[];
+  } | null;
 }
 
 export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemDetailsProps) {
@@ -80,6 +80,7 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
         }
         
         const data = await response.json();
+        console.log("Raw API response:", data); // Log the response for debugging
         return data.data;
       } catch (err) {
         console.error(`Error fetching item ${referenceId}:`, err);
@@ -120,13 +121,19 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
   };
 
   // Format currency
-  const formatCurrency = (value?: number) => {
-    if (value === undefined) return "N/A";
+  const formatCurrency = (value?: number | null) => {
+    if (value === undefined || value === null) return "N/A";
     return new Intl.NumberFormat('nl-NL', {
       style: 'currency',
-      currency: 'EUR'
-    }).format(value);
+      currency: 'EUR',
+      minimumFractionDigits: 2
+    }).format(value / 100); // Convert cents to euros for display
   };
+
+  // Guard against errors in rendering
+  if (error) {
+    console.error("Render error:", error);
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -193,26 +200,6 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
                   <p className="text-sm text-muted-foreground whitespace-pre-line">
                     {item.description || "No description provided."}
                   </p>
-                  
-                  <div className="mt-4">
-                    <h3 className="text-sm font-medium mb-2">Item Images</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {item.images && item.images.length > 0 ? (
-                        item.images.map((img, index) => (
-                          <img 
-                            key={index}
-                            src={img} 
-                            alt={`${item.title} - image ${index + 1}`}
-                            className="h-32 w-full object-cover rounded-md"
-                          />
-                        ))
-                      ) : (
-                        <div className="text-sm text-muted-foreground h-32 flex items-center justify-center border rounded-md">
-                          No images available
-                        </div>
-                      )}
-                    </div>
-                  </div>
                 </div>
               </div>
             </TabsContent>
@@ -237,7 +224,7 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                         <dt className="text-sm font-medium text-muted-foreground">Authenticity Score</dt>
                         <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">
-                          {item.analysis.authenticityScore !== undefined && item.analysis.authenticityScore !== null 
+                          {item.analysis.authenticityScore !== null 
                             ? `${item.analysis.authenticityScore}/100` 
                             : "N/A"}
                         </dd>
@@ -245,7 +232,7 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                         <dt className="text-sm font-medium text-muted-foreground">Condition Score</dt>
                         <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">
-                          {item.analysis.conditionScore !== undefined && item.analysis.conditionScore !== null 
+                          {item.analysis.conditionScore !== null 
                             ? `${item.analysis.conditionScore}/100` 
                             : "N/A"}
                         </dd>
@@ -294,7 +281,7 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                         <dt className="text-sm font-medium text-muted-foreground">Commission Rate</dt>
                         <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">
-                          {item.pricing.consignmentRate ? `${item.pricing.consignmentRate}%` : "N/A"}
+                          {item.pricing.consignmentRate !== null ? `${item.pricing.consignmentRate}%` : "N/A"}
                         </dd>
                       </div>
                       <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
@@ -331,26 +318,28 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
                   <dl className="divide-y">
                     <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                       <dt className="text-sm font-medium text-muted-foreground">Name</dt>
-                      <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.customer.name}</dd>
+                      <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.customer.name || "N/A"}</dd>
                     </div>
                     <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
                       <dt className="text-sm font-medium text-muted-foreground">Email</dt>
-                      <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.customer.email}</dd>
+                      <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.customer.email || "N/A"}</dd>
                     </div>
-                    <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                      <dt className="text-sm font-medium text-muted-foreground">Phone</dt>
-                      <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.customer.phone || "N/A"}</dd>
-                    </div>
-                    <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-                      <dt className="text-sm font-medium text-muted-foreground">Customer ID</dt>
-                      <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.customer.id}</dd>
-                    </div>
+                    {item.customer.phone && (
+                      <div className="px-4 py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+                        <dt className="text-sm font-medium text-muted-foreground">Phone</dt>
+                        <dd className="mt-1 text-sm sm:col-span-2 sm:mt-0">{item.customer.phone}</dd>
+                      </div>
+                    )}
                   </dl>
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
-        ) : null}
+        ) : (
+          <div className="text-center p-8 text-muted-foreground">
+            Item not found
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
