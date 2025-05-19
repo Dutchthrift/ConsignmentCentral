@@ -32,6 +32,7 @@ export default function AllIntakes({ onItemClick }: AllIntakesProps) {
   const { toast } = useToast();
   const [page, setPage] = useState(1);
   const itemsPerPage = 5;
+  const [debugItemId, setDebugItemId] = useState<string | null>(null);
 
   const { data: items, isLoading, error } = useQuery<IntakeItem[]>({
     queryKey: ["/api/dashboard/items/recent"],
@@ -136,14 +137,24 @@ export default function AllIntakes({ onItemClick }: AllIntakesProps) {
                       <TableCell>{formatDate(item.createdAt)}</TableCell>
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                       <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => onItemClick(item.referenceId)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => onItemClick(item.referenceId)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setDebugItemId(item.referenceId)}
+                          >
+                            <Bug className="h-4 w-4 mr-1" />
+                            Debug
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
