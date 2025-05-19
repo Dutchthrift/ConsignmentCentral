@@ -699,14 +699,14 @@ export class SupabaseStorage implements IStorage {
       .from(items)
       .groupBy(items.status);
     
-    // Get monthly sales using raw SQL with explicit table reference
+    // Get monthly sales using raw SQL with exact column names
     const monthlySalesResult = await db.execute(sql`
       SELECT 
-        to_char("submission_date", 'YYYY-MM') as month,
-        COALESCE(SUM("total_value"), 0) as sales
-      FROM "orders"
-      GROUP BY to_char("submission_date", 'YYYY-MM')
-      ORDER BY to_char("submission_date", 'YYYY-MM')
+        to_char(created_at, 'YYYY-MM') as month,
+        COALESCE(SUM(total_value), 0) as sales
+      FROM orders
+      GROUP BY to_char(created_at, 'YYYY-MM')
+      ORDER BY to_char(created_at, 'YYYY-MM')
     `);
     
     const monthlySales = monthlySalesResult.rows.map(row => ({

@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTimeout(() => {
         if (userRole === UserRole.ADMIN) {
           console.log("Redirecting to admin dashboard");
-          navigate("/");
+          navigate("/admin/dashboard"); // Correct admin dashboard path
         } else if (userRole === UserRole.CONSIGNOR || userRole === 'customer') {
           console.log("Redirecting to consignor dashboard");
           navigate("/consignor/dashboard");
