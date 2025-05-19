@@ -19,9 +19,9 @@ export const pool = new Pool({
   ssl: {
     rejectUnauthorized: false // Required for SSL connections to Supabase
   },
-  max: 3, // Limit concurrent connections
-  idleTimeoutMillis: 30000, // 30 seconds idle timeout
-  connectionTimeoutMillis: 15000, // 15 seconds connection timeout
+  max: 2, // Reduce concurrent connections to prevent exceeding limits
+  idleTimeoutMillis: 10000, // 10 seconds idle timeout
+  connectionTimeoutMillis: 5000, // 5 seconds connection timeout
   allowExitOnIdle: true
 });
 
