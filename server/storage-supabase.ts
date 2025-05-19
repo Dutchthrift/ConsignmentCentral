@@ -669,18 +669,20 @@ export class SupabaseStorage implements IStorage {
     // Get total counts
     const itemsCount = await db.select({ count: sql<number>`count(*)` }).from(items);
     
-    // Use raw SQL query for orders count to avoid table reference issue
+    // Use raw SQL for all database queries to avoid table reference issues
     const ordersCountResult = await db.execute(sql`SELECT COUNT(*) FROM orders`);
-    const ordersCount = { count: parseInt(ordersCountResult.rows[0].count) };
+    const ordersCount = parseInt(ordersCountResult.rows[0].count) || 0;
     
-    // Get total sales and payout
-    const totalSales = await db
-      .select({ sum: sql<number>`COALESCE(sum(total_value), 0)` })
-      .from(orders);
+    // Get total sales and payout with the correct column names
+    const totalSalesResult = await db.execute(sql`
+      SELECT COALESCE(SUM(total_amount), 0) as sum FROM orders
+    `);
+    const totalSales = parseInt(totalSalesResult.rows[0].sum) || 0;
     
-    const totalPayout = await db
-      .select({ sum: sql<number>`COALESCE(sum(total_payout), 0)` })
-      .from(orders);
+    const totalPayoutResult = await db.execute(sql`
+      SELECT COALESCE(SUM(payout_amount), 0) as sum FROM orders
+    `);
+    const totalPayout = parseInt(totalPayoutResult.rows[0].sum) || 0;
     
     // Get status distribution
     const statusRows = await db
@@ -691,29 +693,31 @@ export class SupabaseStorage implements IStorage {
       .from(items)
       .groupBy(items.status);
     
-    // Get monthly sales
-    const monthlySalesRows = await db
-      .select({
-        month: sql<string>`to_char(created_at, 'YYYY-MM')`,
-        sales: sql<number>`COALESCE(sum(total_value), 0)`
-      })
-      .from(orders)
-      .groupBy(sql`to_char(created_at, 'YYYY-MM')`)
-      .orderBy(sql`to_char(created_at, 'YYYY-MM')`);
+    // Get monthly sales with raw SQL using the correct date column
+    const monthlySalesResult = await db.execute(sql`
+      SELECT 
+        to_char(submission_date, 'YYYY-MM') as month,
+        COALESCE(SUM(total_amount), 0) as sales
+      FROM orders
+      GROUP BY to_char(submission_date, 'YYYY-MM')
+      ORDER BY to_char(submission_date, 'YYYY-MM')
+    `);
+    
+    const monthlySales = monthlySalesResult.rows.map(row => ({
+      month: row.month,
+      sales: parseInt(row.sales) || 0
+    }));
     
     return {
       totalItems: itemsCount[0]?.count || 0,
-      totalOrders: ordersCount[0]?.count || 0,
-      totalSales: totalSales[0]?.sum || 0,
-      totalPayout: totalPayout[0]?.sum || 0,
+      totalOrders: ordersCount,
+      totalSales: totalSales,
+      totalPayout: totalPayout,
       statusDistribution: statusRows.map(row => ({
         status: row.status,
         count: row.count
       })),
-      monthlySales: monthlySalesRows.map(row => ({
-        month: row.month,
-        sales: row.sales
-      }))
+      monthlySales: monthlySales
     };
   }
 
