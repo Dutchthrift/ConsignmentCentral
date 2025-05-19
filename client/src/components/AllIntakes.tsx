@@ -102,92 +102,102 @@ export default function AllIntakes({ onItemClick }: AllIntakesProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>All Intakes</CardTitle>
-        <CardDescription>
-          View and manage all consignor intake submissions
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {paginatedItems.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            No intake items found.
-          </div>
-        ) : (
-          <>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Consignor</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.referenceId}</TableCell>
-                      <TableCell>{item.title || "Unnamed Item"}</TableCell>
-                      <TableCell>{item.customerName || "Unknown"}</TableCell>
-                      <TableCell>{formatDate(item.createdAt)}</TableCell>
-                      <TableCell>{getStatusBadge(item.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => onItemClick(item.referenceId)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setDebugItemId(item.referenceId)}
-                          >
-                            <Bug className="h-4 w-4 mr-1" />
-                            Debug
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+    <>
+      {debugItemId && (
+        <DebugItemModal 
+          referenceId={debugItemId}
+          isOpen={!!debugItemId}
+          onClose={() => setDebugItemId(null)}
+        />
+      )}
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>All Intakes</CardTitle>
+          <CardDescription>
+            View and manage all consignor intake submissions
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {paginatedItems.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No intake items found.
             </div>
-            
-            {totalPages > 1 && (
-              <div className="flex justify-end space-x-2 mt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Previous
-                </Button>
-                <span className="flex items-center px-2">
-                  Page {page} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  Next
-                </Button>
+          ) : (
+            <>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Consignor</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.referenceId}</TableCell>
+                        <TableCell>{item.title || "Unnamed Item"}</TableCell>
+                        <TableCell>{item.customerName || "Unknown"}</TableCell>
+                        <TableCell>{formatDate(item.createdAt)}</TableCell>
+                        <TableCell>{getStatusBadge(item.status)}</TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => onItemClick(item.referenceId)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setDebugItemId(item.referenceId)}
+                            >
+                              <Bug className="h-4 w-4 mr-1" />
+                              Debug
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+              
+              {totalPages > 1 && (
+                <div className="flex justify-end space-x-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="flex items-center px-2">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }
