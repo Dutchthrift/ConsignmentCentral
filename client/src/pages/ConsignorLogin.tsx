@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useRoute, Link } from "wouter";
+import { useState, useEffect } from "react";
+import { useRoute, Link, useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -32,12 +32,29 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function ConsignorLogin() {
   const [activeTab, setActiveTab] = useState<string>("login");
   const [match, params] = useRoute("/consignor/login");
+  const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { loginMutation, registerMutation } = useAuth();
+  const { loginMutation, registerMutation, user } = useAuth();
   
   // Get the error from URL query param
   const urlParams = new URLSearchParams(window.location.search);
   const error = urlParams.get("error");
+  
+  // Add effect to redirect if user is logged in
+  useEffect(() => {
+    if (user) {
+      // If user is a consignor, redirect to consignor dashboard
+      if (user.role === UserRole.CONSIGNOR) {
+        console.log("User is logged in as consignor, redirecting to dashboard");
+        navigate("/consignor/dashboard");
+      } 
+      // If user is an admin, redirect to admin dashboard
+      else if (user.role === UserRole.ADMIN) {
+        console.log("User is logged in as admin, redirecting to admin dashboard");
+        navigate("/admin/dashboard");
+      }
+    }
+  }, [user, navigate]);
   
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -69,6 +86,20 @@ export default function ConsignorLogin() {
     loginMutation.mutate({
       username: data.email,
       password: data.password,
+    }, {
+      onSuccess: (userData) => {
+        console.log("Login successful, user data:", userData);
+        toast({
+          title: "Login successful",
+          description: `Welcome back, ${userData.name || userData.email}!`,
+        });
+        
+        if (userData.role === UserRole.CONSIGNOR) {
+          navigate("/consignor/dashboard");
+        } else if (userData.role === UserRole.ADMIN) {
+          navigate("/admin/dashboard");
+        }
+      }
     });
   };
   
@@ -79,6 +110,14 @@ export default function ConsignorLogin() {
       password: data.password,
       role: UserRole.CONSIGNOR,  // Force consignor role
       provider: "local",
+    }, {
+      onSuccess: () => {
+        toast({
+          title: "Registration successful",
+          description: "Your account has been created. You can now log in.",
+        });
+        setActiveTab("login");
+      }
     });
   };
   
