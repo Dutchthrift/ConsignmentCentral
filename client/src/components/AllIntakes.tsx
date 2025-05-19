@@ -9,8 +9,9 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Eye } from "lucide-react";
+import { Loader2, Eye, Bug } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import DebugItemModal from "./DebugItemModal";
 
 interface AllIntakesProps {
   onItemClick: (referenceId: string) => void;

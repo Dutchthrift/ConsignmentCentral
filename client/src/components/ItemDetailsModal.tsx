@@ -74,13 +74,36 @@ export default function ItemDetailsModal({ referenceId, isOpen, onClose }: ItemD
     queryKey: [`/api/items/${referenceId}`],
     queryFn: async () => {
       try {
-        const response = await fetch(`/api/items/${referenceId}`);
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`/api/items/${referenceId}`, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : ''
+          }
+        });
         if (!response.ok) {
           throw new Error(`Failed to fetch item: ${response.statusText}`);
         }
         
         const data = await response.json();
         console.log("Raw API response:", data); // Log the response for debugging
+        
+        // If we get raw JSON that's not properly structured, fix it
+        if (data.success && data.data) {
+          try {
+            // Handle potential error where the data is returned as a string
+            if (typeof data.data === 'string') {
+              try {
+                return JSON.parse(data.data);
+              } catch (parseErr) {
+                console.error("Error parsing item data string:", parseErr);
+                return data.data;
+              }
+            }
+            return data.data;
+          } catch (jsonErr) {
+            console.error("JSON parsing error:", jsonErr);
+          }
+        }
         return data.data;
       } catch (err) {
         console.error(`Error fetching item ${referenceId}:`, err);
