@@ -1057,6 +1057,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register our new dashboard intake route
+  app.use('/api/dashboard', dashboardIntakeRouter);
+  
   // Create HTTP server with the Express app
   return createServer(app);
 }

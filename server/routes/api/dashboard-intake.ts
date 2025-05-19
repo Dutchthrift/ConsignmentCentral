@@ -22,7 +22,7 @@ router.post('/intake', async (req, res) => {
     console.log('Received intake request');
     
     // Extract customer ID from authenticated session
-    const customerId = req.user?.id;
+    const customerId = req.user?.id || (req.isAuthenticated() && req.session?.passport?.user);
     if (!customerId) {
       return res.status(401).json({ 
         success: false, 
