@@ -20,11 +20,10 @@ import {
   OrderWithDetails, OrderSummary
 } from "@shared/schema";
 import { IStorage } from "./storage-interface";
-import { db } from "./db-supabase";
+import { db, pool } from "./db-unified";
 import { eq, and, like, ilike, desc, asc, sql, or, inArray } from "drizzle-orm";
 import session from 'express-session';
 import connectPg from 'connect-pg-simple';
-import { pool } from "./db-supabase";
 
 const PostgresSessionStore = connectPg(session);
 

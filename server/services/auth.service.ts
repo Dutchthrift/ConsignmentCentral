@@ -9,8 +9,8 @@ import SessionService from './session.service';
 import { scrypt, randomBytes, timingSafeEqual, createHmac } from 'crypto';
 import { promisify } from 'util';
 import jwt from 'jsonwebtoken';
-import { pool } from '../db';
-// Using direct database connection for improved Supabase compatibility
+import { pool, testConnection } from '../db-unified';
+// Using unified database connection for improved reliability
 
 export class AuthService {
   private storage: IStorage;
