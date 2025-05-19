@@ -78,21 +78,16 @@ export default function ConsignorItems() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [itemToDelete, setItemToDelete] = useState<{id: number, referenceId: string} | null>(null);
 
-  // Fetch consignor's items directly from the items endpoint
-  const { data: itemsData = [], isLoading } = useQuery<any[]>({
-    queryKey: ["/api/consignor/items"],
+  // Fetch consignor's items from the dashboard endpoint since that's what works
+  const { data: consignorData, isLoading } = useQuery<any>({
+    queryKey: ["/api/consignor/dashboard"],
     enabled: !!user?.id,
-    onError: (error) => {
-      console.error("Error fetching consignor items:", error);
-      toast({
-        title: "Error loading items",
-        description: "Could not load your items. Please try again later.",
-        variant: "destructive",
-      });
-    }
+    retry: 3,
+    retryDelay: attempt => Math.min(1000 * 2 ** attempt, 30000)
   });
 
-  console.log("Items data from API:", itemsData);
+  // Extract items from the dashboard response
+  const items = consignorData?.data?.items || [];
 
   // Delete item mutation
   const deleteItemMutation = useMutation({
@@ -120,7 +115,7 @@ export default function ConsignorItems() {
   });
   
   // Filter items based on search term
-  const filteredItems = itemsData.filter((item: any) => 
+  const filteredItems = items.filter((item: any) => 
     (item.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.referenceId || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
