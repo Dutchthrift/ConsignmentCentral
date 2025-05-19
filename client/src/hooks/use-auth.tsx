@@ -69,33 +69,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: credentials.password
       };
       
-      const res = await apiRequest("POST", "/api/auth/login", loginData);
-      console.log("Login response status:", res.status);
-      
-      if (!res.ok) {
-        let errorMessage = "Invalid credentials";
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          console.error("Error parsing error response:", e);
-        }
-        throw new Error(errorMessage);
-      }
-      
       try {
-        const responseData = await res.json();
-        console.log("Login response data:", responseData);
+        // First try the regular login endpoint
+        const res = await apiRequest("POST", "/api/auth/login", loginData);
+        console.log("Login response status:", res.status);
+        
+        if (res.ok) {
+          const responseData = await res.json();
+          console.log("Login response data:", responseData);
+          
+          // Handle both direct user object and wrapped data formats
+          if (responseData.success && responseData.data) {
+            return responseData.data;
+          }
+          
+          return responseData;
+        }
+        
+        // If regular login fails, try the demo login endpoint as fallback
+        console.log("Regular login failed, trying demo login endpoint");
+        const demoRes = await apiRequest("POST", "/api/auth/demo-login", loginData);
+        
+        if (!demoRes.ok) {
+          let errorMessage = "Invalid credentials";
+          try {
+            const errorData = await demoRes.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            console.error("Error parsing error response:", e);
+          }
+          throw new Error(errorMessage);
+        }
+        
+        const demoResponseData = await demoRes.json();
+        console.log("Demo login response data:", demoResponseData);
         
         // Handle both direct user object and wrapped data formats
-        if (responseData.success && responseData.data) {
-          return responseData.data;
+        if (demoResponseData.success && demoResponseData.data) {
+          return demoResponseData.data;
         }
         
-        return responseData;
+        return demoResponseData;
       } catch (e) {
-        console.error("Error parsing success response:", e);
-        throw new Error("Could not parse server response");
+        console.error("Login error:", e);
+        throw new Error(e.message || "Login failed");
       }
     },
     onSuccess: (userData: User & { token?: string }) => {
@@ -222,33 +239,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: credentials.password
       };
       
-      const res = await apiRequest("POST", "/api/auth/admin/login", loginData);
-      console.log("Admin login response status:", res.status);
-      
-      if (!res.ok) {
-        let errorMessage = "Invalid admin credentials";
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          console.error("Error parsing error response:", e);
-        }
-        throw new Error(errorMessage);
-      }
-      
       try {
-        const responseData = await res.json();
-        console.log("Admin login response data:", responseData);
+        // First try the regular admin login endpoint
+        const res = await apiRequest("POST", "/api/auth/admin/login", loginData);
+        console.log("Admin login response status:", res.status);
         
-        // Handle both direct user object and wrapped data formats
-        if (responseData.success && responseData.data) {
-          return responseData.data;
+        if (res.ok) {
+          const responseData = await res.json();
+          console.log("Admin login response data:", responseData);
+          
+          // Handle both direct user object and wrapped data formats
+          if (responseData.success && responseData.data) {
+            return responseData.data;
+          }
+          
+          return responseData;
         }
         
-        return responseData;
+        // If regular admin login fails, try the demo login endpoint as fallback
+        console.log("Regular admin login failed, trying demo login endpoint");
+        const demoRes = await apiRequest("POST", "/api/auth/demo-login", loginData);
+        
+        if (!demoRes.ok) {
+          let errorMessage = "Invalid admin credentials";
+          try {
+            const errorData = await demoRes.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            console.error("Error parsing error response:", e);
+          }
+          throw new Error(errorMessage);
+        }
+        
+        const demoResponseData = await demoRes.json();
+        console.log("Demo login response data:", demoResponseData);
+        
+        // Check if the user from demo login is an admin
+        if (demoResponseData.success && demoResponseData.data) {
+          const userData = demoResponseData.data;
+          if (userData.role !== UserRole.ADMIN) {
+            throw new Error("Access denied: Admin privileges required");
+          }
+          return userData;
+        }
+        
+        return demoResponseData;
       } catch (e) {
-        console.error("Error parsing success response:", e);
-        throw new Error("Could not parse server response");
+        console.error("Admin login error:", e);
+        throw new Error(e.message || "Admin login failed");
       }
     },
     onSuccess: (userData: User & { token?: string }) => {
