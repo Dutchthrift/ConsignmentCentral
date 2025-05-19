@@ -97,43 +97,49 @@ export class SupabaseStorage implements IStorage {
 
   async createItem(item: InsertItem): Promise<Item> {
     try {
-      // Use raw SQL query to directly access the database
-      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-      const columns = Object.keys(item);
+      // Import the existing pool from db-config (which already has appropriate ws configuration)
+      const { pool: dbPool } = require('./db-config');
       
-      // Convert camelCase to snake_case for SQL
-      const sqlColumns = columns.map(col => {
-        return col.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-      });
+      // Get a client from the shared pool
+      const client = await dbPool.connect();
       
-      const values = Object.values(item);
-      const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
-      
-      const query = `
-        INSERT INTO items (${sqlColumns.join(', ')}) 
-        VALUES (${placeholders}) 
-        RETURNING *
-      `;
-      
-      const result = await pool.query(query, values);
-      
-      if (result.rows && result.rows.length > 0) {
-        // Convert column names from snake_case back to camelCase for our application
-        const row = result.rows[0];
-        const newItem: any = {};
+      try {
+        const columns = Object.keys(item);
         
-        // Convert snake_case column names back to camelCase
-        Object.keys(row).forEach(key => {
-          const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-          newItem[camelKey] = row[key];
+        // Convert camelCase to snake_case for SQL
+        const sqlColumns = columns.map(col => {
+          return col.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
         });
         
-        await pool.end();
-        return newItem as Item;
+        const values = Object.values(item);
+        const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+        
+        const query = `
+          INSERT INTO items (${sqlColumns.join(', ')}) 
+          VALUES (${placeholders}) 
+          RETURNING *
+        `;
+        
+        const result = await client.query(query, values);
+        
+        if (result.rows && result.rows.length > 0) {
+          // Convert column names from snake_case back to camelCase for our application
+          const row = result.rows[0];
+          const newItem: any = {};
+          
+          // Convert snake_case column names back to camelCase
+          Object.keys(row).forEach(key => {
+            const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+            newItem[camelKey] = row[key];
+          });
+          
+          return newItem as Item;
+        }
+        
+        throw new Error("Failed to create item, no result returned");
+      } finally {
+        client.release(); // Release the client back to the pool
       }
-      
-      await pool.end();
-      throw new Error("Failed to create item, no result returned");
     } catch (error) {
       console.error("Error creating item:", error);
       throw error;
