@@ -334,17 +334,19 @@ export default function OrderDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <p className="font-semibold">{order.customer.name}</p>
-              <p>{order.customer.email}</p>
-              {order.customer.phone && <p>{order.customer.phone}</p>}
-              {order.customer.address && (
+              <p className="font-semibold">
+                {order.customer?.name || `Customer #${order.customerId}`}
+              </p>
+              <p>{order.customer?.email || "No email available"}</p>
+              {order.customer?.phone && <p>{order.customer.phone}</p>}
+              {order.customer?.address && (
                 <div className="mt-2 text-sm">
                   <p>{order.customer.address}</p>
                   <p>
-                    {order.customer.postalCode} {order.customer.city}
+                    {order.customer.postal_code || ""} {order.customer.city || ""}
                     {order.customer.state && `, ${order.customer.state}`}
                   </p>
-                  <p>{order.customer.country}</p>
+                  <p>{order.customer.country || ""}</p>
                 </div>
               )}
             </div>
