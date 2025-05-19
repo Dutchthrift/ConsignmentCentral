@@ -251,6 +251,7 @@ export const intakeItemSchema = z.object({
   category: z.string().optional(),
   condition: z.string().optional(),
   images: z.array(z.string()).optional(),
+  imageBase64: z.string().optional(), // Add support for base64 encoded image
 });
 
 export type IntakeItem = z.infer<typeof intakeItemSchema>;
@@ -289,6 +290,7 @@ export const legacyIntakeFormSchema = z.object({
     brand: z.string().optional(),
     category: z.string().optional(),
     condition: z.string().optional(),
+    imageBase64: z.string().optional(), // Add support for base64 encoded image
   }),
 });
 

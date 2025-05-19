@@ -366,8 +366,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const item = await storage.createItem(newItem);
         
-        // If we have images, use the first one and analyze the item immediately
-        const imageBase64 = itemData.images && itemData.images.length > 0 ? itemData.images[0] : null;
+        // Get the image data from either the images array or the imageBase64 field
+        let imageBase64 = null;
+        
+        if (itemData.imageBase64) {
+          // First check for direct imageBase64 property (new format from storefront)
+          imageBase64 = itemData.imageBase64;
+        } else if (itemData.images && itemData.images.length > 0) {
+          // Fall back to images array if available (legacy format)
+          imageBase64 = itemData.images[0];
+        }
         
         // Log the beginning of image processing
         console.log(`Processing item "${itemData.title}" with reference ID ${referenceId}`);
