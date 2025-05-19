@@ -19,7 +19,7 @@ const intakeRequestSchema = z.object({
 });
 
 // Import improved reference ID generator
-import { generateUniqueReferenceId } from '../../fix-reference-id.js';
+import { generateUniqueReferenceId } from '../../utils/reference-generator';
 
 // Helper function to generate a unique reference ID
 function generateReferenceId(): string {

@@ -1,23 +1,20 @@
 /**
- * Reference ID Generator
- * Generates unique reference IDs for consignment items
+ * Improved reference ID generator for Dutch Thrift
+ * Creates unique, time-based reference IDs in the format CS-YYMMDD-XXXXX-XXX
  */
 
 /**
- * Generates a unique reference ID for an item in the format CS-YYMMDD-XXX
- * @returns {string} Unique reference ID
+ * Generate a unique reference ID with more randomness
+ * @returns {string} Reference ID in format CS-YYMMDD-XXXXX-XXX
  */
-export function generateReferenceId(): string {
-  // Get current date in format YYMMDD
+export function generateUniqueReferenceId(): string {
   const now = new Date();
   const year = now.getFullYear().toString().slice(-2);
   const month = (now.getMonth() + 1).toString().padStart(2, '0');
   const day = now.getDate().toString().padStart(2, '0');
   const dateStr = `${year}${month}${day}`;
+  const milliseconds = now.getMilliseconds().toString().padStart(3, '0');
+  const random = Math.floor(Math.random() * 10000).toString().padStart(5, '0');
   
-  // Generate random 3-digit number
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  
-  // Return reference ID in format CS-YYMMDD-XXX
-  return `CS-${dateStr}-${random}`;
+  return `CS-${dateStr}-${random}-${milliseconds}`;
 }

@@ -46,7 +46,7 @@ import demoLoginRoutes from "./routes/demo-login"; // Added demo login for when 
 import { calculateCommission, checkEligibility } from "./utils/commission.ts";
 
 // Import our improved reference ID generator
-import { generateUniqueReferenceId } from './fix-reference-id.js';
+import { generateUniqueReferenceId } from './utils/reference-generator';
 
 // Generate unique reference ID for new items
 function generateReferenceId(): string {
