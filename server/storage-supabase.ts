@@ -1,6 +1,6 @@
 import { Pool } from '@neondatabase/serverless';
 import { 
-  customers, users, adminUsers, items, analysis as analysisTable,
+  customers, users, adminUsers, items, analyses,
   mlTrainingExamples, mlModelConfigs, mlTrainingSessions,
   orders, orderItems, pricing, shipping,
   Customer, InsertCustomer, 
@@ -211,12 +211,12 @@ export class SupabaseStorage implements IStorage {
 
   // Analysis methods
   async getAnalysisByItemId(itemId: number): Promise<Analysis | undefined> {
-    const [analysisResult] = await db.select().from(analysisTable).where(eq(analysisTable.itemId, itemId));
+    const [analysisResult] = await db.select().from(analyses).where(eq(analyses.itemId, itemId));
     return analysisResult;
   }
 
   async createAnalysis(analysisData: InsertAnalysis): Promise<Analysis> {
-    const [newAnalysis] = await db.insert(analysisTable).values(analysisData).returning();
+    const [newAnalysis] = await db.insert(analyses).values(analysisData).returning();
     return newAnalysis;
   }
 
