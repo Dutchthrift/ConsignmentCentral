@@ -1,193 +1,191 @@
-import { IStorage } from "../storage";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
-import { promisify } from "util";
-import jwt from "jsonwebtoken";
+import { IStorage } from '../storage';
+import { User, AdminUser, InsertUser, insertCustomerSchema, InsertCustomer } from '@shared/schema';
+import { createHash, timingSafeEqual, randomBytes, scrypt } from 'crypto';
+import { promisify } from 'util';
+import jwt from 'jsonwebtoken';
 
 const scryptAsync = promisify(scrypt);
 
-export type UserTypeValues = 'admin' | 'consignor';
-
-/**
- * Token payload interface for JWT
- */
-export interface TokenPayload {
-  id: number;
-  email: string;
-  name?: string;
-  role?: string;
-  isAdmin?: boolean;
-}
-
-/**
- * Authentication service for user authentication and authorization
- */
+// Authentication service
 export class AuthService {
-  private storage: IStorage;
-  private jwtSecret: string;
-  private tokenExpiration: string;
-
-  constructor(storage: IStorage) {
-    this.storage = storage;
-    this.jwtSecret = process.env.JWT_SECRET || "dutchthrift-jwt-secret";
-    this.tokenExpiration = "24h";
-  }
+  constructor(private storage: IStorage) {}
 
   /**
-   * Hash a password for storage
+   * Hash a password for secure storage
    */
   async hashPassword(password: string): Promise<string> {
-    const salt = randomBytes(16).toString("hex");
-    const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-    return `${buf.toString("hex")}.${salt}`;
+    const salt = randomBytes(16).toString('hex');
+    const derivedKey = await scryptAsync(password, salt, 64) as Buffer;
+    return `${derivedKey.toString('hex')}.${salt}`;
   }
 
   /**
-   * Compare stored password hash with provided password
+   * Compare a plain password with a hashed password
    */
-  async comparePasswords(supplied: string, stored: string): Promise<boolean> {
+  async verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
     try {
-      const [hashed, salt] = stored.split(".");
-      const hashedBuf = Buffer.from(hashed, "hex");
-      const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-      return timingSafeEqual(hashedBuf, suppliedBuf);
+      const [hashedPart, salt] = hashedPassword.split('.');
+      
+      if (!hashedPart || !salt) {
+        return false;
+      }
+      
+      const hashedPasswordBuf = Buffer.from(hashedPart, 'hex');
+      const suppliedPasswordBuf = await scryptAsync(plainPassword, salt, 64) as Buffer;
+      
+      return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
     } catch (error) {
-      console.error("Error comparing passwords:", error);
+      console.error('Password verification error:', error);
       return false;
     }
   }
 
   /**
-   * Generate a JWT token
+   * Generate a JWT token for a user
    */
-  generateToken(payload: TokenPayload): string {
-    return jwt.sign(payload, this.jwtSecret, {
-      expiresIn: this.tokenExpiration
-    });
+  generateToken(user: any, userType: 'admin' | 'consignor'): string {
+    const payload = {
+      id: user.id,
+      email: user.email,
+      userType,
+      isAdmin: userType === 'admin'
+    };
+    
+    return jwt.sign(
+      payload,
+      process.env.JWT_SECRET || 'dutch-thrift-secret-key',
+      { expiresIn: '7d' }
+    );
   }
 
   /**
    * Verify a JWT token
    */
-  verifyToken(token: string): TokenPayload | null {
+  verifyToken(token: string): any {
     try {
-      return jwt.verify(token, this.jwtSecret) as TokenPayload;
+      return jwt.verify(token, process.env.JWT_SECRET || 'dutch-thrift-secret-key');
     } catch (error) {
-      console.error("Error verifying token:", error);
-      return null;
+      throw new Error('Invalid token');
     }
   }
 
   /**
-   * Verify admin credentials and return a user if valid
+   * Authenticate an admin user
    */
-  async verifyAdminCredentials(email: string, password: string) {
-    try {
-      // Find the admin user
-      const adminUser = await this.storage.getAdminUserByEmail(email);
-      
-      if (!adminUser) {
-        return null;
-      }
-      
-      // Compare passwords
-      const isValid = await this.comparePasswords(password, adminUser.password);
-      
-      if (!isValid) {
-        return null;
-      }
-      
-      // Return admin user (excluding password)
-      const { password: _, ...adminUserWithoutPassword } = adminUser;
-      return adminUserWithoutPassword;
-    } catch (error) {
-      console.error("Error verifying admin credentials:", error);
+  async authenticateAdmin(email: string, password: string): Promise<{ admin: AdminUser, token: string } | null> {
+    const admin = await this.storage.getAdminUserByEmail(email);
+    
+    if (!admin) {
       return null;
     }
+    
+    const isPasswordValid = await this.verifyPassword(password, admin.password);
+    
+    if (!isPasswordValid) {
+      return null;
+    }
+    
+    // Update last login time
+    await this.storage.updateUserLastLogin(admin.id);
+    
+    // Generate JWT token
+    const token = this.generateToken(admin, 'admin');
+    
+    return { admin, token };
   }
 
   /**
-   * Verify consignor credentials and return a user if valid
+   * Authenticate a consignor user
    */
-  async verifyConsignorCredentials(email: string, password: string) {
-    try {
-      // Find the consignor user
-      const consignorUser = await this.storage.getUserByEmail(email);
-      
-      if (!consignorUser) {
-        return null;
-      }
-      
-      // Compare passwords
-      const isValid = await this.comparePasswords(password, consignorUser.password);
-      
-      if (!isValid) {
-        return null;
-      }
-      
-      // Get customer data if available
-      const customer = await this.storage.getCustomerByUserId(consignorUser.id);
-      
-      // Return consignor user (excluding password)
-      const { password: _, ...consignorUserWithoutPassword } = consignorUser;
-      return {
-        ...consignorUserWithoutPassword,
-        customer
-      };
-    } catch (error) {
-      console.error("Error verifying consignor credentials:", error);
+  async authenticateConsignor(email: string, password: string): Promise<{ user: User, customer: any, token: string } | null> {
+    const user = await this.storage.getUserByEmail(email);
+    
+    if (!user) {
       return null;
     }
+    
+    const isPasswordValid = await this.verifyPassword(password, user.password || '');
+    
+    if (!isPasswordValid) {
+      return null;
+    }
+    
+    // Update last login time
+    await this.storage.updateUserLastLogin(user.id);
+    
+    // Get customer information
+    const customer = await this.storage.getCustomerByUserId(user.id);
+    
+    if (!customer) {
+      return null;
+    }
+    
+    // Generate JWT token
+    const token = this.generateToken(user, 'consignor');
+    
+    return { user, customer, token };
   }
 
   /**
-   * Register a new consignor
+   * Register a new consignor user
    */
-  async registerConsignor(email: string, password: string, firstName: string, lastName: string) {
+  async registerConsignor(userData: { 
+    email: string; 
+    password: string; 
+    firstName: string; 
+    lastName: string; 
+    phone?: string; 
+    address?: string; 
+    city?: string; 
+    state?: string; 
+    postalCode?: string; 
+    country?: string; 
+  }): Promise<{ user: User, customer: any, token: string } | null> {
     try {
       // Check if user already exists
-      const existingUser = await this.storage.getUserByEmail(email);
+      const existingUser = await this.storage.getUserByEmail(userData.email);
+      
       if (existingUser) {
-        return {
-          success: false,
-          message: "Email already in use"
-        };
+        throw new Error('User with this email already exists');
       }
-
-      // Hash password
-      const hashedPassword = await this.hashPassword(password);
-
-      // Create new user with consignor role
-      const user = await this.storage.createUser({
-        email,
+      
+      // Hash the password
+      const hashedPassword = await this.hashPassword(userData.password);
+      
+      // Create the user
+      const newUser = await this.storage.createUser({
+        email: userData.email,
         password: hashedPassword,
-        name: `${firstName} ${lastName}`,
-        role: "consignor",
-        provider: "local"
+        name: `${userData.firstName} ${userData.lastName}`,
+        role: 'consignor',
+        provider: 'local'
       });
-
-      // Create customer record for the user
-      const customer = await this.storage.createCustomer({
-        email,
-        firstName,
-        lastName,
-        userId: user.id
-      });
-
-      // Return success with user data (excluding password)
-      const { password: _, ...userWithoutPassword } = user;
-      return {
-        success: true,
-        user: {
-          ...userWithoutPassword,
-          customer
-        }
+      
+      // Create customer profile
+      const customerData: InsertCustomer = {
+        email: userData.email,
+        first_name: userData.firstName,
+        last_name: userData.lastName, 
+        user_id: newUser.id,
+        phone: userData.phone || null,
+        address: userData.address || null,
+        city: userData.city || null,
+        state: userData.state || null, 
+        postal_code: userData.postalCode || null,
+        country: userData.country || 'NL',
+        company_name: null,
+        vat_number: null
       };
+      
+      const customer = await this.storage.createCustomer(customerData);
+      
+      // Generate token
+      const token = this.generateToken(newUser, 'consignor');
+      
+      return { user: newUser, customer, token };
     } catch (error) {
-      console.error("Error registering consignor:", error);
-      return {
-        success: false,
-        message: "Error creating user"
-      };
+      console.error('Registration error:', error);
+      throw error;
     }
   }
 }

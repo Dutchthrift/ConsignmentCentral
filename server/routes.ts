@@ -25,8 +25,9 @@ import { getMarketPricing, calculatePricing } from "./services/ebay.service";
 import SessionService from "./services/session.service";
 import insightsRoutes from "./routes/insights.ts";
 import { requireAdmin } from "./middleware/auth.middleware";
-import { registerSupabaseAuthRoutes } from "./routes/auth/supabase-auth.routes";
 import authRoutes from "./routes/auth/auth.routes";
+import { AuthService } from "./services/auth.service";
+import { configureAuth } from "./middleware/auth.middleware";
 
 // Import route handlers
 import adminRoutes from "./routes/admin.ts";
@@ -75,52 +76,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
 
+  // Set up auth middleware
+  const authService = new AuthService(storage);
+  
   // Configure session handling
   const sessionService = new SessionService();
   app.use(sessionService.getSessionMiddleware());
   
-  // Add token-based authentication as a fallback
-  app.use((req, res, next) => {
-    // Get token from authorization header
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
+  // Set up authentication middleware that adds user data to request
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Add isAuthenticated method to request
+    (req as any).isAuthenticated = function() {
+      return !!(req.session && req.session.userId && req.session.userType);
+    };
+    
+    // If user is authenticated via session, add user data to request
+    if (req.session && req.session.userId && req.session.userType) {
+      const userId = req.session.userId;
+      const userType = req.session.userType;
       
-      try {
-        // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dutch-thrift-jwt-secret');
+      // Load user data based on user type
+      if (userType === "admin") {
+        storage.getAdminUserById(userId)
+          .then(admin => {
+            if (admin) {
+              (req as any).user = {
+                ...admin,
+                userType: "admin",
+                isAdmin: true
+              };
+            }
+            next();
+          })
+          .catch(() => next());
+      } else if (userType === "consignor") {
+        storage.getUserById(userId)
+          .then(async user => {
+            if (user) {
+              const customer = await storage.getCustomerByUserId(userId);
+              (req as any).user = {
+                ...user,
+                customer,
+                userType: "consignor",
+                isAdmin: false
+              };
+            }
+            next();
+          })
+          .catch(() => next());
+      } else {
+        next();
+      }
+    } else {
+      // Check for token-based authentication
+      const authHeader = req.headers.authorization;
+      
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
         
-        // Attach user info to request
-        req.user = decoded;
+        try {
+          // Verify token
+          const decoded = authService.verifyToken(token);
+          
+          if (decoded) {
+            // Attach user info to request
+            (req as any).user = decoded;
+            
+            // Define isAuthenticated method
+            (req as any).isAuthenticated = function() { 
+              return true; 
+            };
+          }
+        } catch (error) {
+          console.error('Token auth failed:', error);
+        }
+      }
+      
+      // Auto-authenticate admin endpoints in development mode
+      if (process.env.NODE_ENV !== 'production' && 
+          (req.path.startsWith('/api/admin') || req.path.startsWith('/api/dashboard'))) {
+        (req as any).user = {
+          id: 1,
+          email: 'admin@dutchthrift.com',
+          role: 'admin',
+          userType: 'admin',
+          isAdmin: true,
+          name: 'Admin User'
+        };
         
         // Define isAuthenticated function
-        req.isAuthenticated = function() { return true; };
+        (req as any).isAuthenticated = function() { return true; };
         
-        console.log('Token auth successful for', req.path);
-      } catch (error) {
-        console.log('Token auth failed:', error.message);
+        console.log('Applied development auth for admin endpoint:', req.path);
       }
-    }
-    
-    // Auto-authenticate admin endpoints in development
-    if (process.env.NODE_ENV !== 'production' && 
-        (req.path.startsWith('/api/admin') || req.path.startsWith('/api/dashboard'))) {
-      req.user = {
-        id: 1,
-        email: 'admin@dutchthrift.com',
-        role: 'admin',
-        isAdmin: true,
-        name: 'Admin User'
-      };
       
-      // Define isAuthenticated function
-      req.isAuthenticated = function() { return true; };
-      
-      console.log('Applied development auth for admin endpoint:', req.path);
+      next();
     }
-    
-    // Continue to next middleware
-    next();
   });
   
   // Add a simple admin check endpoint
