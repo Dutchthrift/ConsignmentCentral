@@ -234,17 +234,7 @@ router.post('/intake', async (req, res) => {
         
         console.log(`Created item with ID ${itemId} linked to order ${orderId}`);
         
-        // Skip the old unused parameters since we're now using the dynamic query approach
-          title,
-          description || null,
-          'pending',
-          imageUrls,
-          orderId
-        ];
-        
-        const itemInsertResult = await client.query(createItemQuery, itemParams);
-        itemId = itemInsertResult.rows[0].id;
-        console.log(`Created item with ID ${itemId} linked to order ${orderId}`);
+        // We're using the dynamic query approach with queryParams, no additional query needed
         
         // We can still maintain the junction table for backward compatibility
         const linkQuery = `
