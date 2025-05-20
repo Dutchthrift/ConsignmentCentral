@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +15,7 @@ import { Loader2, Upload, Check } from 'lucide-react';
  */
 const NewItemIntakePage: React.FC = () => {
   const [, navigate] = useLocation();
+  const { user, isLoading } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState<File | null>(null);
@@ -22,6 +24,18 @@ const NewItemIntakePage: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [resultData, setResultData] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Check if user is authenticated and redirect if not
+  useEffect(() => {
+    if (!isLoading && !user) {
+      toast({
+        title: "Authentication required",
+        description: "You need to be logged in to submit a new item",
+        variant: "destructive"
+      });
+      navigate('/auth');
+    }
+  }, [user, isLoading, navigate]);
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,9 +99,8 @@ const NewItemIntakePage: React.FC = () => {
         const base64Image = reader.result as string;
         const imageBase64 = base64Image.split(',')[1]; // Remove data:image/jpeg;base64, prefix
         
-        // Get the authentication token
-        const token = localStorage.getItem('authToken');
-        if (!token) {
+        // Check user authentication state
+        if (!user) {
           toast({
             title: "Authentication error",
             description: "You need to be logged in to submit items",
@@ -98,11 +111,14 @@ const NewItemIntakePage: React.FC = () => {
         }
 
         // Send data to the new intake endpoint
+        // Get the authentication token from localStorage (stored by useAuth hook)
+        const token = localStorage.getItem('authToken');
+        
         const response = await fetch('/api/new-intake', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': token ? `Bearer ${token}` : '',
           },
           body: JSON.stringify({
             title,
