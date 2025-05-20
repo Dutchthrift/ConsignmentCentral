@@ -59,6 +59,79 @@ async function fixItemsTable() {
   }
 }
 
+async function fixPricingTable() {
+  try {
+    console.log('Checking pricing table existence...');
+    
+    // First check if the pricing table exists, if not create it
+    const tableExists = await executeQuery(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pricing')"
+    );
+    
+    if (!tableExists.rows[0].exists) {
+      console.log('Creating pricing table as it does not exist');
+      await executeQuery(`
+        CREATE TABLE pricing (
+          id SERIAL PRIMARY KEY,
+          item_id INTEGER NOT NULL,
+          recommended_price NUMERIC,
+          average_price NUMERIC,
+          sale_price NUMERIC,
+          commission_rate NUMERIC,
+          commission_amount NUMERIC,
+          payout_amount NUMERIC,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      console.log('Pricing table created successfully');
+      return; // No need to check columns if we just created the table
+    }
+    
+    console.log('Checking pricing table columns...');
+    
+    // Required columns for the pricing table
+    const requiredColumns = [
+      { name: 'item_id', type: 'INTEGER NOT NULL' },
+      { name: 'recommended_price', type: 'NUMERIC' },
+      { name: 'average_price', type: 'NUMERIC' },
+      { name: 'sale_price', type: 'NUMERIC' },
+      { name: 'commission_rate', type: 'NUMERIC' },
+      { name: 'commission_amount', type: 'NUMERIC' },
+      { name: 'payout_amount', type: 'NUMERIC' },
+      { name: 'created_at', type: 'TIMESTAMP DEFAULT NOW()' }
+    ];
+    
+    // Check each required column and add if missing
+    for (const column of requiredColumns) {
+      const columnExists = await executeQuery(
+        `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pricing' AND column_name='${column.name}')`
+      );
+      
+      if (!columnExists.rows[0].exists) {
+        console.log(`Adding ${column.name} column to pricing table`);
+        
+        // Skip constraints for created_at field to avoid DEFAULT NOW() issues
+        const columnType = column.name === 'created_at' ? 'TIMESTAMP' : column.type;
+        
+        await executeQuery(`ALTER TABLE pricing ADD COLUMN ${column.name} ${columnType}`);
+        
+        // Add default for timestamp separately
+        if (column.name === 'created_at') {
+          await executeQuery(`ALTER TABLE pricing ALTER COLUMN ${column.name} SET DEFAULT NOW()`);
+        }
+        
+        console.log(`Successfully added ${column.name} column`);
+      } else {
+        console.log(`${column.name} column already exists`);
+      }
+    }
+    
+    console.log('Pricing table columns have been checked and fixed if needed');
+  } catch (error) {
+    console.error('Error fixing pricing table:', error);
+  }
+}
+
 async function fixAnalysisTable() {
   try {
     console.log('Checking analysis table existence...');
@@ -173,6 +246,7 @@ async function main() {
   try {
     await fixItemsTable();
     await fixAnalysisTable();
+    await fixPricingTable();
     console.log('Database schema compatibility fixes completed successfully');
   } catch (error) {
     console.error('Error in main execution:', error);

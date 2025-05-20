@@ -27,7 +27,7 @@ const testItem = {
   description: "Vintage film camera in good condition",
   category: "Cameras",
   condition: "Used - Good",
-  customerId: 1 // Theo Oenema's customer ID
+  customerId: 12 // Theo Oenema's customer ID (retrieved from check-customer.cjs)
 };
 
 // Sample image data - could be a base64 string
@@ -245,13 +245,14 @@ async function testIntakeProcess() {
     const pricingQuery = `
       INSERT INTO pricing (
         item_id,
-        market_price,
+        average_price,
+        recommended_price,
         sale_price,
         commission_rate,
         commission_amount,
         payout_amount
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `;
     
