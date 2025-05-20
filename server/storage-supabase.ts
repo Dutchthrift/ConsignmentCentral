@@ -217,11 +217,14 @@ export class SupabaseStorage implements IStorage {
 
   async createAnalysis(analysisData: InsertAnalysis): Promise<Analysis> {
     try {
+      // Don't log the full image data to avoid console flooding
       console.log('Creating analysis with data:', JSON.stringify({
         ...analysisData,
-        // Don't log full image data to console
+        // Remove image data from logs
         imageBase64: analysisData.imageBase64 ? '(base64 data truncated)' : null
-      }, null, 2));
+      }, (key, value) => 
+        key === 'imageBase64' ? '(base64 data truncated)' : value
+      , 2));
       
       // Map fields from camelCase to snake_case for database compatibility
       const mappedData: Record<string, any> = {
@@ -245,30 +248,37 @@ export class SupabaseStorage implements IStorage {
       if (analysisData.features) mappedData.features = analysisData.features;
       if (analysisData.accessories) mappedData.accessories = analysisData.accessories;
       
+      // Handle image data if present
+      // @ts-ignore - imageBase64 might be defined at runtime
+      if (analysisData.imageBase64) {
+        // @ts-ignore
+        mappedData.image_data = analysisData.imageBase64;
+      }
+      
       // Get direct client for reliable error information
       const client = await this.getClient();
       
       try {
-        if (Object.keys(filteredData).length === 0) {
-          throw new Error('No valid fields to insert into analysis table');
+        if (Object.keys(mappedData).length === 0) {
+          throw new Error('No valid fields to insert into analyses table');
         }
         
         // Use raw SQL for more control and better error messages
-        const columns = Object.keys(filteredData).join(', ');
-        const placeholders = Object.keys(filteredData).map((_, i) => `$${i + 1}`).join(', ');
-        const values = Object.values(filteredData);
+        const columns = Object.keys(mappedData).join(', ');
+        const placeholders = Object.keys(mappedData).map((_, i) => `$${i + 1}`).join(', ');
+        const values = Object.values(mappedData);
         
         const query = `
-          INSERT INTO analysis (${columns})
+          INSERT INTO analyses (${columns})
           VALUES (${placeholders})
           RETURNING *
         `;
         
         console.log('Executing SQL:', query);
-        console.log('With values:', values);
+        console.log('With values count:', values.length);
         
         const result = await client.query(query, values);
-        console.log('Insert successful, returned rows:', result.rows);
+        console.log('Insert successful, returned rows:', result.rows.length);
         
         if (result.rows.length > 0) {
           // Convert returned data to match expected Analysis type
