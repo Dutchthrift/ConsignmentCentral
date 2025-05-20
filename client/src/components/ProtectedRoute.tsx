@@ -7,12 +7,14 @@ type ProtectedRouteProps = {
   path: string;
   component: React.ComponentType<any>;
   allowedRoles?: string[];
+  redirectTo?: string;
 };
 
 export function ProtectedRoute({ 
   path, 
   component: Component, 
-  allowedRoles = [] 
+  allowedRoles = [],
+  redirectTo = "/auth"
 }: ProtectedRouteProps) {
   const { user, isLoading, error } = useAuth();
 
@@ -47,12 +49,12 @@ export function ProtectedRoute({
     );
   }
 
-  // If no user, redirect to auth page
+  // If no user, redirect to the specified redirect path (defaults to /auth)
   if (!user) {
-    console.log("No user found, redirecting to auth");
+    console.log(`No user found, redirecting to ${redirectTo}`);
     return (
       <Route path={path}>
-        <Redirect to="/auth" />
+        <Redirect to={redirectTo} />
       </Route>
     );
   }
