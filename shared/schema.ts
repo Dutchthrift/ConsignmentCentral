@@ -42,20 +42,43 @@ export const PayoutType = {
   STORE_CREDIT: "storecredit",
 } as const;
 
+// Users table for authentication
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  password: text("password"),  // Hashed password (null for OAuth/Supabase accounts)
+  name: text("name").notNull(),
+  role: text("role").notNull().default(UserRole.CONSIGNOR),
+  provider: text("provider").default(AuthProvider.LOCAL), // google, apple, local, supabase
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  last_login: timestamp("last_login"),
+  external_id: text("external_id"), // ID from external provider
+  profile_image_url: text("profile_image_url"), // Avatar URL
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  created_at: true,
+  last_login: true,
+});
+
 // Customer table (for consignors)
 export const customers = pgTable("customers", {
   id: serial("id").primaryKey(),
+  user_id: integer("user_id").references(() => users.id),
   email: text("email").notNull().unique(),
-  password: text("password").notNull(), // Hashed password
-  name: text("name").notNull(), // This is the actual column name in the database
+  first_name: text("first_name").notNull(),
+  last_name: text("last_name").notNull(),
   phone: text("phone"),
-  state: text("state"), // This is used for payout method
-  postal_code: text("postal_code"), // This is used for IBAN
   address: text("address"),
   city: text("city"),
+  state: text("state"), // This is used for payout method
+  postal_code: text("postal_code"), // This is used for IBAN
   country: text("country").default("NL"),
-  role: text("role").notNull().default(UserRole.CONSIGNOR),
+  company_name: text("company_name"),
+  vat_number: text("vat_number"),
   created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const insertCustomerSchema = createInsertSchema(customers).omit({
@@ -476,8 +499,8 @@ export const adminUsers = pgTable("admin_users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Admins table (renamed from users)
-export const users = pgTable("users", {
+// Admin users table
+export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(), // Hashed password
@@ -486,14 +509,11 @@ export const users = pgTable("users", {
   provider: text("provider").notNull().default(AuthProvider.LOCAL), // Simplified provider handling
   lastLogin: timestamp("last_login").defaultNow(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  externalId: text("external_id"), // ID from external provider
+  profileImageUrl: text("profile_image_url"), // Avatar URL
 });
 
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
-  id: true,
-  lastLogin: true,
-});
-
-export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   lastLogin: true,
 });
