@@ -27,12 +27,18 @@ function generateReferenceId(): string {
   return generateUniqueReferenceId();
 }
 
-// Helper function to generate a unique order number
+// Helper function to generate a truly unique order number
 function generateOrderNumber(): string {
   const today = new Date();
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-  const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `ORD-${dateStr}-${randomSuffix}`;
+  
+  // Add timestamp (milliseconds) for better uniqueness
+  const timestamp = Date.now().toString().slice(-6);
+  
+  // Add random component for additional uniqueness
+  const randomSuffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  
+  return `ORD-${dateStr}-${timestamp}-${randomSuffix}`;
 }
 
 // Helper to calculate commission rate and payout value
