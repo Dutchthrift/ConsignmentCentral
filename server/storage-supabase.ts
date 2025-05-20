@@ -416,8 +416,25 @@ export class SupabaseStorage implements IStorage {
   }
 
   async createOrder(order: InsertOrder): Promise<Order> {
-    const [newOrder] = await db.insert(orders).values(order).returning();
-    return newOrder;
+    try {
+      // Update the code to use both column naming conventions for compatibility
+      const orderData = {
+        ...order,
+        total_amount: order.totalAmount,
+        payout_amount: order.payoutAmount,
+        total_value: order.totalAmount, // For backward compatibility
+        total_payout: order.payoutAmount, // For backward compatibility
+      };
+      
+      // Log the insert operation for debugging
+      console.log('Creating order with data:', orderData);
+      
+      const [newOrder] = await db.insert(orders).values(orderData).returning();
+      return newOrder;
+    } catch (error) {
+      console.error('Error creating order:', error);
+      throw error;
+    }
   }
 
   async updateOrder(id: number, updates: Partial<Order>): Promise<Order | undefined> {
@@ -441,15 +458,35 @@ export class SupabaseStorage implements IStorage {
   }
 
   async addItemToOrder(orderId: number, itemId: number): Promise<OrderItem> {
-    const [orderItem] = await db
-      .insert(orderItems)
-      .values({
-        orderId,
-        itemId,
-        createdAt: new Date()
-      })
-      .returning();
-    return orderItem;
+    try {
+      // Check first if this item is already in the order
+      const existingItems = await db
+        .select()
+        .from(orderItems)
+        .where(and(
+          eq(orderItems.orderId, orderId),
+          eq(orderItems.itemId, itemId)
+        ));
+      
+      if (existingItems.length > 0) {
+        console.log(`Item ${itemId} is already in order ${orderId}`);
+        return existingItems[0];
+      }
+      
+      console.log(`Adding item ${itemId} to order ${orderId}`);
+      const [orderItem] = await db
+        .insert(orderItems)
+        .values({
+          order_id: orderId,  // Use snake_case column name for compatibility
+          item_id: itemId,    // Use snake_case column name for compatibility
+        })
+        .returning();
+      
+      return orderItem;
+    } catch (error) {
+      console.error(`Error adding item ${itemId} to order ${orderId}:`, error);
+      throw error;
+    }
   }
 
   async removeItemFromOrder(orderId: number, itemId: number): Promise<boolean> {
