@@ -11,13 +11,15 @@ const router = Router();
 
 // POST endpoint to fix the relations (admin-only)
 router.post('/', requireAdmin, async (req, res) => {
-  // Get a database client
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
-  });
+  let pool;
   
   try {
     console.log('Starting to fix item-order relationships...');
+    
+    // Get a database client
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL
+    });
     
     // 1. First check if the order_id column exists in items table
     const checkColumnQuery = `
@@ -45,6 +47,7 @@ router.post('/', requireAdmin, async (req, res) => {
       SET order_id = oi.order_id
       FROM order_items oi
       WHERE i.id = oi.item_id AND (i.order_id IS NULL OR i.order_id != oi.order_id)
+      RETURNING i.id
     `;
     
     const result = await pool.query(updateQuery);
@@ -79,22 +82,35 @@ router.post('/', requireAdmin, async (req, res) => {
     const countResult = await pool.query(countQuery);
     console.log('Item counts:', countResult.rows[0]);
     
+    // Ensure proper JSON response format
+    res.setHeader('Content-Type', 'application/json');
+    
     return res.json({
       success: true,
       updated: result.rowCount,
       inconsistencies: verifyResult.rows.length,
-      counts: countResult.rows[0],
+      counts: countResult.rows[0] || { items_with_order: 0, items_without_order: 0 },
       message: "Item-order relationships have been fixed"
     });
   } catch (error) {
     console.error('Error fixing item-order relationships:', error);
+    
+    // Ensure proper JSON response format even for errors
+    res.setHeader('Content-Type', 'application/json');
+    
     return res.status(500).json({
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error',
       message: "Failed to fix item-order relationships"
     });
   } finally {
-    await pool.end();
+    if (pool) {
+      try {
+        await pool.end();
+      } catch (poolError) {
+        console.error('Error closing database pool:', poolError);
+      }
+    }
   }
 });
 

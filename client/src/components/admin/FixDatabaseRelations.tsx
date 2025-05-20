@@ -3,13 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * Admin component to fix database relationships between items and orders
  * This is used to maintain data integrity when inconsistencies are detected
  */
 const FixDatabaseRelations: React.FC = () => {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -29,11 +30,43 @@ const FixDatabaseRelations: React.FC = () => {
     setResult(null);
     
     try {
-      const response = await apiRequest('POST', '/api/admin/fix-relations');
+      // Direct fetch with specific headers to ensure proper JSON response handling
+      const response = await fetch('/api/admin/fix-relations', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      // Check for non-JSON response (like HTML error pages)
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Expected JSON response but received non-JSON content');
+      }
+      
       const data = await response.json();
       setResult(data);
+      
+      // Provide feedback via toast
+      if (data.success) {
+        toast({
+          title: "Database fix completed",
+          description: `Fixed ${data.updated || 0} item relationships`,
+          variant: "default"
+        });
+      }
     } catch (error) {
       console.error('Error fixing database relations:', error);
+      
+      // Show error in toast
+      toast({
+        title: "Database fix failed",
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        variant: "destructive"
+      });
+      
       setResult({
         success: false,
         message: error instanceof Error ? error.message : 'An unknown error occurred'
