@@ -93,13 +93,14 @@ async function mockEbayPrices(item, analysis) {
 // Calculate commission and payout
 function calculatePayouts(price) {
   // 30% commission rate
-  const commissionRate = 0.30;
-  const commission = price * commissionRate;
+  const commissionRateDecimal = 0.30;
+  const commissionRateInteger = 30; // Store as integer percent for the database
+  const commission = price * commissionRateDecimal;
   const payout = price - commission;
   
   return {
     salePrice: price,
-    commissionRate: commissionRate,
+    commissionRate: commissionRateInteger, // 30 instead of 0.3
     commissionAmount: commission,
     payoutAmount: payout
   };
@@ -259,6 +260,7 @@ async function testIntakeProcess() {
     const pricingParams = [
       savedItem.id,
       priceData.averagePrice,
+      priceData.recommendedPrice,
       payoutInfo.salePrice,
       payoutInfo.commissionRate,
       payoutInfo.commissionAmount,
