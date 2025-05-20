@@ -111,7 +111,7 @@ router.post('/intake', async (req, res) => {
       }
       console.log(`Using customer identifier: ${customerUuid}`);
       
-      // 2. Create a new order in new_orders
+      // 2. Create a new order in the orders table
       const orderNumber = generateOrderNumber();
       let orderId;
       
@@ -120,27 +120,32 @@ router.post('/intake', async (req, res) => {
         const defaultEstimatedValue = 5000; // €50.00
         const { commissionRate, payoutValue } = calculateCommissionAndPayout(defaultEstimatedValue);
         
-        // Use the new UUID-based table directly (we know it exists because we created it)
+        // Use the existing orders table
         const createOrderQuery = `
-          INSERT INTO new_orders (
+          INSERT INTO orders (
+            order_number,
             customer_id,
-            total_estimated_value,
-            total_payout_value,
-            status
+            submission_date,
+            status,
+            total_value,
+            total_payout,
+            created_at,
+            updated_at
           )
-          VALUES ($1, $2, $3, $4)
+          VALUES ($1, $2, NOW(), $3, $4, $5, NOW(), NOW())
           RETURNING id
         `;
         
         const orderInsertResult = await client.query(createOrderQuery, [
-          customerUuid,
+          orderNumber,
+          customerId,
+          'awaiting_shipment',
           defaultEstimatedValue,
-          payoutValue,
-          'awaiting_shipment'
+          payoutValue
         ]);
         
         orderId = orderInsertResult.rows[0].id;
-        console.log(`Created new order with UUID ${orderId}`);
+        console.log(`Created order with ID ${orderId}`);
       } catch (createOrderError) {
         console.error('Error creating order:', createOrderError);
         throw createOrderError;
@@ -186,7 +191,7 @@ router.post('/intake', async (req, res) => {
         
         const itemInsertResult = await client.query(createItemQuery, itemParams);
         itemId = itemInsertResult.rows[0].id;
-        console.log(`Created legacy item with ID ${itemId}`);
+        console.log(`Created item with ID ${itemId}`);
         
         // Always create an entry in order_items junction table to ensure the link exists
         const linkQuery = `
@@ -197,44 +202,7 @@ router.post('/intake', async (req, res) => {
         
         await client.query(linkQuery, [orderId, itemId]);
         console.log(`Linked item to order in order_items table`);
-        } else {
-          console.log('Using new_items table for UUID-based storage');
-          
-          // Process image URLs - store the base64 image for now (abbreviated for storage purposes)
-          const imageUrls = imageBase64 ? [imageBase64] : [];
-          
-          // Use the new UUID-based table
-          const createItemQuery = `
-            INSERT INTO new_items (
-              order_id,
-              title,
-              description,
-              reference_id,
-              image_urls,
-              estimated_value,
-              payout_value,
-              commission_rate,
-              status
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING id
-          `;
-          
-          const itemInsertResult = await client.query(createItemQuery, [
-            orderId,
-            title,
-            description || 'No description provided',
-            referenceId,
-            imageUrls,
-            estimatedValue,
-            payoutValue,
-            commissionRate,
-            'pending'
-          ]);
-          
-          itemId = itemInsertResult.rows[0].id;
-          console.log(`Created item with UUID ${itemId}`);
-        }
+      }
       } catch (createItemError) {
         console.error('Error creating item:', createItemError);
         throw createItemError;
