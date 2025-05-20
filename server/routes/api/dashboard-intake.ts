@@ -141,7 +141,7 @@ router.post('/intake', async (req, res) => {
         const estimatedValue = 5000; // €50.00
         const { commissionRate, payoutValue } = calculateCommissionAndPayout(estimatedValue);
         
-        // Use the standard items table structure (without order_id)
+        // Use the items table structure WITH order_id
         const createItemQuery = `
           INSERT INTO items (
             reference_id,
@@ -151,9 +151,10 @@ router.post('/intake', async (req, res) => {
             status, 
             created_at, 
             updated_at,
-            image_urls
+            image_urls,
+            order_id
           ) 
-          VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6)
+          VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7)
           RETURNING id
         `;
         
@@ -166,7 +167,8 @@ router.post('/intake', async (req, res) => {
           title,
           description || null,
           'pending',
-          imageUrls
+          imageUrls,
+          orderId
         ];
         
         const itemInsertResult = await client.query(createItemQuery, itemParams);
