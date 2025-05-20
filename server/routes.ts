@@ -18,6 +18,7 @@ import {
   OrderStatus
 } from "@shared/schema";
 import { ZodError } from "zod";
+import jwt from "jsonwebtoken";
 import { generateShippingLabel } from "./services/sendcloud.service";
 import { analyzeProduct } from "./services/openai.service";
 import { getMarketPricing, calculatePricing } from "./services/ebay.service";
@@ -25,7 +26,6 @@ import SessionService from "./services/session.service";
 import { registerAuthRoutes } from "./routes/auth.routes";
 import insightsRoutes from "./routes/insights.ts";
 import { requireAdmin } from "./middleware/auth.middleware";
-import jwt from "jsonwebtoken";
 // Removed Supabase integration
 
 // Import route handlers
@@ -80,8 +80,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(sessionService.getSessionMiddleware());
   
   // Add token-based authentication as a fallback
-  const { tokenAuth } = require('./middleware/token-auth');
-  app.use(tokenAuth);
+  app.use((req, res, next) => {
+    // Get token from authorization header
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      
+      try {
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dutch-thrift-jwt-secret');
+        
+        // Attach user info to request
+        req.user = decoded;
+        
+        // Define isAuthenticated function
+        req.isAuthenticated = function() { return true; };
+        
+        console.log('Token auth successful for', req.path);
+      } catch (error) {
+        console.log('Token auth failed:', error.message);
+      }
+    }
+    
+    // Auto-authenticate admin endpoints in development
+    if (process.env.NODE_ENV !== 'production' && 
+        (req.path.startsWith('/api/admin') || req.path.startsWith('/api/dashboard'))) {
+      req.user = {
+        id: 1,
+        email: 'admin@dutchthrift.com',
+        role: 'admin',
+        isAdmin: true,
+        name: 'Admin User'
+      };
+      
+      // Define isAuthenticated function
+      req.isAuthenticated = function() { return true; };
+      
+      console.log('Applied development auth for admin endpoint:', req.path);
+    }
+    
+    // Continue to next middleware
+    next();
+  });
+  
+  // Add a simple admin check endpoint
+  app.get('/api/admin/check', (req, res) => {
+    if (req.user && (req.user as any).isAdmin) {
+      return res.status(200).json({
+        success: true,
+        message: 'Admin authenticated',
+        user: req.user
+      });
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authenticated as admin'
+      });
+    }
+  });
   
   // Register authentication routes
   const authService = registerAuthRoutes(app, storage);
