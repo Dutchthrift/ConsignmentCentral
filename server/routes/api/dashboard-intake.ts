@@ -132,6 +132,34 @@ router.post('/intake', async (req, res) => {
         throw createOrderError;
       }
       
+      // Check if order_id column exists in the items table
+      let orderIdColumnExists = false;
+      try {
+        const checkColumnQuery = `
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE table_name = 'items' AND column_name = 'order_id'
+        `;
+        
+        const columnCheck = await client.query(checkColumnQuery);
+        orderIdColumnExists = columnCheck.rows.length > 0;
+        
+        if (!orderIdColumnExists) {
+          console.log('Adding order_id column to items table...');
+          // Add the order_id column if it doesn't exist
+          const addColumnQuery = `
+            ALTER TABLE items 
+            ADD COLUMN order_id INTEGER REFERENCES orders(id)
+          `;
+          await client.query(addColumnQuery);
+          orderIdColumnExists = true;
+          console.log('Successfully added order_id column to items table');
+        }
+      } catch (columnCheckError) {
+        console.error('Error checking or adding order_id column:', columnCheckError);
+        // Continue with fallback approach if column check/add fails
+      }
+  
       // 3. Create the item
       let itemId;
       const referenceId = generateReferenceId();
@@ -141,29 +169,72 @@ router.post('/intake', async (req, res) => {
         const estimatedValue = 5000; // €50.00
         const { commissionRate, payoutValue } = calculateCommissionAndPayout(estimatedValue);
         
-        // Use the items table structure WITH order_id
-        const createItemQuery = `
-          INSERT INTO items (
-            reference_id,
-            customer_id, 
-            title, 
-            description, 
-            status, 
-            created_at, 
-            updated_at,
-            image_urls,
-            order_id
-          ) 
-          VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7)
-          RETURNING id
-        `;
-        
         // Process image data and store it as JSON string
         const imageUrls = imageBase64 ? JSON.stringify([imageBase64.substring(0, 100) + '...']) : '[]';
         
-        const itemParams = [
-          referenceId,
-          customerId,
+        // Dynamically build the query based on whether order_id column exists
+        let createItemQuery;
+        let queryParams;
+        
+        if (orderIdColumnExists) {
+          // Use the items table structure WITH order_id
+          createItemQuery = `
+            INSERT INTO items (
+              reference_id,
+              customer_id, 
+              title, 
+              description, 
+              status, 
+              created_at, 
+              updated_at,
+              image_urls,
+              order_id
+            ) 
+            VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7)
+            RETURNING id
+          `;
+          queryParams = [
+            referenceId,
+            customerId,
+            itemDetails.title,
+            itemDetails.description || '',
+            'pending',
+            imageUrls,
+            orderId  // Include order_id parameter
+          ];
+        } else {
+          // Fallback to items table structure WITHOUT order_id
+          createItemQuery = `
+            INSERT INTO items (
+              reference_id,
+              customer_id, 
+              title, 
+              description, 
+              status, 
+              created_at, 
+              updated_at,
+              image_urls
+            ) 
+            VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6)
+            RETURNING id
+          `;
+          queryParams = [
+            referenceId,
+            customerId,
+            itemDetails.title,
+            itemDetails.description || '',
+            'pending',
+            imageUrls
+          ];
+        }
+        
+        // Execute the item creation query with the appropriate parameters
+        const itemResult = await client.query(createItemQuery, queryParams);
+        itemId = itemResult.rows[0].id;
+        
+        console.log(`Created item with ID ${itemId} linked to order ${orderId}`);
+        
+        // Skip the old unused parameters since we're now using the dynamic query approach
           title,
           description || null,
           'pending',
