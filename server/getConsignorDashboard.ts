@@ -57,7 +57,7 @@ export async function getConsignorDashboard(customerId: number) {
     }, {} as Record<number, typeof pricing.$inferSelect>);
     
     // Format the data for the dashboard
-    const formattedItems = customerItems.map(item => {
+    const formattedItems = allCustomerItems.map(item => {
       const itemPricing = pricingMap[item.id] || { 
         suggestedListingPrice: null, 
         commissionRate: null,
