@@ -42,6 +42,7 @@ import ConsignorItemDetail from "@/pages/ConsignorItemDetail";
 import NewItemIntakePage from "@/pages/NewItemIntakePage";
 import TokenTestPage from "@/pages/token-test-page";
 import SupabaseIntakePage from "@/pages/SupabaseIntakePage";
+import AuthPage from "@/pages/auth-page";
 // No layout for login pages - they have their own interface
 
 function Router() {
@@ -67,7 +68,7 @@ function Router() {
         <Toaster />
         <Switch>
           <Route path="/login" component={Login} />
-          <Route path="/auth" component={ConsignorLogin} />
+          <Route path="/auth" component={AuthPage} />
           <Route path="/consignor/login" component={ConsignorLogin} />
           <Route path="/admin/login" component={AdminLoginPage} />
         </Switch>
@@ -94,17 +95,20 @@ function Router() {
         <ProtectedRoute 
           path="/" 
           component={AdminDashboardPage} 
-          allowedRoles={[UserRole.ADMIN]} 
+          allowedRoles={[UserRole.ADMIN]}
+          redirectTo="/auth"
         />
         <ProtectedRoute 
           path="/dashboard" 
           component={AdminDashboardPage}
-          allowedRoles={[UserRole.ADMIN]} 
+          allowedRoles={[UserRole.ADMIN]}
+          redirectTo="/auth"
         />
         <ProtectedRoute 
           path="/admin/dashboard" 
           component={AdminDashboardPage}
           allowedRoles={[UserRole.ADMIN]} 
+          redirectTo="/auth"
         />
         <ProtectedRoute 
           path="/intake" 
