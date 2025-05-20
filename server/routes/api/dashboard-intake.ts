@@ -89,36 +89,26 @@ router.post('/intake', async (req, res) => {
       // Start transaction
       await client.query('BEGIN');
       
-      // 1. Generate a UUID for the customer (transform numeric ID to UUID if needed)
+      // Generate a real UUID from the customer ID
       let customerUuid;
       try {
-        // Check if we already have a UUID for this customer
-        const customerUuidQuery = `
-          SELECT id FROM customers_uuid_map
-          WHERE numeric_id = $1
+        // Use the uuid_generate_v5 function to create a deterministic UUID
+        // based on the customer ID, using a namespace UUID
+        const uuidQuery = `
+          SELECT uuid_generate_v5(
+            'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::uuid, 
+            $1::text
+          ) as customer_uuid
         `;
         
-        const customerUuidResult = await client.query(customerUuidQuery, [customerId]);
-        
-        if (customerUuidResult.rowCount > 0) {
-          customerUuid = customerUuidResult.rows[0].id;
-        } else {
-          // Create new UUID mapping for this customer
-          const createUuidMappingQuery = `
-            INSERT INTO customers_uuid_map (numeric_id, id)
-            VALUES ($1, uuid_generate_v4())
-            RETURNING id
-          `;
-          
-          const newUuidResult = await client.query(createUuidMappingQuery, [customerId]);
-          customerUuid = newUuidResult.rows[0].id;
-        }
-      } catch (uuidError) {
-        console.log('Using customer ID directly as string due to error:', uuidError.message);
-        // For simplicity, we'll just use the customer ID as a string
-        customerUuid = customerId.toString();
+        const uuidResult = await client.query(uuidQuery, [customerId.toString()]);
+        customerUuid = uuidResult.rows[0].customer_uuid;
+      } catch (error) {
+        // If that fails for any reason, just use a random UUID
+        const randomUuidQuery = `SELECT uuid_generate_v4() as uuid`;
+        const randomResult = await client.query(randomUuidQuery);
+        customerUuid = randomResult.rows[0].uuid;
       }
-      
       console.log(`Using customer identifier: ${customerUuid}`);
       
       // 2. Create a new order in new_orders
@@ -130,6 +120,7 @@ router.post('/intake', async (req, res) => {
         const defaultEstimatedValue = 5000; // €50.00
         const { commissionRate, payoutValue } = calculateCommissionAndPayout(defaultEstimatedValue);
         
+        // Use the new UUID-based table directly (we know it exists because we created it)
         const createOrderQuery = `
           INSERT INTO new_orders (
             customer_id,
@@ -155,42 +146,108 @@ router.post('/intake', async (req, res) => {
         throw createOrderError;
       }
       
-      // 3. Create the item in new_items
+      // 3. Create the item
       let itemId;
+      const referenceId = generateReferenceId();
+      
       try {
-        // Process image URLs - store the base64 image for now
-        const imageUrls = imageBase64 ? [`${imageBase64.substring(0, 100)}...`] : [];
-        
         // Set default value estimates
         const estimatedValue = 5000; // €50.00
         const { commissionRate, payoutValue } = calculateCommissionAndPayout(estimatedValue);
         
-        const createItemQuery = `
-          INSERT INTO new_items (
-            order_id,
-            title,
-            image_urls,
-            estimated_value,
-            payout_value,
-            commission_rate,
-            status
+        // Check if new_items table exists
+        const tableCheckQuery = `
+          SELECT EXISTS (
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_name = 'new_items'
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
-          RETURNING id
         `;
         
-        const itemInsertResult = await client.query(createItemQuery, [
-          orderId,
-          title,
-          imageUrls, // This will handle the array value correctly
-          estimatedValue,
-          payoutValue,
-          commissionRate,
-          'quoted'
-        ]);
+        const tableExists = await client.query(tableCheckQuery);
         
-        itemId = itemInsertResult.rows[0].id;
-        console.log(`Created item with UUID ${itemId}`);
+        if (!tableExists.rows[0].exists) {
+          console.log('new_items table does not exist, falling back to legacy tables');
+          
+          // Use the legacy items table
+          const createItemQuery = `
+            INSERT INTO items (
+              reference_id,
+              customer_id, 
+              title, 
+              description, 
+              status, 
+              created_at, 
+              updated_at,
+              order_id
+            ) 
+            VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6)
+            RETURNING id
+          `;
+          
+          const itemInsertResult = await client.query(createItemQuery, [
+            referenceId,
+            customerId,
+            title,
+            description || null,
+            'pending',
+            orderId
+          ]);
+          
+          itemId = itemInsertResult.rows[0].id;
+          console.log(`Created legacy item with ID ${itemId}`);
+          
+          // Create an entry in order_items junction table if needed
+          // First check if we need this (if order_id was successfully set in items table)
+          const checkOrderIdQuery = `
+            SELECT order_id FROM items WHERE id = $1
+          `;
+          
+          const orderIdCheck = await client.query(checkOrderIdQuery, [itemId]);
+          
+          if (!orderIdCheck.rows[0].order_id) {
+            // Link via junction table instead
+            const linkQuery = `
+              INSERT INTO order_items (order_id, item_id, created_at)
+              VALUES ($1, $2, NOW())
+              ON CONFLICT (order_id, item_id) DO NOTHING
+            `;
+            
+            await client.query(linkQuery, [orderId, itemId]);
+            console.log(`Linked item to order in order_items table`);
+          }
+        } else {
+          console.log('Using new_items table for UUID-based storage');
+          // Process image URLs - store the base64 image for now (abbreviated for storage purposes)
+          const imageUrls = imageBase64 ? [`${imageBase64.substring(0, 100)}...`] : [];
+          
+          // Use the new UUID-based table
+          const createItemQuery = `
+            INSERT INTO new_items (
+              order_id,
+              title,
+              image_urls,
+              estimated_value,
+              payout_value,
+              commission_rate,
+              status
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id
+          `;
+          
+          const itemInsertResult = await client.query(createItemQuery, [
+            orderId,
+            title,
+            imageUrls,
+            estimatedValue,
+            payoutValue,
+            commissionRate,
+            'quoted'
+          ]);
+          
+          itemId = itemInsertResult.rows[0].id;
+          console.log(`Created item with UUID ${itemId}`);
+        }
       } catch (createItemError) {
         console.error('Error creating item:', createItemError);
         throw createItemError;
@@ -198,26 +255,63 @@ router.post('/intake', async (req, res) => {
       
       // 4. Update the order's total values based on the items
       try {
-        // For now, we'll just use the single item's values
-        // In a real scenario, we'd sum all items in the order
-        const updateOrderTotalsQuery = `
-          UPDATE new_orders
-          SET 
-            total_estimated_value = (
-              SELECT SUM(estimated_value) 
-              FROM new_items 
-              WHERE order_id = $1
-            ),
-            total_payout_value = (
-              SELECT SUM(payout_value) 
-              FROM new_items 
-              WHERE order_id = $1
-            )
-          WHERE id = $1
+        // First check which tables we're using
+        const tablesCheckQuery = `
+          SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'new_orders') as has_new_orders,
+                 EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'orders') as has_orders
         `;
         
-        await client.query(updateOrderTotalsQuery, [orderId]);
-        console.log(`Updated order totals for order ${orderId}`);
+        const tablesExist = await client.query(tablesCheckQuery);
+        const hasNewOrders = tablesExist.rows[0].has_new_orders;
+        const hasOrders = tablesExist.rows[0].has_orders;
+        
+        if (hasNewOrders) {
+          // Update the new UUID-based orders table
+          const updateOrderTotalsQuery = `
+            UPDATE new_orders
+            SET 
+              total_estimated_value = (
+                SELECT SUM(estimated_value) 
+                FROM new_items 
+                WHERE order_id = $1
+              ),
+              total_payout_value = (
+                SELECT SUM(payout_value) 
+                FROM new_items 
+                WHERE order_id = $1
+              )
+            WHERE id = $1
+          `;
+          
+          await client.query(updateOrderTotalsQuery, [orderId]);
+          console.log(`Updated order totals for UUID order ${orderId}`);
+        } else if (hasOrders) {
+          // Update the legacy orders table
+          const updateOrderTotalsQuery = `
+            UPDATE orders
+            SET 
+              total_value = (
+                SELECT COALESCE(SUM(p.average_market_price), 0)
+                FROM items i
+                LEFT JOIN pricing p ON i.id = p.item_id
+                WHERE i.order_id = $1 OR i.id IN (
+                  SELECT item_id FROM order_items WHERE order_id = $1
+                )
+              ),
+              total_payout = (
+                SELECT COALESCE(SUM(p.suggested_payout), 0)
+                FROM items i
+                LEFT JOIN pricing p ON i.id = p.item_id
+                WHERE i.order_id = $1 OR i.id IN (
+                  SELECT item_id FROM order_items WHERE order_id = $1
+                )
+              )
+            WHERE id = $1
+          `;
+          
+          await client.query(updateOrderTotalsQuery, [orderId]);
+          console.log(`Updated order totals for legacy order ${orderId}`);
+        }
       } catch (updateTotalsError) {
         console.warn('Non-critical error updating order totals:', updateTotalsError);
         // Continue even if totals update fails
@@ -226,7 +320,7 @@ router.post('/intake', async (req, res) => {
       // 5. Commit the transaction
       await client.query('COMMIT');
       
-      // Return success response
+      // Return success response with appropriate structure based on what was created
       return res.json({
         success: true,
         message: "Item submitted and linked to order successfully",
@@ -235,14 +329,14 @@ router.post('/intake', async (req, res) => {
         data: {
           order: {
             id: orderId,
-            orderNumber: orderNumber || 'Generated',
+            orderNumber: orderNumber,
             status: 'awaiting_shipment'
           },
           item: {
             id: itemId,
-            referenceId: generateReferenceId(), // Generate a reference ID for display
+            referenceId: referenceId,
             title: title,
-            status: 'quoted'
+            status: 'pending'
           }
         }
       });
