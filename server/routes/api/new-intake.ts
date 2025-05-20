@@ -110,23 +110,30 @@ router.post('/', async (req: Request, res: Response) => {
       // In a real implementation, you'd upload this to cloud storage and store the URL
       const imageUrl = 'data:image/jpeg;base64,STORED_SEPARATELY';
       
-      // 1. Create the order
+      // 1. Create the order in the main orders table
       const orderResult = await client.query(
-        'INSERT INTO tmp_orders (customer_id, order_number, total_value, payout_value) VALUES ($1, $2, $3, $4) RETURNING id',
-        [customerId, orderNumber, estimatedValue, payoutValue]
+        'INSERT INTO orders (customer_id, order_number, status, total_amount, payout_amount) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [customerId, orderNumber, 'awaiting_shipment', estimatedValue, payoutValue]
       );
       
       const orderId = orderResult.rows[0].id;
       console.log(`Created order with ID ${orderId}`);
       
-      // 2. Create the item
+      // 2. Create the item in the main items table
       const itemResult = await client.query(
-        'INSERT INTO tmp_items (reference_id, order_id, customer_id, title, description, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-        [referenceId, orderId, customerId, title, description || '', imageUrl]
+        'INSERT INTO items (reference_id, customer_id, title, description, image_urls, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+        [referenceId, customerId, title, description || '', imageUrl, 'pending']
       );
       
       const itemId = itemResult.rows[0].id;
       console.log(`Created item with ID ${itemId}`);
+      
+      // 3. Connect the item to the order using the order_items junction table
+      const orderItemResult = await client.query(
+        'INSERT INTO order_items (order_id, item_id) VALUES ($1, $2) RETURNING id',
+        [orderId, itemId]
+      );
+      console.log(`Created order_item relation with ID ${orderItemResult.rows[0].id}`);
       
       // Commit the transaction
       await client.query('COMMIT');
