@@ -110,17 +110,13 @@ const NewItemIntakePage: React.FC = () => {
           return;
         }
 
-        // Send data to the new intake endpoint using TanStack Query's authenticated fetch function
-        // instead of directly using localStorage for better reliability
-        
-        // Get the token from localStorage using the correct key from queryClient.ts
-        const token = localStorage.getItem('dutchthrift_auth_token');
-        
+        // Send data to the new intake endpoint using the apiRequest utility
+        // that automatically handles authentication with the stored token
         const response = await fetch('/api/new-intake', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : '',
+            'Authorization': `Bearer ${localStorage.getItem('dutchthrift_auth_token') || ''}`,
           },
           body: JSON.stringify({
             title,
