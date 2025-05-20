@@ -217,47 +217,38 @@ export class SupabaseStorage implements IStorage {
 
   async createAnalysis(analysisData: InsertAnalysis): Promise<Analysis> {
     try {
-      console.log('Creating analysis with data:', JSON.stringify(analysisData, null, 2));
+      console.log('Creating analysis with data:', JSON.stringify({
+        ...analysisData,
+        // Don't log full image data to console
+        imageBase64: analysisData.imageBase64 ? '(base64 data truncated)' : null
+      }, null, 2));
       
-      // Get direct client for more detailed error information
+      // Map fields from camelCase to snake_case for database compatibility
+      const mappedData: Record<string, any> = {
+        item_id: analysisData.itemId,
+      };
+      
+      // Map all fields to snake_case
+      if (analysisData.brand) mappedData.brand = analysisData.brand;
+      if (analysisData.model) mappedData.model = analysisData.model;
+      if (analysisData.condition) mappedData.condition = analysisData.condition;
+      if (analysisData.productType) mappedData.product_type = analysisData.productType;
+      if (analysisData.additionalNotes) mappedData.additional_notes = analysisData.additionalNotes;
+      if (analysisData.analysisSummary) mappedData.analysis_summary = analysisData.analysisSummary;
+      if (analysisData.confidenceScore) mappedData.confidence_score = analysisData.confidenceScore;
+      if (analysisData.category) mappedData.category = analysisData.category;
+      if (analysisData.materials) mappedData.materials = analysisData.materials;
+      if (analysisData.authenticity) mappedData.authenticity = analysisData.authenticity;
+      if (analysisData.rarity) mappedData.rarity = analysisData.rarity;
+      if (analysisData.color) mappedData.color = analysisData.color;
+      if (analysisData.dimensions) mappedData.dimensions = analysisData.dimensions;
+      if (analysisData.features) mappedData.features = analysisData.features;
+      if (analysisData.accessories) mappedData.accessories = analysisData.accessories;
+      
+      // Get direct client for reliable error information
       const client = await this.getClient();
       
       try {
-        // First, check which columns actually exist in the analysis table
-        const columnsQuery = `
-          SELECT column_name 
-          FROM information_schema.columns 
-          WHERE table_name = 'analysis'
-        `;
-        
-        const columnsResult = await client.query(columnsQuery);
-        const existingColumns = columnsResult.rows.map(row => row.column_name);
-        console.log('Available columns in analysis table:', existingColumns);
-        
-        // Filter data to only include fields that have corresponding columns
-        const filteredData: Record<string, any> = {};
-        
-        for (const [key, value] of Object.entries(analysisData)) {
-          // Convert camelCase field names to snake_case for the database
-          const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-          
-          if (existingColumns.includes(key)) {
-            // Direct match (column name matches field name exactly)
-            filteredData[key] = value;
-          } else if (existingColumns.includes(snakeKey)) {
-            // Convert to snake_case (e.g., productType -> product_type)
-            filteredData[snakeKey] = value;
-          } else {
-            console.log(`Skipping field '${key}' as no matching column exists in the database`);
-          }
-        }
-        
-        // Handle the special case for item_id (required field)
-        if (!filteredData['item_id'] && analysisData.itemId) {
-          filteredData['item_id'] = analysisData.itemId;
-        }
-        
-        // Make sure we have at least some data to insert
         if (Object.keys(filteredData).length === 0) {
           throw new Error('No valid fields to insert into analysis table');
         }
