@@ -1,16 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { Pool } from '@neondatabase/serverless';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { pool, db } from '../../db'; // Import the database pool from our centralized db.ts file
 
 // Initialize environment variables
 dotenv.config();
-
-// Database setup
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
 
 // Define the intake schema
 const intakeSchema = z.object({
@@ -90,8 +85,14 @@ router.post('/', async (req: Request, res: Response) => {
     
     console.log(`Processing intake for customer ID: ${customerId}`);
     
-    // Get a client from the pool
-    const client = await pool.connect();
+    // Use a direct connection pool instead of WebSocket
+    let client;
+    try {
+      client = await pool.connect();
+    } catch (err) {
+      console.error('Failed to connect to database:', err);
+      return res.status(500).json({ success: false, message: 'Failed to connect to database' });
+    }
     
     try {
       // Start a transaction
