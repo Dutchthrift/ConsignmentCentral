@@ -79,6 +79,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const sessionService = new SessionService();
   app.use(sessionService.getSessionMiddleware());
   
+  // Add token-based authentication as a fallback
+  const { tokenAuth } = require('./middleware/token-auth');
+  app.use(tokenAuth);
+  
   // Register authentication routes
   const authService = registerAuthRoutes(app, storage);
   
