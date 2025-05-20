@@ -4,11 +4,19 @@ import { setupVite, serveStatic, log } from "./vite";
 // Check database connection to ensure database is working properly
 import { getDatabaseStatus } from "./db-config";
 import "dotenv/config";
+import session from "express-session";
+import sessionConfig from "./session-config";
 
 const app = express();
 // Increase JSON payload limit to 50MB for image uploads
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+
+// Set trust proxy for session security in production
+app.set('trust proxy', 1);
+
+// Set up session middleware
+app.use(session(sessionConfig));
 
 app.use((req, res, next) => {
   const start = Date.now();

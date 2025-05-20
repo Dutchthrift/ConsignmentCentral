@@ -26,6 +26,7 @@ import SessionService from "./services/session.service";
 import insightsRoutes from "./routes/insights.ts";
 import { requireAdmin } from "./middleware/auth.middleware";
 import { registerSupabaseAuthRoutes } from "./routes/auth/supabase-auth.routes";
+import authRoutes from "./routes/auth/auth.routes";
 
 // Import route handlers
 import adminRoutes from "./routes/admin.ts";
@@ -138,10 +139,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Register Supabase authentication routes
+  // Register our new session-based authentication routes
+  app.use('/api/auth', authRoutes);
+  
+  // Register legacy Supabase authentication routes as fallback
   const supabaseAuthService = registerSupabaseAuthRoutes(app, storage);
   
-  // Demo login route - fallback when Supabase is unavailable
+  // Demo login route - fallback when database is unavailable
   app.post('/api/auth/demo-login', (req, res) => {
     const { email, password } = req.body;
     

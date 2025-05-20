@@ -1,211 +1,254 @@
 import { Request, Response, NextFunction } from 'express';
+import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
+import { promisify } from 'util';
 import { db } from '../db';
-import { adminUsers, customers, UserRole } from '@shared/schema';
+import { adminUsers, users, customers } from '@shared/schema';
 import { eq } from 'drizzle-orm';
-import bcrypt from 'bcryptjs';
-import session from 'express-session';
 
-// Constants
-const SALT_ROUNDS = 10;
-
-// Types
+// Extend Express Request to include user and authentication properties
 export interface AuthenticatedRequest extends Request {
   user?: any;
-  isAuthenticated: boolean;
-  userType?: string;
+  userType?: 'admin' | 'consignor';
+  isAuthenticated(): boolean;
 }
 
+// Promisify the scrypt function for password hashing
+const scryptAsync = promisify(scrypt);
+
 export class AuthService {
-  // Hash password
+  /**
+   * Hash a password with a random salt
+   */
   async hashPassword(password: string): Promise<string> {
-    const salt = await bcrypt.genSalt(SALT_ROUNDS);
-    return bcrypt.hash(password, salt);
+    const salt = randomBytes(16).toString('hex');
+    const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+    return `${buf.toString('hex')}.${salt}`;
   }
 
-  // Verify password
+  /**
+   * Verify a password against a stored hash
+   */
   async verifyPassword(password: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(password, hash);
+    const [hashed, salt] = hash.split('.');
+    const hashedBuf = Buffer.from(hashed, 'hex');
+    const suppliedBuf = (await scryptAsync(password, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
   }
 
-  // Admin login
+  /**
+   * Login admin with email and password
+   */
   async loginAdmin(email: string, password: string): Promise<any> {
     try {
-      // Find admin by email
+      // Find admin user by email
       const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.email, email));
       
       if (!admin) {
         throw new Error('Invalid email or password');
       }
-      
+
       // Verify password
-      const isValid = await this.verifyPassword(password, admin.password);
+      const passwordValid = await this.verifyPassword(password, admin.password);
       
-      if (!isValid) {
+      if (!passwordValid) {
         throw new Error('Invalid email or password');
       }
-      
-      // Return admin without password
+
+      // Update last login time
+      await db
+        .update(adminUsers)
+        .set({ last_login: new Date() })
+        .where(eq(adminUsers.id, admin.id));
+
+      // Return admin user without password
       const { password: _, ...adminWithoutPassword } = admin;
-      return { ...adminWithoutPassword, userType: 'admin' };
+      return adminWithoutPassword;
     } catch (error) {
       console.error('Admin login error:', error);
-      throw error;
+      throw new Error('Authentication failed');
     }
   }
 
-  // Consignor login
+  /**
+   * Login consignor with email and password
+   */
   async loginConsignor(email: string, password: string): Promise<any> {
     try {
-      // Find consignor by email
-      const [consignor] = await db.select().from(customers).where(eq(customers.email, email));
+      // Find user by email
+      const [user] = await db.select().from(users).where(eq(users.email, email));
       
-      if (!consignor) {
+      if (!user) {
         throw new Error('Invalid email or password');
       }
-      
-      // Check if password exists
-      if (!consignor.password) {
-        throw new Error('Account not set up properly. Please contact support.');
-      }
-      
+
       // Verify password
-      const isValid = await this.verifyPassword(password, consignor.password);
+      const passwordValid = await this.verifyPassword(password, user.password);
       
-      if (!isValid) {
+      if (!passwordValid) {
         throw new Error('Invalid email or password');
       }
-      
-      // Return consignor without password
-      const { password: _, ...consignorWithoutPassword } = consignor;
-      return { ...consignorWithoutPassword, userType: 'consignor', role: UserRole.CONSIGNOR };
+
+      // Get associated customer record
+      const [customer] = await db
+        .select()
+        .from(customers)
+        .where(eq(customers.user_id, user.id));
+
+      // Update last login time
+      await db
+        .update(users)
+        .set({ last_login: new Date() })
+        .where(eq(users.id, user.id));
+
+      // Return user and customer data without password
+      const { password: _, ...userWithoutPassword } = user;
+      return { ...userWithoutPassword, customer };
     } catch (error) {
       console.error('Consignor login error:', error);
-      throw error;
+      throw new Error('Authentication failed');
     }
   }
 
-  // Register new consignor
-  async registerConsignor(email: string, password: string, firstName: string, lastName: string): Promise<any> {
+  /**
+   * Register a new consignor
+   */
+  async registerConsignor(
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string
+  ): Promise<any> {
     try {
-      // Check if email already exists
-      const [existingUser] = await db.select().from(customers).where(eq(customers.email, email));
+      // Check if user already exists
+      const existingUsers = await db.select().from(users).where(eq(users.email, email));
       
-      if (existingUser) {
-        throw new Error('Email already in use');
+      if (existingUsers.length > 0) {
+        throw new Error('Email already exists');
       }
-      
+
       // Hash password
       const hashedPassword = await this.hashPassword(password);
-      
-      // Create new consignor
-      const [newConsignor] = await db.insert(customers).values({
-        email,
-        password: hashedPassword,
-        first_name: firstName,
-        last_name: lastName,
-        created_at: new Date(),
-        updated_at: new Date()
-      }).returning();
-      
-      // Return consignor without password
-      const { password: _, ...consignorWithoutPassword } = newConsignor;
-      return { ...consignorWithoutPassword, userType: 'consignor', role: UserRole.CONSIGNOR };
+
+      // Create user
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          email,
+          password: hashedPassword,
+          role: 'consignor',
+          name: `${firstName} ${lastName}`,
+          created_at: new Date(),
+          provider: 'local'
+        })
+        .returning();
+
+      // Create customer record
+      const [customer] = await db
+        .insert(customers)
+        .values({
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          user_id: newUser.id,
+          created_at: new Date(),
+          updated_at: new Date()
+        })
+        .returning();
+
+      // Return user data without password
+      const { password: _, ...userWithoutPassword } = newUser;
+      return { ...userWithoutPassword, customer };
     } catch (error) {
       console.error('Consignor registration error:', error);
-      throw error;
+      throw new Error('Registration failed: ' + (error as Error).message);
     }
   }
 
-  // Middleware to require authentication
+  /**
+   * Middleware to require authentication for protected routes
+   */
   requireAuth() {
     return (req: Request, res: Response, next: NextFunction) => {
-      const authenticatedReq = req as AuthenticatedRequest;
-      
-      if (!req.session || !req.session.userId || !req.session.userType) {
-        return res.status(401).json({ success: false, message: 'Not authenticated' });
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
       }
-      
-      authenticatedReq.isAuthenticated = true;
-      authenticatedReq.userType = req.session.userType;
-      
       next();
     };
   }
 
-  // Middleware to require admin
+  /**
+   * Middleware to require admin role for admin routes
+   */
   requireAdmin() {
     return [
       this.requireAuth(),
       (req: Request, res: Response, next: NextFunction) => {
-        const authenticatedReq = req as AuthenticatedRequest;
-        
-        if (authenticatedReq.userType !== 'admin') {
-          return res.status(403).json({ success: false, message: 'Admin access required' });
+        if (req.session?.userType !== 'admin') {
+          return res.status(403).json({ error: 'Forbidden: Admin access required' });
         }
-        
         next();
       }
     ];
   }
 
-  // Middleware to require consignor
+  /**
+   * Middleware to require consignor role for consignor routes
+   */
   requireConsignor() {
     return [
       this.requireAuth(),
       (req: Request, res: Response, next: NextFunction) => {
-        const authenticatedReq = req as AuthenticatedRequest;
-        
-        if (authenticatedReq.userType !== 'consignor') {
-          return res.status(403).json({ success: false, message: 'Consignor access required' });
+        if (req.session?.userType !== 'consignor') {
+          return res.status(403).json({ error: 'Forbidden: Consignor access required' });
         }
-        
         next();
       }
     ];
   }
 
-  // Load user info based on session
+  /**
+   * Load user based on session data
+   */
   async loadUser(req: Request): Promise<any> {
+    if (!req.session || !req.session.userId || !req.session.userType) {
+      return null;
+    }
+
     try {
-      const session = req.session;
-      
-      if (!session || !session.userId || !session.userType) {
-        return null;
-      }
-      
-      const userId = session.userId;
-      const userType = session.userType;
-      
-      // Load admin
-      if (userType === 'admin') {
-        const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.id, userId));
+      if (req.session.userType === 'admin') {
+        const [admin] = await db
+          .select()
+          .from(adminUsers)
+          .where(eq(adminUsers.id, req.session.userId));
         
-        if (!admin) {
-          return null;
+        if (admin) {
+          const { password: _, ...adminWithoutPassword } = admin;
+          return adminWithoutPassword;
         }
+      } else if (req.session.userType === 'consignor') {
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, req.session.userId));
         
-        const { password: _, ...adminWithoutPassword } = admin;
-        return { ...adminWithoutPassword, userType: 'admin' };
-      }
-      
-      // Load consignor
-      if (userType === 'consignor') {
-        const [consignor] = await db.select().from(customers).where(eq(customers.id, userId));
-        
-        if (!consignor) {
-          return null;
+        if (user) {
+          const [customer] = await db
+            .select()
+            .from(customers)
+            .where(eq(customers.user_id, user.id));
+          
+          const { password: _, ...userWithoutPassword } = user;
+          return { ...userWithoutPassword, customer };
         }
-        
-        const { password: _, ...consignorWithoutPassword } = consignor;
-        return { ...consignorWithoutPassword, userType: 'consignor', role: UserRole.CONSIGNOR };
       }
       
       return null;
     } catch (error) {
-      console.error('Load user error:', error);
+      console.error('Error loading user:', error);
       return null;
     }
   }
 }
 
+// Create and export a singleton instance
 export const authService = new AuthService();
