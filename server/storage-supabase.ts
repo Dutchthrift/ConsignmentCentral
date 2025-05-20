@@ -218,16 +218,54 @@ export class SupabaseStorage implements IStorage {
   async createAnalysis(analysisData: InsertAnalysis): Promise<Analysis> {
     try {
       console.log('Creating analysis with data:', JSON.stringify(analysisData, null, 2));
-      console.log('Using "analyses" table with schema:', analyses);
       
       // Get direct client for more detailed error information
       const client = await this.getClient();
       
       try {
+        // First, check which columns actually exist in the analysis table
+        const columnsQuery = `
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'analysis'
+        `;
+        
+        const columnsResult = await client.query(columnsQuery);
+        const existingColumns = columnsResult.rows.map(row => row.column_name);
+        console.log('Available columns in analysis table:', existingColumns);
+        
+        // Filter data to only include fields that have corresponding columns
+        const filteredData: Record<string, any> = {};
+        
+        for (const [key, value] of Object.entries(analysisData)) {
+          // Convert camelCase field names to snake_case for the database
+          const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+          
+          if (existingColumns.includes(key)) {
+            // Direct match (column name matches field name exactly)
+            filteredData[key] = value;
+          } else if (existingColumns.includes(snakeKey)) {
+            // Convert to snake_case (e.g., productType -> product_type)
+            filteredData[snakeKey] = value;
+          } else {
+            console.log(`Skipping field '${key}' as no matching column exists in the database`);
+          }
+        }
+        
+        // Handle the special case for item_id (required field)
+        if (!filteredData['item_id'] && analysisData.itemId) {
+          filteredData['item_id'] = analysisData.itemId;
+        }
+        
+        // Make sure we have at least some data to insert
+        if (Object.keys(filteredData).length === 0) {
+          throw new Error('No valid fields to insert into analysis table');
+        }
+        
         // Use raw SQL for more control and better error messages
-        const columns = Object.keys(analysisData).join(', ');
-        const placeholders = Object.keys(analysisData).map((_, i) => `$${i + 1}`).join(', ');
-        const values = Object.values(analysisData);
+        const columns = Object.keys(filteredData).join(', ');
+        const placeholders = Object.keys(filteredData).map((_, i) => `$${i + 1}`).join(', ');
+        const values = Object.values(filteredData);
         
         const query = `
           INSERT INTO analysis (${columns})
@@ -242,7 +280,34 @@ export class SupabaseStorage implements IStorage {
         console.log('Insert successful, returned rows:', result.rows);
         
         if (result.rows.length > 0) {
-          return result.rows[0];
+          // Convert returned data to match expected Analysis type
+          const dbResult = result.rows[0];
+          
+          // Map the database result to the Analysis type format
+          const analysis: Analysis = {
+            id: dbResult.id,
+            itemId: dbResult.item_id,
+            brand: dbResult.brand || null,
+            productType: dbResult.product_type || null,
+            model: dbResult.model || null,
+            condition: dbResult.condition || null,
+            category: dbResult.category || null,
+            features: dbResult.features || null,
+            accessories: dbResult.accessories || null,
+            manufactureYear: dbResult.manufacture_year || null,
+            color: dbResult.color || null,
+            dimensions: dbResult.dimensions || null,
+            weight: dbResult.weight || null,
+            materials: dbResult.materials || null,
+            authenticity: dbResult.authenticity || null,
+            rarity: dbResult.rarity || null,
+            additionalNotes: dbResult.additional_notes || null,
+            analysisSummary: dbResult.analysis_summary || null,
+            confidenceScore: dbResult.confidence_score || null,
+            createdAt: dbResult.created_at || new Date()
+          } as Analysis;
+          
+          return analysis;
         } else {
           throw new Error('No rows returned from analysis insert');
         }
