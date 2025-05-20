@@ -1,36 +1,18 @@
 /**
- * Utility functions for generating various IDs and reference numbers
+ * Utility functions for generating reference IDs and order numbers
  */
 
-/**
- * Generates a random reference ID for items
- * Format: RmaXXXXXXXXXXXX (where X is alphanumeric)
- */
+// Generate a unique reference ID for items
 export function generateReferenceId(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let referenceId = 'Rma';
-  
-  // Generate 10 random characters
-  for (let i = 0; i < 10; i++) {
-    referenceId += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  
-  return referenceId;
+  const timestamp = Date.now().toString(36);
+  const randomChars = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `DT-${timestamp}-${randomChars}`;
 }
 
-/**
- * Generates an order number for new orders
- * Format: CS-DDMMYY-XXX-XXXX (CS = Consignment, date, random numbers)
- */
+// Generate an order number
 export function generateOrderNumber(): string {
-  const date = new Date();
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear().toString().slice(2);
-  
-  // Generate random segments
-  const randomSegment1 = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  const randomSegment2 = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  
-  return `CS-${day}${month}${year}-${randomSegment1}-${randomSegment2}`;
+  const prefix = 'ORD';
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `${prefix}-${timestamp}-${random}`;
 }

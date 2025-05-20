@@ -1,25 +1,39 @@
 /**
- * Utility functions for pricing calculations
+ * Pricing utility functions
  */
 
-/**
- * Calculate commission and payout amounts based on the estimated value
- * @param estimatedValue - The estimated value in cents
- * @returns Object with commission rate, amount and payout amount
- */
-export function calculateCommission(estimatedValue: number) {
+// Calculate commission based on item value
+export function calculateCommission(itemValue: number): {
+  commissionRate: number;
+  commissionAmount: number;
+  sellerPayout: number;
+} {
   // Default commission rate is 30%
   const commissionRate = 30;
-  
-  // Calculate commission amount
-  const commissionAmount = Math.round(estimatedValue * (commissionRate / 100));
-  
-  // Calculate payout amount (what the consignor receives)
-  const payoutAmount = estimatedValue - commissionAmount;
+  const commissionAmount = Math.round(itemValue * (commissionRate / 100));
+  const sellerPayout = itemValue - commissionAmount;
   
   return {
     commissionRate,
     commissionAmount,
-    payoutAmount
+    sellerPayout
+  };
+}
+
+// Check item eligibility for consignment
+export function checkEligibility(itemValue: number): {
+  eligible: boolean;
+  reason?: string;
+} {
+  // Minimum item value for consignment is €20
+  if (itemValue < 2000) { // €20.00 in cents
+    return {
+      eligible: false,
+      reason: "Item value is below our minimum threshold of €20.00"
+    };
+  }
+  
+  return {
+    eligible: true
   };
 }

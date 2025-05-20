@@ -9,7 +9,7 @@ import { storage } from '../../storage';
 
 const router = Router();
 
-// Schema for validating intake requests
+// Define intake request schema
 const intakeRequestSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().optional(),
@@ -58,7 +58,7 @@ router.post('/', async (req, res) => {
     
     // Extract customer ID from authenticated session or JWT token
     const customerId = req.user?.id || 
-                       (req.isAuthenticated() && req.session?.passport?.user) || 
+                       (req.session?.passport?.user) || 
                        (req.headers.authorization && req.headers.authorization.startsWith('Bearer ') && 
                         JSON.parse(Buffer.from(req.headers.authorization.split(' ')[1].split('.')[1], 'base64').toString()).id);
     
@@ -83,49 +83,39 @@ router.post('/', async (req, res) => {
       });
     }
     
-    const { title, description, imageBase64 } = validationResult.data;
+    const { title, description, imageBase64, brand, category, condition } = validationResult.data;
     
     try {
-      // Using in-memory storage instead of database transaction
-      
-      // We'll use the numeric customer ID from the authentication
       console.log(`Using customer identifier: ${customerId}`);
       
-      // Set default estimated values
-      const defaultEstimatedValue = 5000; // €50.00
-      const { commissionRate, payoutValue } = calculateCommissionAndPayout(defaultEstimatedValue);
-      
-      // Generate order data
-      const orderNumber = generateOrderNumber();
-      const orderId = Math.floor(Math.random() * 1000) + 1; // Random order ID for in-memory storage
-      
-      console.log(`Created simulated order with ID: ${orderId} and number: ${orderNumber}`);
-      
-      // Generate item data
+      // Generate reference number and create simulated data
       const referenceId = generateReferenceId();
-      const itemId = Math.floor(Math.random() * 1000) + 1; // Random item ID for in-memory storage
+      const orderNumber = generateOrderNumber();
       
-      console.log(`Created simulated item with ID: ${itemId} and reference: ${referenceId}`);
+      // Generate a random ID for the item
+      const itemId = Math.floor(Math.random() * 10000) + 1;
       
-      // If image was provided, log it
-      let imageUrl = null;
-      if (imageBase64) {
-        // For now, just log that we received an image
-        console.log('Received image data, length:', imageBase64.length);
-        imageUrl = `image_${itemId}.jpg`; // Placeholder URL
-      }
-      
-      // Return success response
+      // Create a simulated response
       return res.status(201).json({
         success: true,
         message: "Item submitted successfully",
         data: {
-          itemId,
-          orderId,
-          reference: referenceId,
-          title,
-          description,
-          imageUrl
+          id: itemId,
+          referenceId: referenceId,
+          title: title,
+          description: description || "",
+          brand: brand || "Unknown",
+          category: category || "Other",
+          condition: condition || "Used - Good",
+          customerId: customerId,
+          orderNumber: orderNumber,
+          status: "quoted",
+          pricing: {
+            estimatedValue: 5000, // €50.00
+            commissionRate: 30,
+            commissionValue: 1500, // €15.00
+            payoutValue: 3500, // €35.00
+          }
         }
       });
     } catch (error) {

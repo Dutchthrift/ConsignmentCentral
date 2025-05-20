@@ -57,7 +57,7 @@ function generateReferenceId(): string {
 }
 
 // Import our new dashboard intake routers
-import dashboardIntakeRouter from './routes/api/dashboard-intake';
+import dashboardIntakeRouter from './routes/api/dashboard-intake.new';
 import newIntakeRouter from './routes/api/new-intake';
 
 export async function registerRoutes(app: Express): Promise<Server> {
