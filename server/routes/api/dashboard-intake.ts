@@ -183,7 +183,7 @@ router.post('/intake', async (req, res) => {
         
         await client.query(linkQuery, [orderId, itemId]);
         console.log(`Linked item to order in order_items table`);
-      }
+      
       } catch (createItemError) {
         console.error('Error creating item:', createItemError);
         throw createItemError;
