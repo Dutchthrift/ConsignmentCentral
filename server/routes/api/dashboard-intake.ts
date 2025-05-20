@@ -110,30 +110,16 @@ router.post('/intake', async (req, res) => {
             RETURNING id
           `;
           
-          // Try to create the mapping table if it doesn't exist
-          try {
-            await client.query(`
-              CREATE TABLE IF NOT EXISTS customers_uuid_map (
-                numeric_id INTEGER PRIMARY KEY,
-                id UUID NOT NULL DEFAULT uuid_generate_v4()
-              )
-            `);
-            
-            const newUuidResult = await client.query(createUuidMappingQuery, [customerId]);
-            customerUuid = newUuidResult.rows[0].id;
-          } catch (mappingError) {
-            console.log('Could not create UUID mapping, using direct conversion');
-            // Fallback to using customerId as UUID seed (less ideal but works for demo)
-            customerUuid = customerId;
-          }
+          const newUuidResult = await client.query(createUuidMappingQuery, [customerId]);
+          customerUuid = newUuidResult.rows[0].id;
         }
       } catch (uuidError) {
-        console.error('Error getting customer UUID:', uuidError);
-        // Fallback to using the numeric ID directly
-        customerUuid = customerId;
+        console.log('Using customer ID directly as string due to error:', uuidError.message);
+        // For simplicity, we'll just use the customer ID as a string
+        customerUuid = customerId.toString();
       }
       
-      console.log(`Using customer UUID: ${customerUuid}`);
+      console.log(`Using customer identifier: ${customerUuid}`);
       
       // 2. Create a new order in new_orders
       const orderNumber = generateOrderNumber();
