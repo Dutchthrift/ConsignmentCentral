@@ -1,76 +1,73 @@
-import { Route, Redirect } from "wouter";
-import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { UserRole } from "@shared/schema";
+import { Loader2 } from "lucide-react";
+import { Redirect, Route, RouteProps } from "wouter";
 
-type ProtectedRouteProps = {
+interface ProtectedRouteProps extends RouteProps {
   path: string;
-  component: React.ComponentType<any>;
-  allowedRoles?: string[];
-  redirectTo?: string;
-};
+  requiredUserType?: 'admin' | 'consignor';
+  component: React.ComponentType;
+}
 
-export function ProtectedRoute({ 
-  path, 
-  component: Component, 
-  allowedRoles = [],
-  redirectTo = "/auth"
+export function ProtectedRoute({
+  path,
+  requiredUserType,
+  component: Component,
+  ...rest
 }: ProtectedRouteProps) {
-  const { user, isLoading, error } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  // Handle loading state
+  // Display a loading indicator while checking authentication status
   if (isLoading) {
     return (
       <Route path={path}>
         <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-border" />
         </div>
       </Route>
     );
   }
 
-  // Handle error state (added error handling)
-  if (error) {
-    console.error("Auth error in ProtectedRoute:", error);
-    return (
-      <Route path={path}>
-        <div className="flex flex-col items-center justify-center min-h-screen">
-          <div className="text-destructive mb-4">Authentication Error</div>
-          <p className="text-sm text-muted-foreground mb-4">There was a problem checking your authentication status.</p>
-          <button 
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
-            onClick={() => window.location.href = "/auth"}
-          >
-            Go to Login
-          </button>
-        </div>
-      </Route>
-    );
-  }
-
-  // If no user, redirect to the specified redirect path (defaults to /auth)
+  // If not authenticated, redirect to auth page
   if (!user) {
-    console.log(`No user found, redirecting to ${redirectTo}`);
     return (
       <Route path={path}>
-        <Redirect to={redirectTo} />
+        <Redirect to="/auth" />
       </Route>
     );
   }
 
-  // If roles are specified, check if user has the required role
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    // Redirect admins to admin dashboard and consignors to consignor dashboard
-    const redirectPath = user.role === UserRole.ADMIN ? "/" : "/consignor/dashboard";
+  // If a specific user type is required, check for that
+  if (requiredUserType && user.userType !== requiredUserType) {
+    // For admin routes, redirect consignors to their dashboard
+    if (requiredUserType === 'admin' && user.userType === 'consignor') {
+      return (
+        <Route path={path}>
+          <Redirect to="/consignor/dashboard" />
+        </Route>
+      );
+    }
     
+    // For consignor routes, redirect admins to their dashboard
+    if (requiredUserType === 'consignor' && user.userType === 'admin') {
+      return (
+        <Route path={path}>
+          <Redirect to="/admin/dashboard" />
+        </Route>
+      );
+    }
+    
+    // Fallback to auth page if user type doesn't match
     return (
       <Route path={path}>
-        <Redirect to={redirectPath} />
+        <Redirect to="/auth" />
       </Route>
     );
   }
 
-  // User is authenticated and has the required role, render the component
-  return <Route path={path} component={Component} />;
+  // If authenticated and user type matches or is not required, render the component
+  return (
+    <Route path={path} {...rest}>
+      <Component />
+    </Route>
+  );
 }

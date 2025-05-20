@@ -7,7 +7,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { UserRole } from "@shared/schema";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
@@ -22,9 +21,6 @@ import SetupAccount from "@/pages/SetupAccount";
 import SetupComplete from "@/pages/SetupComplete";
 import ModelTraining from "@/pages/ModelTraining";
 import Consignors from "@/pages/Consignors";
-import Login from "@/pages/Login";
-import ConsignorLogin from "@/pages/ConsignorLogin";
-import AdminLoginPage from "@/pages/AdminLoginPage";
 import AdminDashboardPage from "@/pages/AdminDashboardPage";
 import OrderDetail from "@/pages/OrderDetail";
 import ConsignorDashboard from "@/pages/ConsignorDashboard";
@@ -49,28 +45,21 @@ function Router() {
   const [location] = useLocation();
   
   // Check path types
-  const isLoginPath = location === "/login" || location === "/auth";
-  const isConsignorLoginPath = location === "/consignor/login";
+  const isAuthPath = location === "/auth";
   const isStorefrontPath = location.startsWith("/storefront");
   const isSetupPath = location.startsWith("/setup-account") || location.startsWith("/setup-complete");
-  // Explicitly exclude /consignors from consignor paths - it should use admin layout
-  const isConsignorPath = location.startsWith("/consignor") && !isConsignorLoginPath;
+  // Explicitly exclude /consignors from consignor paths
+  const isConsignorPath = location.startsWith("/consignor") && location !== "/consignor/login";
   // Ensure admin paths always use admin layout - NOTE: /consignors is an admin path
   const isAdminPath = location === "/consignors" || location.startsWith("/admin");
-  
-  // Check if we're on admin login path
-  const isAdminLoginPath = location === "/admin/login";
 
-  // If we're on a login page, don't use the standard layout
-  if (isLoginPath || isConsignorLoginPath || isAdminLoginPath) {
+  // If we're on the auth page, don't use the standard layout
+  if (isAuthPath) {
     return (
       <>
         <Toaster />
         <Switch>
-          <Route path="/login" component={Login} />
           <Route path="/auth" component={AuthPage} />
-          <Route path="/consignor/login" component={ConsignorLogin} />
-          <Route path="/admin/login" component={AdminLoginPage} />
         </Switch>
       </>
     );
@@ -94,62 +83,59 @@ function Router() {
         {/* Admin Dashboard Routes */}
         <ProtectedRoute 
           path="/" 
-          component={AdminDashboardPage} 
-          allowedRoles={[UserRole.ADMIN]}
-          redirectTo="/auth"
+          component={AdminDashboardPage}
+          requiredUserType="admin"
         />
         <ProtectedRoute 
           path="/dashboard" 
           component={AdminDashboardPage}
-          allowedRoles={[UserRole.ADMIN]}
-          redirectTo="/auth"
+          requiredUserType="admin"
         />
         <ProtectedRoute 
           path="/admin/dashboard" 
           component={AdminDashboardPage}
-          allowedRoles={[UserRole.ADMIN]} 
-          redirectTo="/auth"
+          requiredUserType="admin"
         />
         <ProtectedRoute 
           path="/intake" 
           component={IntakeForm}
-          allowedRoles={[UserRole.ADMIN]} 
+          requiredUserType="admin"
         />
         <ProtectedRoute 
           path="/inventory" 
           component={Items}
-          allowedRoles={[UserRole.ADMIN]} 
+          requiredUserType="admin"
         />
         <ProtectedRoute 
           path="/orders" 
           component={Orders}
-          allowedRoles={[UserRole.ADMIN]} 
+          requiredUserType="admin"
         />
         <ProtectedRoute 
           path="/orders/:id" 
           component={OrderDetail}
-          allowedRoles={[UserRole.ADMIN]} 
+          requiredUserType="admin"
         />
         <ProtectedRoute 
           path="/payouts" 
           component={Payouts}
-          allowedRoles={[UserRole.ADMIN]} 
+          requiredUserType="admin"
         />
         <ProtectedRoute 
           path="/settings" 
           component={Settings}
-          allowedRoles={[UserRole.ADMIN]} 
+          requiredUserType="admin"
         />
         <ProtectedRoute 
           path="/model-training" 
           component={ModelTraining}
-          allowedRoles={[UserRole.ADMIN]} 
+          requiredUserType="admin"
         />
         {/* Move consignors route to admin routes section */}
         <ProtectedRoute 
           path="/admin/consignors" 
           component={Consignors}
-          allowedRoles={[UserRole.ADMIN]} 
+          requiredUserType="admin"
         />
         
         {/* Keep old route for backward compatibility, but redirect to new one */}
@@ -165,84 +151,82 @@ function Router() {
             
             return null;
           }}
-          allowedRoles={[UserRole.ADMIN]} 
+          requiredUserType="admin"
         />
         <ProtectedRoute 
           path="/dashboard/:customerId" 
           component={Dashboard}
-          allowedRoles={[UserRole.ADMIN]} 
+          requiredUserType="admin"
         />
         
         {/* Consignor Dashboard Routes */}
         <ProtectedRoute 
           path="/consignor" 
           component={ConsignorDashboard}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/dashboard" 
           component={ConsignorDashboard}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute
           path="/consignor/new-item" 
           component={NewItemIntakePage}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute
           path="/consignor/supabase-intake" 
           component={SupabaseIntakePage}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/items" 
           component={Items}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/items/:id" 
           component={ConsignorItemDetail}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/history" 
           component={ConsignorHistory}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/orders" 
           component={Orders}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/orders/:id" 
           component={OrderDetail}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/payouts" 
           component={ConsignorPayouts}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/insights" 
           component={ConsignorInsights}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/profile" 
           component={ConsignorProfile}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/settings" 
           component={ConsignorSettings}
-          allowedRoles={[UserRole.CONSIGNOR]} 
+          requiredUserType="consignor"
         />
         
-        {/* Authentication Routes */}
-        <Route path="/auth" component={ConsignorLogin} />
-        <Route path="/consignor/login" component={ConsignorLogin} />
+        {/* Authentication Routes - Note: /auth is already handled outside the layout */}
         
         {/* Customer Storefront Routes */}
         <Route path="/storefront" component={Storefront} />

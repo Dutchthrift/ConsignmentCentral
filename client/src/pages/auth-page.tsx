@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,322 +11,370 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useForm } from "react-hook-form";
-import { useToast } from "@/hooks/use-toast";
-import { UserRole } from "@shared/schema";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2 } from "lucide-react";
 
-interface AuthFormData {
-  email: string;
-  password: string;
-  name?: string;
-}
+// Login form schema
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+// Registration form schema
+const registerSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
-  const { user, loginMutation, registerMutation } = useAuth();
-  const [, navigate] = useLocation();
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<string>("login");
+  const [activeTab, setActiveTab] = useState<string>("consignor-login");
+  const [location, navigate] = useLocation();
+  const { 
+    user, 
+    isLoading, 
+    adminLoginMutation, 
+    consignorLoginMutation, 
+    registerMutation 
+  } = useAuth();
 
-  // If user is already logged in, redirect to home page
+  // Redirect to home if already logged in
   useEffect(() => {
     if (user) {
-      navigate("/");
+      if (user.userType === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/consignor/dashboard');
+      }
     }
   }, [user, navigate]);
 
-  const loginForm = useForm<AuthFormData>({
+  // Login form setup for both admin and consignor
+  const loginForm = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
     },
   });
 
-  const registerForm = useForm<AuthFormData>({
+  // Registration form setup for consignors
+  const registerForm = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       email: "",
       password: "",
-      name: "",
+      firstName: "",
+      lastName: "",
     },
   });
 
-  const onLoginSubmit = async (data: AuthFormData) => {
-    try {
-      // Convert to expected format for loginMutation
-      await loginMutation.mutateAsync({
-        username: data.email,
-        password: data.password
-      });
-      
-      toast({
-        title: "Login successful",
-        description: "You have been logged in successfully",
-      });
-      navigate("/");
-    } catch (error) {
-      console.error("Login error:", error);
-      toast({
-        title: "Login failed",
-        description: "Please check your credentials and try again",
-        variant: "destructive",
-      });
+  // Handle login submission
+  const onLoginSubmit = (data: LoginFormValues) => {
+    if (activeTab === "admin-login") {
+      adminLoginMutation.mutate(data);
+    } else {
+      consignorLoginMutation.mutate(data);
     }
   };
 
-  const onRegisterSubmit = async (data: AuthFormData) => {
-    try {
-      if (!data.name) {
-        throw new Error("Name is required");
-      }
-      
-      // Convert to expected format for registerMutation
-      await registerMutation.mutateAsync({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        role: UserRole.CONSIGNOR, // Default role for new users is consignor
-        provider: 'local'
-      });
-      
-      toast({
-        title: "Registration successful",
-        description: "Your account has been created successfully",
-      });
-      navigate("/");
-    } catch (error) {
-      console.error("Registration error:", error);
-      toast({
-        title: "Registration failed",
-        description: "Please check your details and try again",
-        variant: "destructive",
-      });
-    }
+  // Handle registration submission
+  const onRegisterSubmit = (data: RegisterFormValues) => {
+    registerMutation.mutate(data);
   };
+
+  // If still loading the user data, show a loading spinner
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-border" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen">
-      {/* Left column - Auth forms */}
-      <div className="flex w-full md:w-1/2 flex-col items-center justify-center px-4 py-12">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-primary">Dutch Thrift</h1>
-          <p className="text-muted-foreground">Consignment Platform</p>
-        </div>
+      {/* Left column - Authentication forms */}
+      <div className="flex flex-col items-center justify-center w-full lg:w-1/2 px-4 py-12">
+        <div className="mx-auto max-w-md w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="consignor-login">Consignor Login</TabsTrigger>
+              <TabsTrigger value="admin-login">Admin Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
+            </TabsList>
 
-        <Tabs
-          defaultValue="login"
-          className="w-full max-w-md"
-          value={activeTab}
-          onValueChange={setActiveTab}
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="register">Register</TabsTrigger>
-          </TabsList>
-          
-          {/* Login Form */}
-          <TabsContent value="login">
-            <Card>
-              <CardHeader>
-                <CardTitle>Login</CardTitle>
-                <CardDescription>
-                  Enter your credentials to access your account
-                </CardDescription>
-              </CardHeader>
-              <form onSubmit={loginForm.handleSubmit(onLoginSubmit)}>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="your.email@example.com"
-                      {...loginForm.register("email", {
-                        required: "Email is required",
-                        pattern: {
-                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                          message: "Invalid email address",
-                        },
-                      })}
-                    />
-                    {loginForm.formState.errors.email && (
-                      <p className="text-sm text-red-500">
-                        {loginForm.formState.errors.email.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="login-password">Password</Label>
-                    </div>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      {...loginForm.register("password", {
-                        required: "Password is required",
-                        minLength: {
-                          value: 6,
-                          message: "Password must be at least 6 characters",
-                        },
-                      })}
-                    />
-                    {loginForm.formState.errors.password && (
-                      <p className="text-sm text-red-500">
-                        {loginForm.formState.errors.password.message}
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-                <CardFooter className="flex flex-col">
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={loginMutation.isPending}
-                  >
-                    {loginMutation.isPending ? "Logging in..." : "Login"}
-                  </Button>
-                  <p className="mt-4 text-center text-sm text-muted-foreground">
-                    Don't have an account?{" "}
-                    <button
-                      type="button"
-                      className="underline text-primary"
-                      onClick={() => setActiveTab("register")}
+            {/* Consignor Login Tab */}
+            <TabsContent value="consignor-login">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Consignor Login</CardTitle>
+                  <CardDescription>
+                    Login to access your consignor account.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...loginForm}>
+                    <form
+                      onSubmit={loginForm.handleSubmit(onLoginSubmit)}
+                      className="space-y-4"
                     >
-                      Register
-                    </button>
-                  </p>
-                </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
-          
-          {/* Register Form */}
-          <TabsContent value="register">
-            <Card>
-              <CardHeader>
-                <CardTitle>Create an account</CardTitle>
-                <CardDescription>
-                  Enter your details to create a new account
-                </CardDescription>
-              </CardHeader>
-              <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)}>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="register-name">Name</Label>
-                    <Input
-                      id="register-name"
-                      placeholder="Your name"
-                      {...registerForm.register("name", {
-                        required: "Name is required",
-                      })}
-                    />
-                    {registerForm.formState.errors.name && (
-                      <p className="text-sm text-red-500">
-                        {registerForm.formState.errors.name.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
-                    <Input
-                      id="register-email"
-                      type="email"
-                      placeholder="your.email@example.com"
-                      {...registerForm.register("email", {
-                        required: "Email is required",
-                        pattern: {
-                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                          message: "Invalid email address",
-                        },
-                      })}
-                    />
-                    {registerForm.formState.errors.email && (
-                      <p className="text-sm text-red-500">
-                        {registerForm.formState.errors.email.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-password">Password</Label>
-                    <Input
-                      id="register-password"
-                      type="password"
-                      {...registerForm.register("password", {
-                        required: "Password is required",
-                        minLength: {
-                          value: 6,
-                          message: "Password must be at least 6 characters",
-                        },
-                      })}
-                    />
-                    {registerForm.formState.errors.password && (
-                      <p className="text-sm text-red-500">
-                        {registerForm.formState.errors.password.message}
-                      </p>
-                    )}
-                  </div>
+                      <FormField
+                        control={loginForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input placeholder="your@email.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={loginForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="password"
+                                placeholder="••••••••"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={consignorLoginMutation.isPending}
+                      >
+                        {consignorLoginMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Login
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
-                <CardFooter className="flex flex-col">
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    disabled={registerMutation.isPending}
+                <CardFooter className="flex justify-center">
+                  <Button
+                    variant="link"
+                    onClick={() => setActiveTab("register")}
                   >
-                    {registerMutation.isPending ? "Creating account..." : "Create account"}
+                    Don't have an account? Register here
                   </Button>
-                  <p className="mt-4 text-center text-sm text-muted-foreground">
-                    Already have an account?{" "}
-                    <button
-                      type="button"
-                      className="underline text-primary"
-                      onClick={() => setActiveTab("login")}
-                    >
-                      Login
-                    </button>
-                  </p>
                 </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </Card>
+            </TabsContent>
+
+            {/* Admin Login Tab */}
+            <TabsContent value="admin-login">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Admin Login</CardTitle>
+                  <CardDescription>
+                    Login to access the admin dashboard.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...loginForm}>
+                    <form
+                      onSubmit={loginForm.handleSubmit(onLoginSubmit)}
+                      className="space-y-4"
+                    >
+                      <FormField
+                        control={loginForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input placeholder="admin@email.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={loginForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="password"
+                                placeholder="••••••••"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={adminLoginMutation.isPending}
+                      >
+                        {adminLoginMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Login
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Registration Tab */}
+            <TabsContent value="register">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create an Account</CardTitle>
+                  <CardDescription>
+                    Register as a consignor to start selling your items.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...registerForm}>
+                    <form
+                      onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
+                      className="space-y-4"
+                    >
+                      <FormField
+                        control={registerForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input placeholder="your@email.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={registerForm.control}
+                          name="firstName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>First Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="First name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={registerForm.control}
+                          name="lastName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Last Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Last name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <FormField
+                        control={registerForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="password"
+                                placeholder="••••••••"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={registerMutation.isPending}
+                      >
+                        {registerMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Register
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+                <CardFooter className="flex justify-center">
+                  <Button
+                    variant="link"
+                    onClick={() => setActiveTab("consignor-login")}
+                  >
+                    Already have an account? Login here
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
 
       {/* Right column - Hero section */}
-      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-primary to-primary-foreground">
-        <div className="flex flex-col items-center justify-center px-12 py-16 text-white">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-4">Dutch Thrift</h1>
-            <h2 className="text-2xl mb-6">Consignment Platform</h2>
-            <p className="text-lg mb-6">
-              The smart way to consign and sell your premium items
-            </p>
-            <ul className="space-y-3 text-lg">
-              <li className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                AI-powered product analysis
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                Fair market value assessment
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                Simple shipping process
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                Transparent commission system
-              </li>
-            </ul>
+      <div className="hidden lg:flex flex-col w-1/2 bg-slate-50 items-center justify-center p-12">
+        <div className="max-w-md text-center">
+          <h1 className="text-4xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Dutch Thrift Consignment Platform
+          </h1>
+          <p className="text-lg text-gray-600 mb-8">
+            A premium platform for consignors to sell their pre-loved fashion
+            items. We handle authentication, valuation, storage, and shipping so
+            you can focus on selling and earning.
+          </p>
+          <div className="grid grid-cols-2 gap-6 text-left">
+            <div className="bg-white p-4 rounded-lg shadow-sm">
+              <h3 className="font-semibold text-lg mb-2">Consignors</h3>
+              <p className="text-sm text-gray-500">
+                Register an account to start selling your items through our
+                platform. Monitor your sales and earnings in real-time.
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow-sm">
+              <h3 className="font-semibold text-lg mb-2">Administrators</h3>
+              <p className="text-sm text-gray-500">
+                Manage consignors, products, and orders. Access analytics and
+                oversee the entire consignment workflow.
+              </p>
+            </div>
           </div>
         </div>
       </div>
