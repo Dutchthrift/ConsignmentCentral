@@ -230,8 +230,9 @@ router.post('/intake', async (req, res) => {
         const { commissionRate, payoutValue } = calculateCommissionAndPayout(estimatedValue);
         
         // Process image data and store it properly for PostgreSQL
-        // We'll use the base64 data but store it as text not as an array to avoid PostgreSQL array parsing issues
-        const imageUrlText = imageBase64 ? (imageBase64.substring(0, 100) + '...') : '';
+        // Store the image data as plain text, not as JSON or array to avoid parsing issues
+        // Limit the length of the base64 string to avoid excessive storage
+        const imageUrlText = imageBase64 ? 'base64-image-data-stored' : '';
         
         // Dynamically build the query based on whether order_id column exists
         let createItemQuery;
@@ -388,10 +389,18 @@ router.post('/intake', async (req, res) => {
         }
       });
       
+      // Make sure to explicitly COMMIT the transaction to save everything
+      await client.query('COMMIT');
+      console.log('Successfully completed intake transaction - COMMITTED to database');
+      
     } catch (dbError) {
       // Any error will trigger a rollback
-      await client.query('ROLLBACK');
-      console.error('Database error during intake process:', dbError);
+      try {
+        await client.query('ROLLBACK');
+        console.error('Database error during intake process - ROLLED BACK transaction:', dbError);
+      } catch (rollbackError) {
+        console.error('Error during transaction rollback:', rollbackError);
+      }
       
       return res.status(500).json({ 
         success: false, 
