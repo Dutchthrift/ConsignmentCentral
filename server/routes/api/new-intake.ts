@@ -77,13 +77,30 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Invalid token' });
     }
     
-    // Extract customer ID
-    const customerId = decodedToken.id;
-    if (!customerId) {
-      return res.status(400).json({ success: false, message: 'Customer ID not found in token' });
+    // Extract user ID from token
+    const userId = decodedToken.id;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID not found in token' });
     }
     
-    console.log(`Processing intake for customer ID: ${customerId}`);
+    // Find the correct customer ID from the customers table using the email
+    const email = decodedToken.email;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email not found in token' });
+    }
+    
+    // Look up the customer ID using email
+    const customerResult = await pool.query(
+      'SELECT id FROM customers WHERE email = $1',
+      [email]
+    );
+    
+    if (customerResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Customer not found with this email' });
+    }
+    
+    const customerId = customerResult.rows[0].id;
+    console.log(`Processing intake for user ID: ${userId}, found customer ID: ${customerId}`);
     
     // Use a direct connection pool instead of WebSocket
     let client;
