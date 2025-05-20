@@ -113,10 +113,9 @@ router.post('/intake', async (req, res) => {
               created_at,
               updated_at,
               total_value, 
-              total_payout,
-              submission_date
+              total_payout
             ) 
-            VALUES ($1, $2, $3, NOW(), NOW(), $4, $5, NOW())
+            VALUES ($1, $2, $3, NOW(), NOW(), $4, $5)
             RETURNING id
           `;
           
@@ -180,6 +179,7 @@ router.post('/intake', async (req, res) => {
         try {
           console.log(`Storing image for item ${itemId}`);
           
+          // Store as a simple string in the image_url column
           const updateImageQuery = `
             UPDATE items 
             SET image_url = $1, 
