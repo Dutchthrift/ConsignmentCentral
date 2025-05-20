@@ -141,8 +141,7 @@ router.post('/intake', async (req, res) => {
         const estimatedValue = 5000; // €50.00
         const { commissionRate, payoutValue } = calculateCommissionAndPayout(estimatedValue);
         
-        // We've analyzed the items table structure and confirmed it doesn't have an order_id column
-        // Use the proper structure based on the actual database tables
+        // Use the updated items table with direct order_id relationship
         const createItemQuery = `
           INSERT INTO items (
             reference_id,
@@ -152,9 +151,10 @@ router.post('/intake', async (req, res) => {
             status, 
             created_at, 
             updated_at,
-            image_urls
+            image_urls,
+            order_id
           ) 
-          VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6)
+          VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7)
           RETURNING id
         `;
         
@@ -167,14 +167,15 @@ router.post('/intake', async (req, res) => {
           title,
           description || null,
           'pending',
-          imageUrls
+          imageUrls,
+          orderId  // Link directly to order using the new order_id column
         ];
         
         const itemInsertResult = await client.query(createItemQuery, itemParams);
         itemId = itemInsertResult.rows[0].id;
-        console.log(`Created item with ID ${itemId}`);
+        console.log(`Created item with ID ${itemId} linked to order ${orderId}`);
         
-        // Always create an entry in order_items junction table to ensure the link exists
+        // We can still maintain the junction table for backward compatibility
         const linkQuery = `
           INSERT INTO order_items (order_id, item_id, created_at)
           VALUES ($1, $2, NOW())
@@ -182,7 +183,7 @@ router.post('/intake', async (req, res) => {
         `;
         
         await client.query(linkQuery, [orderId, itemId]);
-        console.log(`Linked item to order in order_items table`);
+        console.log(`Also linked item to order in order_items junction table`);
       
       } catch (createItemError) {
         console.error('Error creating item:', createItemError);
@@ -191,63 +192,27 @@ router.post('/intake', async (req, res) => {
       
       // 4. Update the order's total values based on the items
       try {
-        // First check which tables we're using
-        const tablesCheckQuery = `
-          SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'new_orders') as has_new_orders,
-                 EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'orders') as has_orders
+        // Update the orders table using the direct order_id relationship
+        const updateOrderTotalsQuery = `
+          UPDATE orders
+          SET 
+            total_value = (
+              SELECT COALESCE(SUM(p.average_market_price), 0)
+              FROM items i
+              LEFT JOIN pricing p ON i.id = p.item_id
+              WHERE i.order_id = $1
+            ),
+            total_payout = (
+              SELECT COALESCE(SUM(p.suggested_payout), 0)
+              FROM items i
+              LEFT JOIN pricing p ON i.id = p.item_id
+              WHERE i.order_id = $1
+            )
+          WHERE id = $1
         `;
         
-        const tablesExist = await client.query(tablesCheckQuery);
-        const hasNewOrders = tablesExist.rows[0].has_new_orders;
-        const hasOrders = tablesExist.rows[0].has_orders;
-        
-        if (hasNewOrders) {
-          // Update the new UUID-based orders table
-          const updateOrderTotalsQuery = `
-            UPDATE new_orders
-            SET 
-              total_estimated_value = (
-                SELECT SUM(estimated_value) 
-                FROM new_items 
-                WHERE order_id = $1
-              ),
-              total_payout_value = (
-                SELECT SUM(payout_value) 
-                FROM new_items 
-                WHERE order_id = $1
-              )
-            WHERE id = $1
-          `;
-          
-          await client.query(updateOrderTotalsQuery, [orderId]);
-          console.log(`Updated order totals for UUID order ${orderId}`);
-        } else if (hasOrders) {
-          // Update the legacy orders table
-          const updateOrderTotalsQuery = `
-            UPDATE orders
-            SET 
-              total_value = (
-                SELECT COALESCE(SUM(p.average_market_price), 0)
-                FROM items i
-                LEFT JOIN pricing p ON i.id = p.item_id
-                WHERE i.id IN (
-                  SELECT item_id FROM order_items WHERE order_id = $1
-                )
-              ),
-              total_payout = (
-                SELECT COALESCE(SUM(p.suggested_payout), 0)
-                FROM items i
-                LEFT JOIN pricing p ON i.id = p.item_id
-                WHERE i.id IN (
-                  SELECT item_id FROM order_items WHERE order_id = $1
-                )
-              )
-            WHERE id = $1
-          `;
-          
-          await client.query(updateOrderTotalsQuery, [orderId]);
-          console.log(`Updated order totals for legacy order ${orderId}`);
-        }
+        await client.query(updateOrderTotalsQuery, [orderId]);
+        console.log(`Updated order totals for order ${orderId} using direct relationship`);
       } catch (updateTotalsError) {
         console.warn('Non-critical error updating order totals:', updateTotalsError);
         // Continue even if totals update fails
