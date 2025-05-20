@@ -75,8 +75,10 @@ router.post('/', async (req: Request, res: Response) => {
     let decodedToken;
     
     try {
-      decodedToken = jwt.verify(token, process.env.JWT_SECRET || 'dutch-thrift-secret-key') as any;
+      // Use the same JWT secret as in auth.service.ts
+      decodedToken = jwt.verify(token, process.env.JWT_SECRET || 'dutch-thrift-jwt-secret') as any;
     } catch (err) {
+      console.error('Token verification error:', err);
       return res.status(401).json({ success: false, message: 'Invalid token' });
     }
     
