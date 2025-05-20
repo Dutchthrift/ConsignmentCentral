@@ -79,6 +79,12 @@ type AnalysisResult = {
     recommendedPrice?: number;
     estimatedPayout?: number;
     payoutMethod?: string;
+    commissionRate?: number;
+  };
+  order?: {
+    id: number;
+    orderNumber: string;
+    status: string;
   };
 };
 

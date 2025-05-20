@@ -141,7 +141,7 @@ router.post('/intake', async (req, res) => {
         const estimatedValue = 5000; // €50.00
         const { commissionRate, payoutValue } = calculateCommissionAndPayout(estimatedValue);
         
-        // Use the updated items table with direct order_id relationship
+        // Use the standard items table structure (without order_id)
         const createItemQuery = `
           INSERT INTO items (
             reference_id,
@@ -151,10 +151,9 @@ router.post('/intake', async (req, res) => {
             status, 
             created_at, 
             updated_at,
-            image_urls,
-            order_id
+            image_urls
           ) 
-          VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6, $7)
+          VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6)
           RETURNING id
         `;
         
@@ -167,8 +166,7 @@ router.post('/intake', async (req, res) => {
           title,
           description || null,
           'pending',
-          imageUrls,
-          orderId  // Link directly to order using the new order_id column
+          imageUrls
         ];
         
         const itemInsertResult = await client.query(createItemQuery, itemParams);
@@ -192,7 +190,7 @@ router.post('/intake', async (req, res) => {
       
       // 4. Update the order's total values based on the items
       try {
-        // Update the orders table using the direct order_id relationship
+        // Update the orders table using the junction table relationship
         const updateOrderTotalsQuery = `
           UPDATE orders
           SET 
@@ -200,13 +198,15 @@ router.post('/intake', async (req, res) => {
               SELECT COALESCE(SUM(p.average_market_price), 0)
               FROM items i
               LEFT JOIN pricing p ON i.id = p.item_id
-              WHERE i.order_id = $1
+              JOIN order_items oi ON i.id = oi.item_id
+              WHERE oi.order_id = $1
             ),
             total_payout = (
               SELECT COALESCE(SUM(p.suggested_payout), 0)
               FROM items i
               LEFT JOIN pricing p ON i.id = p.item_id
-              WHERE i.order_id = $1
+              JOIN order_items oi ON i.id = oi.item_id
+              WHERE oi.order_id = $1
             )
           WHERE id = $1
         `;
