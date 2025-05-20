@@ -26,6 +26,7 @@ import { registerAuthRoutes } from "./routes/auth.routes";
 import insightsRoutes from "./routes/insights.ts";
 import { requireAdmin } from "./middleware/auth.middleware";
 import jwt from "jsonwebtoken";
+import supabaseNewIntakeRoute from "./routes/api/supabase-new-intake";
 
 // Import route handlers
 import adminRoutes from "./routes/admin.ts";
@@ -197,6 +198,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Only keep the consignor registration route at its original path
   // and don't add the additional admin path which conflicts with adminRoutes
   app.use("/api/consignors", consignorRegistrationRoutes);
+  
+  // Register our Supabase-powered intake endpoint
+  app.use("/api/supabase-new-intake", supabaseNewIntakeRoute);
   
   // Register ML training routes
   app.use("/api/ml", mlTrainingRoutes);

@@ -41,6 +41,7 @@ import ConsignorLayout from "@/components/ConsignorLayout";
 import ConsignorItemDetail from "@/pages/ConsignorItemDetail";
 import NewItemIntakePage from "@/pages/NewItemIntakePage";
 import TokenTestPage from "@/pages/token-test-page";
+import SupabaseIntakePage from "@/pages/SupabaseIntakePage";
 // No layout for login pages - they have their own interface
 
 function Router() {
@@ -182,6 +183,11 @@ function Router() {
         <ProtectedRoute
           path="/consignor/new-item" 
           component={NewItemIntakePage}
+          allowedRoles={[UserRole.CONSIGNOR]} 
+        />
+        <ProtectedRoute
+          path="/consignor/supabase-intake" 
+          component={SupabaseIntakePage}
           allowedRoles={[UserRole.CONSIGNOR]} 
         />
         <ProtectedRoute 
