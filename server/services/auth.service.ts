@@ -153,17 +153,13 @@ export class AuthService {
     }, async (req, email, password, done) => {
       console.log('Local strategy call:', { email });
       try {
-        // Try direct database query for admin users first (more reliable with Supabase)
-        const pool = this.getPool();
+        // Use storage interface for authentication instead of direct DB query
         try {
-          const adminResult = await pool.query(
-            'SELECT * FROM admin_users WHERE email = $1',
-            [email]
-          );
+          // First check if it's an admin user
+          const adminUser = await this.storage.getAdminUserByEmail(email);
           
-          if (adminResult.rows.length > 0) {
-            const adminUser = adminResult.rows[0];
-            console.log('Found admin user via direct query:', { id: adminUser.id, email: adminUser.email });
+          if (adminUser) {
+            console.log('Found admin user via storage interface:', { id: adminUser.id, email: adminUser.email });
             
             // Verify password (case insensitive comparison for migration period)
             const isValid = await this.verifyPassword(password, adminUser.password || '');

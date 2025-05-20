@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import type { Express } from 'express';
 import passport from 'passport';
 import { IStorage } from '../storage-interface';
-import AuthService from '../services/auth.service';
+import { AuthService } from '../services/simple-auth.service';
 import { UserType, UserRole } from '@shared/schema';
 
 export function registerAuthRoutes(app: Express, storage: IStorage) {
