@@ -59,6 +59,43 @@ async function fixItemsTable() {
 
 async function fixAnalysisTable() {
   try {
+    console.log('Checking analysis table existence...');
+    
+    // First check if the analysis table exists, if not create it
+    const tableExists = await executeQuery(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'analysis')"
+    );
+    
+    if (!tableExists.rows[0].exists) {
+      console.log('Creating analysis table as it does not exist');
+      await executeQuery(`
+        CREATE TABLE analysis (
+          id SERIAL PRIMARY KEY,
+          item_id INTEGER NOT NULL,
+          brand TEXT,
+          product_type TEXT,
+          model TEXT,
+          condition TEXT,
+          category TEXT,
+          features JSONB,
+          accessories TEXT,
+          manufacture_year TEXT,
+          color TEXT,
+          dimensions TEXT,
+          weight TEXT,
+          materials TEXT,
+          authenticity TEXT,
+          rarity TEXT,
+          additional_notes TEXT,
+          analysis_summary TEXT,
+          confidence_score NUMERIC,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      console.log('Analysis table created successfully');
+      return; // No need to check columns if we just created the table
+    }
+    
     console.log('Checking analysis table columns...');
     
     // List of columns from the code schema
@@ -87,6 +124,7 @@ async function fixAnalysisTable() {
     
     // Check each column, add if missing
     for (const column of schemaColumns) {
+      // First check if the column exists
       const columnExists = await executeQuery(
         "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='analysis' AND column_name=$1)",
         [column]
@@ -109,11 +147,17 @@ async function fixAnalysisTable() {
           dataType = 'JSONB';
         }
         
-        // Skip id as we can't add a primary key to an existing table this way
-        if (column !== 'id') {
-          await executeQuery(`ALTER TABLE analysis ADD COLUMN ${column} ${dataType}`);
-          console.log(`Successfully added ${column} column`);
+        try {
+          // Skip id as we can't add a primary key to an existing table this way
+          if (column !== 'id') {
+            await executeQuery(`ALTER TABLE analysis ADD COLUMN ${column} ${dataType}`);
+            console.log(`Successfully added ${column} column`);
+          }
+        } catch (alterError) {
+          console.error(`Error adding column ${column}:`, alterError);
         }
+      } else {
+        console.log(`Column ${column} already exists in analysis table`);
       }
     }
     

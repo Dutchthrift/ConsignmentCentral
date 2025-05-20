@@ -426,6 +426,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`Generated SQL query: ${query}`);
               console.log(`With params: [image binary data..., ${item.id}]`);
               
+              // Log the query and parameters for debugging
+              console.log(`Executing image update with query: ${query}`);
+              console.log(`Parameters count: ${queryParams.length}`);
+              
               const result = await client.query(query, queryParams);
               console.log(`Image stored successfully for item ${item.id}`);
             } finally {
