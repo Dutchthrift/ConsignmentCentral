@@ -110,13 +110,13 @@ router.post('/intake', async (req, res) => {
               order_number, 
               customer_id, 
               status, 
-              submission_date, 
+              created_at,
+              updated_at,
               total_value, 
               total_payout,
-              created_at,
-              updated_at
+              submission_date
             ) 
-            VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+            VALUES ($1, $2, $3, NOW(), NOW(), $4, $5, NOW())
             RETURNING id
           `;
           
@@ -124,9 +124,8 @@ router.post('/intake', async (req, res) => {
             orderNumber,
             customerId,
             'Awaiting Shipment',
-            new Date(),
-            0,  // total_value
-            0   // total_payout
+            0,  // total_amount
+            0   // payout_amount
           ]);
           
           orderId = orderInsertResult.rows[0].id;
