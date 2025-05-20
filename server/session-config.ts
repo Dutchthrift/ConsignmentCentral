@@ -1,35 +1,36 @@
-import session from "express-session";
-import { Pool } from "pg";
-import connectPg from "connect-pg-simple";
+import session from 'express-session';
+import { Pool } from 'pg';
+import connectPg from 'connect-pg-simple';
 
-// Create a PostgreSQL store for session data
-const PostgresStore = connectPg(session);
-
+/**
+ * Configure session handling with PostgreSQL session store
+ */
 export function configureSession(pool: Pool) {
-  const sessionConfig: session.SessionOptions = {
+  // Initialize PostgreSQL session store
+  const PostgresStore = connectPg(session);
+  
+  // Extend session data with our custom properties
+  declare module 'express-session' {
+    interface SessionData {
+      userId?: number;
+      userType?: "admin" | "consignor";
+    }
+  }
+  
+  // Session configuration
+  return {
     store: new PostgresStore({
       pool,
-      tableName: "sessions",
-      createTableIfMissing: true
+      tableName: 'sessions', // Table name for sessions
+      createTableIfMissing: true // Create the table if it doesn't exist
     }),
-    secret: process.env.SESSION_SECRET || "dutchthrift-session-secret",
+    secret: process.env.SESSION_SECRET || 'dutch-thrift-secret-key',
     resave: false,
     saveUninitialized: false,
     cookie: {
-      // Secure should be true in production but can be false for development
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     }
   };
-
-  return session(sessionConfig);
-}
-
-// Add type declarations to extend express-session
-declare module "express-session" {
-  interface SessionData {
-    userId?: number;
-    userType?: "admin" | "consignor";
-  }
 }

@@ -4,134 +4,178 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { User } from '@shared/schema';
-import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
+import { User, InsertUser } from "@shared/schema";
+import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-// Define the types for the authenticated user
-export type AuthUser = (User & { 
-  customer?: any; 
-  userType?: 'admin' | 'consignor';
-}) | null;
-
-// Input type for login
-type LoginCredentials = {
-  email: string;
-  password: string;
+// Types for our auth data
+type AuthContextType = {
+  user: UserData | null;
+  isLoading: boolean;
+  error: Error | null;
+  loginMutation: UseMutationResult<LoginResponse, Error, LoginData>;
+  logoutMutation: UseMutationResult<LogoutResponse, Error, void>;
+  registerMutation: UseMutationResult<RegisterResponse, Error, RegisterData>;
 };
 
-// Input type for registration
-type RegisterCredentials = {
+// User data returned from the API
+interface UserData {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  customer?: any; // Customer data for consignors
+}
+
+// Login request data
+interface LoginData {
+  email: string;
+  password: string;
+  userType: "admin" | "consignor"; // Used to determine which login endpoint to use
+}
+
+// Login response from API
+interface LoginResponse {
+  success: boolean;
+  data: {
+    user: UserData;
+    token: string;
+    customer?: any;
+  };
+}
+
+// Register request data
+interface RegisterData {
   email: string;
   password: string;
   firstName: string;
   lastName: string;
-};
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
 
-// Authentication context type
-type AuthContextType = {
-  user: AuthUser;
-  isLoading: boolean;
-  error: Error | null;
-  adminLoginMutation: UseMutationResult<AuthUser, Error, LoginCredentials>;
-  consignorLoginMutation: UseMutationResult<AuthUser, Error, LoginCredentials>;
-  registerMutation: UseMutationResult<AuthUser, Error, RegisterCredentials>;
-  logoutMutation: UseMutationResult<void, Error, void>;
-};
+// Register response from API
+interface RegisterResponse {
+  success: boolean;
+  data: {
+    user: UserData;
+    token: string;
+    customer: any;
+  };
+}
 
-// Create the authentication context
+// Logout response
+interface LogoutResponse {
+  success: boolean;
+  message: string;
+}
+
+// Create the auth context
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-// AuthProvider component to wrap the application
+// Auth provider component to wrap the app
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-
-  // Fetch the current user from the session
+  
+  // Query to get the current user data - used for initial load and after login/register
   const {
     data: user,
     error,
     isLoading,
-  } = useQuery<AuthUser, Error>({
-    queryKey: ["/api/auth/user"],
+  } = useQuery<UserData | null, Error>({
+    queryKey: ["/api/auth/me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
-  // Admin login mutation
-  const adminLoginMutation = useMutation({
-    mutationFn: async (credentials: LoginCredentials) => {
-      const res = await apiRequest("POST", "/api/auth/admin/login", credentials);
+  // Login mutation
+  const loginMutation = useMutation<LoginResponse, Error, LoginData>({
+    mutationFn: async (credentials: LoginData) => {
+      const { userType, ...data } = credentials;
+      const endpoint = userType === "admin" 
+        ? "/api/auth/admin/login" 
+        : "/api/auth/consignor/login";
+      
+      const res = await apiRequest("POST", endpoint, data);
       return await res.json();
     },
-    onSuccess: (data: AuthUser) => {
-      queryClient.setQueryData(["/api/auth/user"], data);
+    onSuccess: (response: LoginResponse) => {
+      // Store token in localStorage for later use
+      if (response.data.token) {
+        localStorage.setItem("authToken", response.data.token);
+      }
+      
+      // Update the user data in the cache
+      queryClient.setQueryData(["/api/auth/me"], response.data.user);
+      
       toast({
         title: "Login successful",
-        description: "You are now logged in as an admin",
+        description: `Welcome back, ${response.data.user.name}!`,
+        variant: "default",
       });
     },
     onError: (error: Error) => {
       toast({
         title: "Login failed",
-        description: error.message,
+        description: error.message || "Invalid email or password",
         variant: "destructive",
       });
     },
   });
 
-  // Consignor login mutation
-  const consignorLoginMutation = useMutation({
-    mutationFn: async (credentials: LoginCredentials) => {
-      const res = await apiRequest("POST", "/api/auth/consignor/login", credentials);
+  // Register mutation
+  const registerMutation = useMutation<RegisterResponse, Error, RegisterData>({
+    mutationFn: async (userData: RegisterData) => {
+      const res = await apiRequest("POST", "/api/auth/register", userData);
       return await res.json();
     },
-    onSuccess: (data: AuthUser) => {
-      queryClient.setQueryData(["/api/auth/user"], data);
-      toast({
-        title: "Login successful",
-        description: "You are now logged in as a consignor",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Registration mutation
-  const registerMutation = useMutation({
-    mutationFn: async (credentials: RegisterCredentials) => {
-      const res = await apiRequest("POST", "/api/auth/consignor/register", credentials);
-      return await res.json();
-    },
-    onSuccess: (data: AuthUser) => {
-      queryClient.setQueryData(["/api/auth/user"], data);
+    onSuccess: (response: RegisterResponse) => {
+      // Store token in localStorage for later use
+      if (response.data.token) {
+        localStorage.setItem("authToken", response.data.token);
+      }
+      
+      // Update the user data in the cache
+      queryClient.setQueryData(["/api/auth/me"], response.data.user);
+      
       toast({
         title: "Registration successful",
-        description: "Your account has been created and you are now logged in",
+        description: `Welcome, ${response.data.user.name}!`,
+        variant: "default",
       });
     },
     onError: (error: Error) => {
       toast({
         title: "Registration failed",
-        description: error.message,
+        description: error.message || "Could not create account",
         variant: "destructive",
       });
     },
   });
 
   // Logout mutation
-  const logoutMutation = useMutation({
+  const logoutMutation = useMutation<LogoutResponse, Error, void>({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/auth/logout");
+      const res = await apiRequest("POST", "/api/auth/logout");
+      return await res.json();
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/user"], null);
+      // Remove token from localStorage
+      localStorage.removeItem("authToken");
+      
+      // Clear user data from cache
+      queryClient.setQueryData(["/api/auth/me"], null);
+      
+      // Invalidate all queries to refresh the app state
+      queryClient.invalidateQueries();
+      
       toast({
         title: "Logged out",
         description: "You have been successfully logged out",
+        variant: "default",
       });
     },
     onError: (error: Error) => {
@@ -146,13 +190,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user: user ?? null,
+        user,
         isLoading,
         error,
-        adminLoginMutation,
-        consignorLoginMutation,
+        loginMutation,
+        logoutMutation,
         registerMutation,
-        logoutMutation
       }}
     >
       {children}
@@ -160,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Hook to use the authentication context
+// Hook to use the auth context
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

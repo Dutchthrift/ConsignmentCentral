@@ -1,280 +1,236 @@
-import { Router, Request, Response } from "express";
-import { AuthService } from "../../services/auth.service";
-import { storage } from "../../storage";
+import express, { Request, Response } from 'express';
+import { storage } from '../../storage';
+import { AuthService } from '../../services/auth.service';
+import { z } from 'zod';
 
-const router = Router();
+const router = express.Router();
 const authService = new AuthService(storage);
 
-/**
- * Get current user from session
- */
-router.get("/user", (req: Request, res: Response) => {
-  try {
-    // Check if user is authenticated
-    if (!req.session || !req.isAuthenticated || !req.isAuthenticated()) {
-      return res.status(401).json({
-        success: false,
-        message: "Not authenticated"
-      });
-    }
+// Login validation schema
+const loginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
 
-    // Get user information with userType from session
-    const userId = req.session.userId;
-    const userType = req.session.userType;
-
-    if (!userId || !userType) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid session data"
-      });
-    }
-
-    // Return user data based on user type
-    if (userType === "admin") {
-      storage.getAdminUserById(userId)
-        .then(admin => {
-          if (!admin) {
-            return res.status(404).json({
-              success: false,
-              message: "Admin user not found"
-            });
-          }
-          return res.json({
-            ...admin,
-            userType: "admin"
-          });
-        })
-        .catch(error => {
-          console.error("Error fetching admin user:", error);
-          return res.status(500).json({
-            success: false,
-            message: "Error fetching user data"
-          });
-        });
-    } else if (userType === "consignor") {
-      storage.getUserById(userId)
-        .then(async user => {
-          if (!user) {
-            return res.status(404).json({
-              success: false,
-              message: "Consignor user not found"
-            });
-          }
-          
-          // Get customer data if available
-          const customer = await storage.getCustomerByUserId(userId);
-          
-          return res.json({
-            ...user,
-            customer,
-            userType: "consignor"
-          });
-        })
-        .catch(error => {
-          console.error("Error fetching consignor user:", error);
-          return res.status(500).json({
-            success: false,
-            message: "Error fetching user data"
-          });
-        });
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user type"
-      });
-    }
-  } catch (error) {
-    console.error("Error in /user route:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
+// Registration validation schema
+const registerSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  postalCode: z.string().optional(),
+  country: z.string().optional(),
 });
 
 /**
- * Admin login
+ * Admin login route
  */
-router.post("/admin/login", async (req: Request, res: Response) => {
+router.post('/admin/login', async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required"
-      });
-    }
-
-    // Verify admin credentials
-    const admin = await authService.verifyAdminCredentials(email, password);
-
-    if (!admin) {
+    // Validate input
+    const { email, password } = loginSchema.parse(req.body);
+    
+    // Authenticate admin
+    const result = await authService.authenticateAdmin(email, password);
+    
+    if (!result) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: 'Invalid email or password'
       });
     }
 
     // Set session data
-    req.session.userId = admin.id;
-    req.session.userType = "admin";
-
-    // Generate JWT token
-    const token = authService.generateToken({
-      id: admin.id,
-      email: admin.email,
-      name: admin.name,
-      role: admin.role,
-      isAdmin: true
-    });
-
-    // Return user data with token
-    return res.json({
-      ...admin,
-      token,
-      userType: "admin"
+    req.session.userId = result.admin.id;
+    req.session.userType = 'admin';
+    
+    // Return user data and token
+    return res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          id: result.admin.id,
+          email: result.admin.email,
+          name: result.admin.name,
+          role: 'admin'
+        },
+        token: result.token
+      }
     });
   } catch (error) {
-    console.error("Error in /admin/login route:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors
+      });
+    }
+    
+    console.error('Admin login error:', error);
     return res.status(500).json({
       success: false,
-      message: "Server error"
+      message: 'Internal server error'
     });
   }
 });
 
 /**
- * Consignor login
+ * Consignor login route
  */
-router.post("/consignor/login", async (req: Request, res: Response) => {
+router.post('/consignor/login', async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required"
-      });
-    }
-
-    // Verify consignor credentials
-    const consignor = await authService.verifyConsignorCredentials(email, password);
-
-    if (!consignor) {
+    // Validate input
+    const { email, password } = loginSchema.parse(req.body);
+    
+    // Authenticate consignor
+    const result = await authService.authenticateConsignor(email, password);
+    
+    if (!result) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
-      });
-    }
-
-    // Set session data
-    req.session.userId = consignor.id;
-    req.session.userType = "consignor";
-
-    // Generate JWT token
-    const token = authService.generateToken({
-      id: consignor.id,
-      email: consignor.email,
-      name: consignor.name,
-      role: consignor.role,
-      isAdmin: false
-    });
-
-    // Return user data with token
-    return res.json({
-      ...consignor,
-      token,
-      userType: "consignor"
-    });
-  } catch (error) {
-    console.error("Error in /consignor/login route:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
-});
-
-/**
- * Consignor registration
- */
-router.post("/consignor/register", async (req: Request, res: Response) => {
-  try {
-    const { email, password, firstName, lastName } = req.body;
-
-    if (!email || !password || !firstName || !lastName) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required"
-      });
-    }
-
-    // Register new consignor
-    const result = await authService.registerConsignor(email, password, firstName, lastName);
-
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        message: result.message
+        message: 'Invalid email or password'
       });
     }
 
     // Set session data
     req.session.userId = result.user.id;
-    req.session.userType = "consignor";
-
-    // Generate JWT token
-    const token = authService.generateToken({
-      id: result.user.id,
-      email: result.user.email,
-      name: result.user.name,
-      role: result.user.role,
-      isAdmin: false
-    });
-
-    // Return user data with token
-    return res.status(201).json({
-      ...result.user,
-      token,
-      userType: "consignor"
+    req.session.userType = 'consignor';
+    
+    // Return user data and token
+    return res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+          role: 'consignor'
+        },
+        customer: result.customer,
+        token: result.token
+      }
     });
   } catch (error) {
-    console.error("Error in /consignor/register route:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors
+      });
+    }
+    
+    console.error('Consignor login error:', error);
     return res.status(500).json({
       success: false,
-      message: "Server error"
+      message: 'Internal server error'
     });
   }
 });
 
 /**
- * Logout
+ * Register new consignor route
  */
-router.post("/logout", (req: Request, res: Response) => {
+router.post('/register', async (req: Request, res: Response) => {
   try {
-    // Clear session
-    req.session.destroy((err) => {
-      if (err) {
-        console.error("Error destroying session:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Error logging out"
-        });
-      }
-      
-      return res.json({
-        success: true,
-        message: "Logged out successfully"
+    // Validate input
+    const userData = registerSchema.parse(req.body);
+    
+    // Register new consignor
+    const result = await authService.registerConsignor(userData);
+    
+    if (!result) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to register user'
       });
+    }
+
+    // Set session data
+    req.session.userId = result.user.id;
+    req.session.userType = 'consignor';
+    
+    // Return user data and token
+    return res.status(201).json({
+      success: true,
+      data: {
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+          role: 'consignor'
+        },
+        customer: result.customer,
+        token: result.token
+      }
     });
   } catch (error) {
-    console.error("Error in /logout route:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors
+      });
+    }
+    
+    if (error.message === 'User with this email already exists') {
+      return res.status(409).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    console.error('Registration error:', error);
     return res.status(500).json({
       success: false,
-      message: "Server error"
+      message: 'Internal server error'
     });
   }
+});
+
+/**
+ * Logout route
+ */
+router.post('/logout', (req: Request, res: Response) => {
+  // Clear session
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Logout error:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to logout'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  });
+});
+
+/**
+ * Get current user data route
+ */
+router.get('/me', (req: Request, res: Response) => {
+  if (!(req as any).isAuthenticated()) {
+    return res.status(401).json({
+      success: false,
+      message: 'Not authenticated'
+    });
+  }
+  
+  const user = (req as any).user;
+  
+  res.status(200).json({
+    success: true,
+    data: {
+      user
+    }
+  });
 });
 
 export default router;

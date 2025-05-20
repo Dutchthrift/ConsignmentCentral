@@ -6,7 +6,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ProtectedRoute } from "@/lib/protected-route";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
@@ -84,58 +84,57 @@ function Router() {
         <ProtectedRoute 
           path="/" 
           component={AdminDashboardPage}
-          requiredUserType="admin"
+          adminOnly
         />
         <ProtectedRoute 
           path="/dashboard" 
           component={AdminDashboardPage}
-          requiredUserType="admin"
+          adminOnly
         />
         <ProtectedRoute 
           path="/admin/dashboard" 
           component={AdminDashboardPage}
-          requiredUserType="admin"
+          adminOnly
         />
         <ProtectedRoute 
           path="/intake" 
           component={IntakeForm}
-          requiredUserType="admin"
+          adminOnly
         />
         <ProtectedRoute 
           path="/inventory" 
           component={Items}
-          requiredUserType="admin"
+          adminOnly
         />
         <ProtectedRoute 
           path="/orders" 
           component={Orders}
-          requiredUserType="admin"
+          adminOnly
         />
         <ProtectedRoute 
           path="/orders/:id" 
           component={OrderDetail}
-          requiredUserType="admin"
+          adminOnly
         />
         <ProtectedRoute 
           path="/payouts" 
           component={Payouts}
-          requiredUserType="admin"
+          adminOnly
         />
         <ProtectedRoute 
           path="/settings" 
           component={Settings}
-          requiredUserType="admin"
+          adminOnly
         />
         <ProtectedRoute 
           path="/model-training" 
           component={ModelTraining}
-          requiredUserType="admin"
+          adminOnly
         />
-        {/* Move consignors route to admin routes section */}
         <ProtectedRoute 
           path="/admin/consignors" 
           component={Consignors}
-          requiredUserType="admin"
+          adminOnly
         />
         
         {/* Keep old route for backward compatibility, but redirect to new one */}
@@ -143,90 +142,72 @@ function Router() {
           path="/consignors" 
           component={() => {
             const [, navigate] = useLocation();
-            
-            // Use hook directly without needing to import
             React.useEffect(() => {
               navigate("/admin/consignors");
             }, [navigate]);
-            
             return null;
           }}
-          requiredUserType="admin"
+          adminOnly
         />
         <ProtectedRoute 
           path="/dashboard/:customerId" 
           component={Dashboard}
-          requiredUserType="admin"
+          adminOnly
         />
         
         {/* Consignor Dashboard Routes */}
         <ProtectedRoute 
           path="/consignor" 
           component={ConsignorDashboard}
-          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/dashboard" 
           component={ConsignorDashboard}
-          requiredUserType="consignor"
         />
         <ProtectedRoute
           path="/consignor/new-item" 
           component={NewItemIntakePage}
-          requiredUserType="consignor"
         />
         <ProtectedRoute
           path="/consignor/supabase-intake" 
           component={SupabaseIntakePage}
-          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/items" 
           component={Items}
-          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/items/:id" 
           component={ConsignorItemDetail}
-          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/history" 
           component={ConsignorHistory}
-          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/orders" 
           component={Orders}
-          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/orders/:id" 
           component={OrderDetail}
-          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/payouts" 
           component={ConsignorPayouts}
-          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/insights" 
           component={ConsignorInsights}
-          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/profile" 
           component={ConsignorProfile}
-          requiredUserType="consignor"
         />
         <ProtectedRoute 
           path="/consignor/settings" 
           component={ConsignorSettings}
-          requiredUserType="consignor"
         />
-        
-        {/* Authentication Routes - Note: /auth is already handled outside the layout */}
         
         {/* Customer Storefront Routes */}
         <Route path="/storefront" component={Storefront} />
