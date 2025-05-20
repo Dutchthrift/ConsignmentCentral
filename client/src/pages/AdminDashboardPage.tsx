@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpRight, PackageOpen, ShoppingCart, Users, TrendingUp, CreditCard, AlertCircle } from "lucide-react";
+import { ArrowUpRight, PackageOpen, ShoppingCart, Users, TrendingUp, CreditCard, AlertCircle, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import AllIntakes from "@/components/AllIntakes";
 import ItemDetailsModal from "@/components/ItemDetailsModal";
+import FixDatabaseRelations from "@/components/admin/FixDatabaseRelations";
 
 interface DashboardStats {
   totalItems: number;
@@ -240,9 +241,9 @@ const AdminDashboardPage = () => {
       </div>
       
       {/* Sections moved to the bottom as requested */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Consignment Process Section */}
-        <Card>
+        <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle>Consignment Process</CardTitle>
             <CardDescription>
@@ -250,7 +251,7 @@ const AdminDashboardPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div className="grid grid-cols-2 gap-4 text-center">
               <div className="flex flex-col items-center p-4 bg-orange-50 rounded-lg">
                 <div className="w-10 h-10 flex items-center justify-center rounded-full bg-orange-100 text-orange-600 mb-2">1</div>
                 <h3 className="text-sm font-medium">Intake Submission</h3>
@@ -279,7 +280,7 @@ const AdminDashboardPage = () => {
         </Card>
         
         {/* API Integrations Section */}
-        <Card>
+        <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle>API Integrations</CardTitle>
             <CardDescription>
@@ -328,6 +329,22 @@ const AdminDashboardPage = () => {
                 <Badge variant="outline" className="bg-red-50">Configuration needed</Badge>
               </div>
             </div>
+          </CardContent>
+        </Card>
+        
+        {/* Tools & Maintenance Section */}
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Database className="h-5 w-5 mr-2" />
+              Tools & Maintenance
+            </CardTitle>
+            <CardDescription>
+              Database management and system utilities
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FixDatabaseRelations />
           </CardContent>
         </Card>
       </div>
