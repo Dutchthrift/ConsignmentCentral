@@ -24,30 +24,32 @@ async function fixItemsTable() {
   try {
     console.log('Checking items table columns...');
     
-    // Check if image_urls column exists - if not, add it
-    const columnExists = await executeQuery(
-      "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='items' AND column_name='image_urls')"
-    );
+    // Required columns for the items table
+    const requiredColumns = [
+      { name: 'image_urls', type: 'TEXT' },
+      { name: 'image_url', type: 'TEXT' },
+      { name: 'condition', type: 'TEXT' },
+      { name: 'status', type: 'TEXT' },
+      { name: 'customer_id', type: 'INTEGER' },
+      { name: 'reference_id', type: 'TEXT' },
+      { name: 'title', type: 'TEXT' },
+      { name: 'description', type: 'TEXT' },
+      { name: 'category', type: 'TEXT' }
+    ];
     
-    if (!columnExists.rows[0].exists) {
-      console.log('Adding image_urls column to items table');
-      await executeQuery("ALTER TABLE items ADD COLUMN image_urls TEXT");
-      console.log('Successfully added image_urls column');
-    } else {
-      console.log('image_urls column already exists');
-    }
-    
-    // Verify image_url column
-    const imageUrlExists = await executeQuery(
-      "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='items' AND column_name='image_url')"
-    );
-    
-    if (!imageUrlExists.rows[0].exists) {
-      console.log('Adding image_url column to items table');
-      await executeQuery("ALTER TABLE items ADD COLUMN image_url TEXT");
-      console.log('Successfully added image_url column');
-    } else {
-      console.log('image_url column already exists');
+    // Check each required column and add if missing
+    for (const column of requiredColumns) {
+      const columnExists = await executeQuery(
+        `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='items' AND column_name='${column.name}')`
+      );
+      
+      if (!columnExists.rows[0].exists) {
+        console.log(`Adding ${column.name} column to items table`);
+        await executeQuery(`ALTER TABLE items ADD COLUMN ${column.name} ${column.type}`);
+        console.log(`Successfully added ${column.name} column`);
+      } else {
+        console.log(`${column.name} column already exists`);
+      }
     }
     
     // Make sure we have both columns to avoid future errors
