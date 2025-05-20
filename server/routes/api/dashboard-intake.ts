@@ -229,8 +229,9 @@ router.post('/intake', async (req, res) => {
         const estimatedValue = 5000; // €50.00
         const { commissionRate, payoutValue } = calculateCommissionAndPayout(estimatedValue);
         
-        // Process image data and store it as JSON string
-        const imageUrls = imageBase64 ? JSON.stringify([imageBase64.substring(0, 100) + '...']) : '[]';
+        // Process image data and store it properly for PostgreSQL
+        // We'll use the base64 data but store it as text not as an array to avoid PostgreSQL array parsing issues
+        const imageUrlText = imageBase64 ? (imageBase64.substring(0, 100) + '...') : '';
         
         // Dynamically build the query based on whether order_id column exists
         let createItemQuery;
@@ -259,7 +260,7 @@ router.post('/intake', async (req, res) => {
             title,
             description || '',
             'pending',
-            imageUrls,
+            imageUrlText,
             orderId  // Include order_id parameter
           ];
         } else {
@@ -284,7 +285,7 @@ router.post('/intake', async (req, res) => {
             title,
             description || '',
             'pending',
-            imageUrls
+            imageUrlText
           ];
         }
         
