@@ -23,10 +23,9 @@ import { generateShippingLabel } from "./services/sendcloud.service";
 import { analyzeProduct } from "./services/openai.service";
 import { getMarketPricing, calculatePricing } from "./services/ebay.service";
 import SessionService from "./services/session.service";
-import { registerAuthRoutes } from "./routes/auth.routes";
 import insightsRoutes from "./routes/insights.ts";
 import { requireAdmin } from "./middleware/auth.middleware";
-// Removed Supabase integration
+import { registerSupabaseAuthRoutes } from "./routes/auth/supabase-auth.routes";
 
 // Import route handlers
 import adminRoutes from "./routes/admin.ts";
@@ -139,10 +138,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Register authentication routes
-  const authService = registerAuthRoutes(app, storage);
+  // Register Supabase authentication routes
+  const supabaseAuthService = registerSupabaseAuthRoutes(app, storage);
   
-  // Demo login route - fallback when database is unavailable
+  // Demo login route - fallback when Supabase is unavailable
   app.post('/api/auth/demo-login', (req, res) => {
     const { email, password } = req.body;
     

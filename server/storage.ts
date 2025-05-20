@@ -80,7 +80,69 @@ export class MemStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
+    // Check admin users first
+    const adminUser = this.adminUsers.find(user => user.email === email);
+    if (adminUser) {
+      return {
+        id: adminUser.id,
+        email: adminUser.email,
+        password: adminUser.password,
+        name: adminUser.name,
+        role: adminUser.role,
+        createdAt: adminUser.createdAt,
+        provider: adminUser.provider,
+        lastLogin: adminUser.lastLogin,
+        externalId: adminUser.externalId,
+        profileImageUrl: adminUser.profileImageUrl
+      };
+    }
+    
+    // Then check regular users
     return this.users.find(user => user.email === email);
+  }
+  
+  async createUser(userData: InsertUser): Promise<User> {
+    // Generate ID
+    const newId = this.users.length > 0 
+      ? Math.max(...this.users.map(u => u.id)) + 1 
+      : 1;
+    
+    const newUser: User = {
+      id: newId,
+      email: userData.email,
+      password: userData.password || null,
+      name: userData.name,
+      role: userData.role || 'consignor',
+      createdAt: new Date(),
+      provider: userData.provider || 'local',
+      lastLogin: null,
+      externalId: null,
+      profileImageUrl: null
+    };
+    
+    this.users.push(newUser);
+    
+    // If this is a consignor, create a customer for them
+    if (newUser.role === 'consignor') {
+      this.createCustomer({
+        userId: newId,
+        email: newUser.email,
+        firstName: newUser.name.split(' ')[0] || '',
+        lastName: newUser.name.split(' ').slice(1).join(' ') || '',
+        phone: '',
+        address: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: '',
+        companyName: '',
+        vatNumber: '',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+    }
+    
+    return newUser;
   }
 
   async updateUserLastLogin(id: number): Promise<User | undefined> {
