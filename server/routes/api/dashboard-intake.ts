@@ -241,7 +241,7 @@ router.post('/intake', async (req, res) => {
         const checkAnalysisTableQuery = `
           SELECT EXISTS (
             SELECT 1 FROM information_schema.tables 
-            WHERE table_name = 'analysis'
+            WHERE table_name = 'analyses'
           )
         `;
         
@@ -251,7 +251,7 @@ router.post('/intake', async (req, res) => {
           console.log('Creating default analysis');
           
           const createAnalysisQuery = `
-            INSERT INTO analysis (
+            INSERT INTO analyses (
               item_id, 
               brand, 
               product_type, 
