@@ -256,8 +256,8 @@ router.post('/intake', async (req, res) => {
           queryParams = [
             referenceId,
             customerId,
-            itemDetails.title,
-            itemDetails.description || '',
+            title,
+            description || '',
             'pending',
             imageUrls,
             orderId  // Include order_id parameter
@@ -281,8 +281,8 @@ router.post('/intake', async (req, res) => {
           queryParams = [
             referenceId,
             customerId,
-            itemDetails.title,
-            itemDetails.description || '',
+            title,
+            description || '',
             'pending',
             imageUrls
           ];
