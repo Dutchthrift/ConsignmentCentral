@@ -1138,6 +1138,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register our new dashboard intake route
   app.use('/api/dashboard', dashboardIntakeRouter);
   
+  // Register our new simplified intake route for better reliability
+  app.use('/api/new-intake', newIntakeRouter);
+  
   // Register our database fix relationships route (admin only)
   app.use('/api/admin/fix-relations', fixRelationsRoutes);
   

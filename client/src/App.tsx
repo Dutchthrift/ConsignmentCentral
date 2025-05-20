@@ -39,6 +39,7 @@ import Layout from "@/components/Layout";
 import StorefrontLayout from "@/components/StorefrontLayout";
 import ConsignorLayout from "@/components/ConsignorLayout";
 import ConsignorItemDetail from "@/pages/ConsignorItemDetail";
+import NewItemIntakePage from "@/pages/NewItemIntakePage";
 import TokenTestPage from "@/pages/token-test-page";
 // No layout for login pages - they have their own interface
 
@@ -180,7 +181,7 @@ function Router() {
         />
         <ProtectedRoute
           path="/consignor/new-item" 
-          component={ConsignorSubmitItem}
+          component={NewItemIntakePage}
           allowedRoles={[UserRole.CONSIGNOR]} 
         />
         <ProtectedRoute 
@@ -235,6 +236,7 @@ function Router() {
         
         {/* Customer Storefront Routes */}
         <Route path="/storefront" component={Storefront} />
+        <Route path="/storefront/submit-item" component={NewItemIntakePage} />
         
         {/* Consignor Registration Flow - public routes */}
         <Route path="/setup-account" component={SetupAccount} />
