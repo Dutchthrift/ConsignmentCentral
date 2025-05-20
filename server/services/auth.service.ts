@@ -214,20 +214,28 @@ export class AuthService {
           // Continue with regular storage methods as fallback
         }
         
-        // Try regular storage method for admin users
-        const adminUser = await this.storage.getAdminUserByEmail(email);
-        if (adminUser) {
-          // Found admin, verify password
-          const isValid = await this.verifyPassword(password, adminUser.password || '');
+        try {
+          // Try to find admin user in memory storage
+          const adminUsers = await this.storage.getAllAdminUsers();
+          const adminUser = adminUsers.find(user => user.email === email);
           
-          if (isValid) {
-            // Set admin type in session
-            if (req.session) {
-              req.session.userType = UserType.ADMIN;
-              console.log("Admin user login, setting session userType to ADMIN");
-            }
+          if (adminUser) {
+            // Found admin, verify password
+            const isValid = await this.verifyPassword(password, adminUser.password || '');
             
-            return done(null, adminUser);
+            if (isValid) {
+              // Set admin type in session
+              if (req.session) {
+                req.session.userType = UserType.ADMIN;
+                console.log("Admin user login, setting session userType to ADMIN");
+              }
+              
+              return done(null, adminUser);
+            }
+          }
+        } catch (error) {
+          console.error("Error finding admin user:", error);
+        }
           } else {
             return done(null, false, { message: 'Incorrect email or password' });
           }

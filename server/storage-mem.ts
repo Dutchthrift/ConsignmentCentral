@@ -1,4 +1,4 @@
-import { IStorage } from './storage';
+import { IStorage } from './storage-interface';
 import { 
   User, InsertUser, 
   Customer, InsertCustomer, 
@@ -18,7 +18,7 @@ import createMemoryStore from 'memorystore';
 
 const MemoryStore = createMemoryStore(session);
 
-export class MemStorage implements IStorage {
+export class MemStorage {
   private users: User[] = [];
   private customers: Customer[] = [];
   private items: Item[] = [];
