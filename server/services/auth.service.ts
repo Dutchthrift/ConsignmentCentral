@@ -13,7 +13,7 @@ import { pool, testConnection } from '../db-config';
 // Using centralized database configuration with direct Supabase connection
 
 export class AuthService {
-  private storage: IStorage;
+  private storage: any;
   private sessionService: SessionService;
   private scryptAsync = promisify(scrypt);
   private readonly JWT_SECRET = process.env.JWT_SECRET || 'dutch-thrift-jwt-secret';
@@ -236,10 +236,9 @@ export class AuthService {
         } catch (error) {
           console.error("Error finding admin user:", error);
         }
-          } else {
-            return done(null, false, { message: 'Incorrect email or password' });
-          }
-        }
+          
+        // If we get here, authentication failed
+        return done(null, false, { message: 'Incorrect email or password' });
         
         // Try direct database query for customers
         try {
