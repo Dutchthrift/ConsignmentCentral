@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import { z } from 'zod';
-import { supabaseStorage } from '../../storage-supabase';
+import { storage } from '../../storage-supabase';
 import { insertItemSchema, insertAnalysisSchema, insertPricingSchema, insertOrderSchema, ItemStatus } from '@shared/schema';
 import { Pool } from '@neondatabase/serverless';
 
