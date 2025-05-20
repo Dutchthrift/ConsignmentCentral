@@ -2,7 +2,7 @@
  * Export the storage interface for the application
  */
 import { IStorage } from './storage-interface';
-import { storage as supabaseStorage } from './storage-supabase';
+import { MemStorage } from './storage-mem';
 
-// Export the Supabase storage as the main storage implementation
-export const storage: IStorage = supabaseStorage;
+// Export the memory storage as the main storage implementation
+export const storage: IStorage = new MemStorage();
