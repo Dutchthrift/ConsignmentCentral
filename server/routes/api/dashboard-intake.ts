@@ -1,6 +1,6 @@
 /**
- * New Dashboard Intake Route
- * This implementation uses UUID-based new_orders and new_items tables
+ * Dashboard Intake Route
+ * This implementation processes consignment item submissions and links them to orders
  */
 
 import { Router } from 'express';
@@ -89,27 +89,8 @@ router.post('/intake', async (req, res) => {
       // Start transaction
       await client.query('BEGIN');
       
-      // Generate a real UUID from the customer ID
-      let customerUuid;
-      try {
-        // Use the uuid_generate_v5 function to create a deterministic UUID
-        // based on the customer ID, using a namespace UUID
-        const uuidQuery = `
-          SELECT uuid_generate_v5(
-            'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::uuid, 
-            $1::text
-          ) as customer_uuid
-        `;
-        
-        const uuidResult = await client.query(uuidQuery, [customerId.toString()]);
-        customerUuid = uuidResult.rows[0].customer_uuid;
-      } catch (error) {
-        // If that fails for any reason, just use a random UUID
-        const randomUuidQuery = `SELECT uuid_generate_v4() as uuid`;
-        const randomResult = await client.query(randomUuidQuery);
-        customerUuid = randomResult.rows[0].uuid;
-      }
-      console.log(`Using customer identifier: ${customerUuid}`);
+      // We'll use the numeric customer ID from the authentication
+      console.log(`Using customer identifier: ${customerId}`);
       
       // 2. Create a new order in the orders table
       const orderNumber = generateOrderNumber();
@@ -249,7 +230,7 @@ router.post('/intake', async (req, res) => {
                 SELECT COALESCE(SUM(p.average_market_price), 0)
                 FROM items i
                 LEFT JOIN pricing p ON i.id = p.item_id
-                WHERE i.order_id = $1 OR i.id IN (
+                WHERE i.id IN (
                   SELECT item_id FROM order_items WHERE order_id = $1
                 )
               ),
@@ -257,7 +238,7 @@ router.post('/intake', async (req, res) => {
                 SELECT COALESCE(SUM(p.suggested_payout), 0)
                 FROM items i
                 LEFT JOIN pricing p ON i.id = p.item_id
-                WHERE i.order_id = $1 OR i.id IN (
+                WHERE i.id IN (
                   SELECT item_id FROM order_items WHERE order_id = $1
                 )
               )
