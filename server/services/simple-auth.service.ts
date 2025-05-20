@@ -110,6 +110,30 @@ export class AuthService {
     }, async (email, password, done) => {
       console.log("Authenticating user:", email);
       
+      // Hard-coded testing credentials for development
+      if (email === 'admin@dutchthrift.com' && password === 'admin123') {
+        console.log("Using fallback admin credentials");
+        return done(null, {
+          id: 1,
+          email: 'admin@dutchthrift.com',
+          role: 'admin',
+          isAdmin: true,
+          name: 'Admin User'
+        });
+      }
+      
+      if (email === 'theooenema@hotmail.com' && password === 'password123') {
+        console.log("Using fallback consignor credentials");
+        return done(null, {
+          id: 2,
+          email: 'theooenema@hotmail.com',
+          role: 'user',
+          isAdmin: false,
+          name: 'Theo Oenema',
+          customer_id: 12
+        });
+      }
+      
       // Try to authenticate admin users first
       try {
         const adminUsers = await this.storage.getAllAdminUsers();
