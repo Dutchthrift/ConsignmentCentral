@@ -1,9 +1,9 @@
 import { supabase } from './supabase-client';
-import { IStorage } from './storage';
+// Import what's needed for our Supabase storage implementation
 import { generateReferenceId, generateOrderNumber } from './utils/generators';
 import { calculateCommission } from './utils/pricing';
 
-export class SupabaseStorage implements IStorage {
+export class SupabaseStorage {
   // User-related methods
   async getUserByEmail(email: string) {
     const { data, error } = await supabase
@@ -266,3 +266,6 @@ export class SupabaseStorage implements IStorage {
 function generateOrderId(): string {
   return 'ORD-' + Math.floor(Math.random() * 1000000).toString();
 }
+
+// Export a single instance for use throughout the application
+export const supabaseStorage = new SupabaseStorage();
