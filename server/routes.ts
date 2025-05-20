@@ -33,6 +33,7 @@ import adminAddConsignorRoute from "./routes/admin/add-consignor";
 import adminOrdersRoutes from "./routes/admin/orders";
 import adminItemsRoutes from "./routes/admin/items"; // Added import for admin items
 import adminAuthTestRoutes from "./routes/admin-auth-test"; // Added import for admin auth test
+import fixRelationsRoutes from "./routes/admin/fix-relations"; // Fix item-order relationships route
 import dashboardRoutes from "./routes/dashboard.ts";
 import itemsRoutes from "./routes/items.ts"; // Item details routes
 import consignorRoutes from "./routes/consignor.ts";

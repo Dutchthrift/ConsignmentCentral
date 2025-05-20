@@ -220,7 +220,29 @@ router.post('/intake', async (req, res) => {
         // Continue even if totals update fails
       }
       
-      // 5. Commit the transaction
+      // 5. Verify the order-item relationship in the database
+      try {
+        // Check if the junction table link was created
+        const verifyQuery = `
+          SELECT * FROM order_items WHERE order_id = $1 AND item_id = $2
+        `;
+        const verifyResult = await client.query(verifyQuery, [orderId, itemId]);
+        const junctionExists = verifyResult.rows.length > 0;
+        
+        // Check if the item has the order_id directly
+        const verifyItemQuery = `
+          SELECT order_id FROM items WHERE id = $1
+        `;
+        const verifyItemResult = await client.query(verifyItemQuery, [itemId]);
+        const directLinkExists = verifyItemResult.rows.length > 0 && 
+                               verifyItemResult.rows[0].order_id === orderId;
+        
+        console.log(`Verification results - Junction link: ${junctionExists ? 'EXISTS' : 'MISSING'}, Direct link: ${directLinkExists ? 'EXISTS' : 'MISSING'}`);
+      } catch (verifyError) {
+        console.warn('Non-critical verification error:', verifyError);
+      }
+      
+      // 6. Commit the transaction
       await client.query('COMMIT');
       
       // Return success response with appropriate structure based on what was created
