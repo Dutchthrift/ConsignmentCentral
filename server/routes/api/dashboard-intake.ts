@@ -155,94 +155,81 @@ router.post('/intake', async (req, res) => {
         const estimatedValue = 5000; // €50.00
         const { commissionRate, payoutValue } = calculateCommissionAndPayout(estimatedValue);
         
-        // Check if new_items table exists
-        const tableCheckQuery = `
-          SELECT EXISTS (
-            SELECT 1 FROM information_schema.tables 
-            WHERE table_name = 'new_items'
-          )
+        // We've analyzed the items table structure and confirmed it doesn't have an order_id column
+        // Use the proper structure based on the actual database tables
+        const createItemQuery = `
+          INSERT INTO items (
+            reference_id,
+            customer_id, 
+            title, 
+            description, 
+            status, 
+            created_at, 
+            updated_at,
+            image_urls
+          ) 
+          VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6)
+          RETURNING id
         `;
         
-        const tableExists = await client.query(tableCheckQuery);
+        // Process image data and store it as JSON string
+        const imageUrls = imageBase64 ? JSON.stringify([imageBase64.substring(0, 100) + '...']) : '[]';
         
-        if (!tableExists.rows[0].exists) {
-          console.log('new_items table does not exist, falling back to legacy tables');
-          
-          // Use the legacy items table
-          const createItemQuery = `
-            INSERT INTO items (
-              reference_id,
-              customer_id, 
-              title, 
-              description, 
-              status, 
-              created_at, 
-              updated_at,
-              order_id
-            ) 
-            VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), $6)
-            RETURNING id
-          `;
-          
-          const itemInsertResult = await client.query(createItemQuery, [
-            referenceId,
-            customerId,
-            title,
-            description || null,
-            'pending',
-            orderId
-          ]);
-          
-          itemId = itemInsertResult.rows[0].id;
-          console.log(`Created legacy item with ID ${itemId}`);
-          
-          // Create an entry in order_items junction table if needed
-          // First check if we need this (if order_id was successfully set in items table)
-          const checkOrderIdQuery = `
-            SELECT order_id FROM items WHERE id = $1
-          `;
-          
-          const orderIdCheck = await client.query(checkOrderIdQuery, [itemId]);
-          
-          if (!orderIdCheck.rows[0].order_id) {
-            // Link via junction table instead
-            const linkQuery = `
-              INSERT INTO order_items (order_id, item_id, created_at)
-              VALUES ($1, $2, NOW())
-              ON CONFLICT (order_id, item_id) DO NOTHING
-            `;
-            
-            await client.query(linkQuery, [orderId, itemId]);
-            console.log(`Linked item to order in order_items table`);
-          }
+        const itemParams = [
+          referenceId,
+          customerId,
+          title,
+          description || null,
+          'pending',
+          imageUrls
+        ];
+        
+        const itemInsertResult = await client.query(createItemQuery, itemParams);
+        itemId = itemInsertResult.rows[0].id;
+        console.log(`Created legacy item with ID ${itemId}`);
+        
+        // Always create an entry in order_items junction table to ensure the link exists
+        const linkQuery = `
+          INSERT INTO order_items (order_id, item_id, created_at)
+          VALUES ($1, $2, NOW())
+          ON CONFLICT (order_id, item_id) DO NOTHING
+        `;
+        
+        await client.query(linkQuery, [orderId, itemId]);
+        console.log(`Linked item to order in order_items table`);
         } else {
           console.log('Using new_items table for UUID-based storage');
+          
           // Process image URLs - store the base64 image for now (abbreviated for storage purposes)
-          const imageUrls = imageBase64 ? [`${imageBase64.substring(0, 100)}...`] : [];
+          const imageUrls = imageBase64 ? [imageBase64] : [];
           
           // Use the new UUID-based table
           const createItemQuery = `
             INSERT INTO new_items (
               order_id,
               title,
+              description,
+              reference_id,
               image_urls,
               estimated_value,
               payout_value,
               commission_rate,
               status
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING id
           `;
           
           const itemInsertResult = await client.query(createItemQuery, [
             orderId,
             title,
+            description || 'No description provided',
+            referenceId,
             imageUrls,
             estimatedValue,
             payoutValue,
             commissionRate,
-            'quoted'
+            'pending'
           ]);
           
           itemId = itemInsertResult.rows[0].id;
