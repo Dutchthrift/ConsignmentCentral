@@ -298,14 +298,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const token = authHeader.split(' ')[1];
-      const decoded = await authService.verifyToken(token);
       
-      if (!decoded || !decoded.id) {
+      let decodedUser: any;
+      
+      try {
+        decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'dutch-thrift-jwt-secret') as any;
+        
+        if (!decodedUser || !decodedUser.id) {
+          return res.status(401).json({ success: false, message: "Invalid authentication token" });
+        }
+      } catch (error) {
+        console.error("Token verification error:", error);
         return res.status(401).json({ success: false, message: "Invalid authentication token" });
       }
       
       // Find the customer associated with this user
-      const customer = await storage.getCustomerByUserId(decoded.id);
+      const customer = await storage.getCustomerByUserId(decodedUser.id);
       
       if (!customer) {
         return res.status(403).json({ success: false, message: "Not registered as a consignor" });
