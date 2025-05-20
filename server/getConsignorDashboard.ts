@@ -1,15 +1,37 @@
-import { db } from './db';
+import { db, pool } from './db';
 import { items, pricing } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
 // Standalone function to get consignor dashboard data
 export async function getConsignorDashboard(customerId: number) {
   try {
-    // Get all items for this customer
+    // Get all items for this customer from the main items table
     const customerItems = await db.select().from(items).where(eq(items.customerId, customerId));
     
+    // Also get items from the temporary tables that were created through the new intake form
+    const tmpItemsResult = await pool.query(
+      'SELECT * FROM tmp_items WHERE customer_id = $1',
+      [customerId]
+    );
+    
+    // Convert tmp_items to the same format as main items
+    const tmpItems = tmpItemsResult.rows.map(item => ({
+      id: item.id,
+      referenceId: item.reference_id,
+      title: item.title,
+      description: item.description,
+      imageUrl: item.image_url,
+      status: 'pending', // Default status for new items
+      customerId: item.customer_id,
+      orderId: item.order_id,
+      createdAt: item.created_at || new Date()
+    }));
+    
+    // Combine both sets of items
+    const allCustomerItems = [...customerItems, ...tmpItems];
+    
     // Get pricing info for these items
-    const itemIds = customerItems.map(item => item.id);
+    const itemIds = allCustomerItems.map(item => item.id);
     
     // Get pricing data for all items using direct query
     let pricingData = [];
