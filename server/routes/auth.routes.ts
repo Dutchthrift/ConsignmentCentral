@@ -286,11 +286,17 @@ export function registerAuthRoutes(app: Express, storage: IStorage) {
           userType: req.session?.userType
         });
         
-        // Update last login timestamp - use the appropriate method based on user type
-        if (userType === UserType.ADMIN) {
-          storage.updateAdminUserLastLogin(account.id).catch(console.error);
-        } else {
-          storage.updateCustomerByEmail(account.email, { lastLogin: new Date() }).catch(console.error);
+        // Update last login timestamp if the methods exist in the storage implementation
+        try {
+          if (userType === UserType.ADMIN && typeof storage.updateAdminUserLastLogin === 'function') {
+            storage.updateAdminUserLastLogin(account.id).catch(err => console.log('Non-critical error:', err.message));
+          } else if (typeof storage.updateUserLastLogin === 'function') {
+            storage.updateUserLastLogin(account.id).catch(err => console.log('Non-critical error:', err.message));
+          } else {
+            console.log('Last login update skipped - function not available in storage implementation');
+          }
+        } catch (err) {
+          console.log('Non-critical error updating last login:', err.message);
         }
         
         console.log('Login successful:', { 
