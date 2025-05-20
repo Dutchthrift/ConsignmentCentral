@@ -97,33 +97,87 @@ router.post('/intake', async (req, res) => {
       let orderId;
       
       try {
+        // Check if submission_date column exists in orders table
+        const checkOrderColumnQuery = `
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'submission_date'
+        `;
+        
+        const orderColumnCheck = await client.query(checkOrderColumnQuery);
+        const submissionDateExists = orderColumnCheck.rows.length > 0;
+        
+        if (!submissionDateExists) {
+          console.log('Adding submission_date column to orders table...');
+          // Add the submission_date column if it doesn't exist
+          const addOrderColumnQuery = `
+            ALTER TABLE orders 
+            ADD COLUMN submission_date TIMESTAMP DEFAULT NOW()
+          `;
+          await client.query(addOrderColumnQuery);
+          console.log('Successfully added submission_date column to orders table');
+        }
+        
+        // Check if other required columns exist
+        const checkTotalColumns = `
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name IN ('total_value', 'total_payout')
+        `;
+        
+        const totalColumnsCheck = await client.query(checkTotalColumns);
+        const existingColumns = totalColumnsCheck.rows.map(row => row.column_name);
+        
+        if (!existingColumns.includes('total_value')) {
+          console.log('Adding total_value column to orders table...');
+          await client.query(`ALTER TABLE orders ADD COLUMN total_value INTEGER DEFAULT 0`);
+        }
+        
+        if (!existingColumns.includes('total_payout')) {
+          console.log('Adding total_payout column to orders table...');
+          await client.query(`ALTER TABLE orders ADD COLUMN total_payout INTEGER DEFAULT 0`);
+        }
+        
         // Set default estimated values
         const defaultEstimatedValue = 5000; // €50.00
         const { commissionRate, payoutValue } = calculateCommissionAndPayout(defaultEstimatedValue);
         
-        // Use the existing orders table
+        // Use the existing orders table but with a more resilient query
         const createOrderQuery = `
           INSERT INTO orders (
             order_number,
             customer_id,
-            submission_date,
             status,
-            total_value,
-            total_payout,
             created_at,
             updated_at
+            ${submissionDateExists ? ', submission_date' : ''}
+            ${existingColumns.includes('total_value') ? ', total_value' : ''}
+            ${existingColumns.includes('total_payout') ? ', total_payout' : ''}
           )
-          VALUES ($1, $2, NOW(), $3, $4, $5, NOW(), NOW())
+          VALUES (
+            $1, 
+            $2, 
+            $3, 
+            NOW(), 
+            NOW()
+            ${submissionDateExists ? ', NOW()' : ''}
+            ${existingColumns.includes('total_value') ? ', $4' : ''}
+            ${existingColumns.includes('total_payout') ? ', $5' : ''}
+          )
           RETURNING id
         `;
         
-        const orderInsertResult = await client.query(createOrderQuery, [
-          orderNumber,
-          customerId,
-          'awaiting_shipment',
-          defaultEstimatedValue,
-          payoutValue
-        ]);
+        // Build parameter array dynamically based on which columns exist
+        let params = [orderNumber, customerId, 'awaiting_shipment'];
+        if (existingColumns.includes('total_value')) {
+          params.push(defaultEstimatedValue);
+        }
+        if (existingColumns.includes('total_payout')) {
+          params.push(payoutValue);
+        }
+        
+        console.log('Executing order create query with params:', params);
+        const orderInsertResult = await client.query(createOrderQuery, params);
         
         orderId = orderInsertResult.rows[0].id;
         console.log(`Created order with ID ${orderId}`);
