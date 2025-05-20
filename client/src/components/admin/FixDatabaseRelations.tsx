@@ -31,12 +31,23 @@ const FixDatabaseRelations: React.FC = () => {
     
     try {
       // Direct fetch with specific headers to ensure proper JSON response handling
+      // Include authorization token from localStorage if available
+      const token = localStorage.getItem('dutchthrift_auth_token');
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        console.log('Using stored auth token for database fix request');
+      } else {
+        console.warn('No auth token available for database fix request');
+      }
+      
       const response = await fetch('/api/admin/fix-relations', {
         method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
+        headers,
         credentials: 'include'
       });
       
