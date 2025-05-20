@@ -493,15 +493,16 @@ export const adminUsers = pgTable("admin_users", {
   name: text("name").notNull(),
   role: text("role").notNull().default(UserRole.ADMIN),
   provider: text("provider").notNull().default(AuthProvider.LOCAL), // Simplified provider handling
-  lastLogin: timestamp("last_login").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  externalId: text("external_id"), // ID from external provider
-  profileImageUrl: text("profile_image_url"), // Avatar URL
+  last_login: timestamp("last_login"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  external_id: text("external_id"), // ID from external provider
+  profile_image_url: text("profile_image_url") // Avatar URL
 });
 
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
   id: true,
-  lastLogin: true,
+  created_at: true,
+  last_login: true,
 });
 
 // Relations
