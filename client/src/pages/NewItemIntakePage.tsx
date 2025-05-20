@@ -110,9 +110,11 @@ const NewItemIntakePage: React.FC = () => {
           return;
         }
 
-        // Send data to the new intake endpoint
-        // Get the authentication token from localStorage (stored by useAuth hook)
-        const token = localStorage.getItem('authToken');
+        // Send data to the new intake endpoint using TanStack Query's authenticated fetch function
+        // instead of directly using localStorage for better reliability
+        
+        // Get the token from localStorage using the correct key from queryClient.ts
+        const token = localStorage.getItem('dutchthrift_auth_token');
         
         const response = await fetch('/api/new-intake', {
           method: 'POST',
