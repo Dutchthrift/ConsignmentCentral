@@ -1,16 +1,17 @@
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import { Strategy as AppleStrategy } from 'passport-apple';
-import { IStorage } from '../storage-interface';
 import { Request, Response, NextFunction } from 'express';
-import { User, AdminUser, Customer, UserType, UserRole } from '@shared/schema';
-import SessionService from './session.service';
-import { scrypt, randomBytes, timingSafeEqual, createHmac } from 'crypto';
+import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
 import jwt from 'jsonwebtoken';
-import { pool, testConnection } from '../db-config';
-// Using centralized database configuration with direct Supabase connection
+import SessionService from './session.service';
+
+// User type enumeration for session management
+export enum UserType {
+  USER = 'user',
+  ADMIN = 'admin',
+  CUSTOMER = 'customer'
+}
 
 export class AuthService {
   private storage: any;
@@ -18,11 +19,6 @@ export class AuthService {
   private scryptAsync = promisify(scrypt);
   private readonly JWT_SECRET = process.env.JWT_SECRET || 'dutch-thrift-jwt-secret';
   private readonly TOKEN_EXPIRY = '7d'; // Token valid for 7 days
-  
-  // Expose database pool for direct queries
-  getPool() {
-    return pool;
-  }
 
   constructor(storage: IStorage) {
     this.storage = storage;

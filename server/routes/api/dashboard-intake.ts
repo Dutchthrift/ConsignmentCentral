@@ -88,12 +88,8 @@ router.post('/intake', async (req, res) => {
     
     const { title, description, imageBase64 } = validationResult.data;
     
-    // Use a database transaction to ensure all operations succeed or fail together
-    const client = await storage.getClient();
-    
     try {
-      // Start transaction
-      await client.query('BEGIN');
+      // Using in-memory storage instead of database transaction
       
       // We'll use the numeric customer ID from the authentication
       console.log(`Using customer identifier: ${customerId}`);
