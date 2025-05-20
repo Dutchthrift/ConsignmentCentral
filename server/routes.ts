@@ -1139,7 +1139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Register our new dashboard intake route
-  app.use('/api/dashboard', dashboardIntakeRouter);
+  app.use('/api/dashboard-intake', dashboardIntakeRouter);
   
   // Register our new simplified intake route for better reliability
   app.use('/api/new-intake', newIntakeRouter);
