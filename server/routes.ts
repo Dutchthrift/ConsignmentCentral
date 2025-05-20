@@ -391,15 +391,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Direct SQL approach to update the image
             const client = await storage.getClient();
             try {
-              // Update both image_url and image_urls columns for compatibility
-              const query = `
-                UPDATE items 
-                SET image_urls = $1, 
-                    image_url = $1,
-                    updated_at = NOW() 
-                WHERE id = $2 
-                RETURNING *
+              // Fix SQL query - check if both columns exist first
+              console.log('Checking if both image columns exist before update...');
+              const checkColumnsQuery = `
+                SELECT 
+                  EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='items' AND column_name='image_url') as has_image_url,
+                  EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='items' AND column_name='image_urls') as has_image_urls
               `;
+              
+              const columnCheck = await client.query(checkColumnsQuery);
+              const hasImageUrl = columnCheck.rows[0].has_image_url;
+              const hasImageUrls = columnCheck.rows[0].has_image_urls;
+              
+              console.log(`Column check results: image_url=${hasImageUrl}, image_urls=${hasImageUrls}`);
+              
+              // Create a dynamic query based on which columns exist
+              let query = `UPDATE items SET updated_at = NOW()`;
+              const queryParams = [];
+              
+              if (hasImageUrl) {
+                queryParams.push(imageBase64);
+                query += `, image_url = $${queryParams.length}`;
+              }
+              
+              if (hasImageUrls) {
+                queryParams.push(imageBase64);
+                query += `, image_urls = $${queryParams.length}`;
+              }
+              
+              // Add the item ID parameter
+              queryParams.push(item.id);
+              query += ` WHERE id = $${queryParams.length} RETURNING *`;
+              
+              console.log(`Generated SQL query: ${query}`);
+              console.log(`With params: [image binary data..., ${item.id}]`);
               
               const result = await client.query(query, [imageBase64, item.id]);
               console.log(`Image stored successfully for item ${item.id}`);
