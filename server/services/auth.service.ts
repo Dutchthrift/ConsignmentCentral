@@ -1,15 +1,15 @@
-import { Request, Response } from "express";
+import { IStorage } from "../storage";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import jwt from "jsonwebtoken";
-import { IStorage } from "../storage";
 
-// Promisify the scrypt function
 const scryptAsync = promisify(scrypt);
 
-// Define user types
 export type UserTypeValues = 'admin' | 'consignor';
 
+/**
+ * Token payload interface for JWT
+ */
 export interface TokenPayload {
   id: number;
   email: string;
@@ -18,6 +18,9 @@ export interface TokenPayload {
   isAdmin?: boolean;
 }
 
+/**
+ * Authentication service for user authentication and authorization
+ */
 export class AuthService {
   private storage: IStorage;
   private jwtSecret: string;
@@ -25,8 +28,8 @@ export class AuthService {
 
   constructor(storage: IStorage) {
     this.storage = storage;
-    this.jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    this.tokenExpiration = process.env.TOKEN_EXPIRATION || '1d';
+    this.jwtSecret = process.env.JWT_SECRET || "dutchthrift-jwt-secret";
+    this.tokenExpiration = "24h";
   }
 
   /**
@@ -42,10 +45,15 @@ export class AuthService {
    * Compare stored password hash with provided password
    */
   async comparePasswords(supplied: string, stored: string): Promise<boolean> {
-    const [hashed, salt] = stored.split(".");
-    const hashedBuf = Buffer.from(hashed, "hex");
-    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-    return timingSafeEqual(hashedBuf, suppliedBuf);
+    try {
+      const [hashed, salt] = stored.split(".");
+      const hashedBuf = Buffer.from(hashed, "hex");
+      const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+      return timingSafeEqual(hashedBuf, suppliedBuf);
+    } catch (error) {
+      console.error("Error comparing passwords:", error);
+      return false;
+    }
   }
 
   /**
@@ -53,7 +61,7 @@ export class AuthService {
    */
   generateToken(payload: TokenPayload): string {
     return jwt.sign(payload, this.jwtSecret, {
-      expiresIn: this.tokenExpiration,
+      expiresIn: this.tokenExpiration
     });
   }
 
@@ -64,7 +72,7 @@ export class AuthService {
     try {
       return jwt.verify(token, this.jwtSecret) as TokenPayload;
     } catch (error) {
-      console.error("Token verification error:", error);
+      console.error("Error verifying token:", error);
       return null;
     }
   }
@@ -74,21 +82,25 @@ export class AuthService {
    */
   async verifyAdminCredentials(email: string, password: string) {
     try {
-      const admin = await this.storage.getAdminUserByEmail(email);
+      // Find the admin user
+      const adminUser = await this.storage.getAdminUserByEmail(email);
       
-      if (!admin) {
+      if (!adminUser) {
         return null;
       }
       
-      const isValidPassword = await this.comparePasswords(password, admin.password);
+      // Compare passwords
+      const isValid = await this.comparePasswords(password, adminUser.password);
       
-      if (!isValidPassword) {
+      if (!isValid) {
         return null;
       }
       
-      return admin;
+      // Return admin user (excluding password)
+      const { password: _, ...adminUserWithoutPassword } = adminUser;
+      return adminUserWithoutPassword;
     } catch (error) {
-      console.error("Admin verification error:", error);
+      console.error("Error verifying admin credentials:", error);
       return null;
     }
   }
@@ -98,28 +110,31 @@ export class AuthService {
    */
   async verifyConsignorCredentials(email: string, password: string) {
     try {
-      const consignor = await this.storage.getUserByEmail(email);
+      // Find the consignor user
+      const consignorUser = await this.storage.getUserByEmail(email);
       
-      if (!consignor || consignor.role !== 'consignor') {
+      if (!consignorUser) {
         return null;
       }
       
-      const isValidPassword = await this.comparePasswords(password, consignor.password);
+      // Compare passwords
+      const isValid = await this.comparePasswords(password, consignorUser.password);
       
-      if (!isValidPassword) {
+      if (!isValid) {
         return null;
       }
       
-      // Get the customer record if exists
-      const customer = await this.storage.getCustomerByUserId(consignor.id);
+      // Get customer data if available
+      const customer = await this.storage.getCustomerByUserId(consignorUser.id);
       
-      // Attach customer data to the consignor user
+      // Return consignor user (excluding password)
+      const { password: _, ...consignorUserWithoutPassword } = consignorUser;
       return {
-        ...consignor,
+        ...consignorUserWithoutPassword,
         customer
       };
     } catch (error) {
-      console.error("Consignor verification error:", error);
+      console.error("Error verifying consignor credentials:", error);
       return null;
     }
   }
@@ -131,49 +146,48 @@ export class AuthService {
     try {
       // Check if user already exists
       const existingUser = await this.storage.getUserByEmail(email);
-      
       if (existingUser) {
-        return { success: false, message: "Email address already in use" };
+        return {
+          success: false,
+          message: "Email already in use"
+        };
       }
-      
-      // Hash the password
+
+      // Hash password
       const hashedPassword = await this.hashPassword(password);
-      
-      // Create the user
+
+      // Create new user with consignor role
       const user = await this.storage.createUser({
         email,
         password: hashedPassword,
         name: `${firstName} ${lastName}`,
-        role: 'consignor',
-        provider: 'local',
-        created_at: new Date(),
-        last_login: null,
-        external_id: null,
-        profile_image_url: null
+        role: "consignor",
+        provider: "local"
       });
-      
-      // Create the customer record associated with this user
+
+      // Create customer record for the user
       const customer = await this.storage.createCustomer({
         email,
-        first_name: firstName,
-        last_name: lastName,
-        user_id: user.id,
-        created_at: new Date(),
-        updated_at: new Date()
+        firstName,
+        lastName,
+        userId: user.id
       });
-      
-      return { 
-        success: true, 
+
+      // Return success with user data (excluding password)
+      const { password: _, ...userWithoutPassword } = user;
+      return {
+        success: true,
         user: {
-          ...user,
+          ...userWithoutPassword,
           customer
         }
       };
     } catch (error) {
-      console.error("Registration error:", error);
-      return { success: false, message: "Registration failed", error };
+      console.error("Error registering consignor:", error);
+      return {
+        success: false,
+        message: "Error creating user"
+      };
     }
   }
 }
-
-export default AuthService;

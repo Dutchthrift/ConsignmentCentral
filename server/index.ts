@@ -4,8 +4,10 @@ import { setupVite, serveStatic, log } from "./vite";
 // Check database connection to ensure database is working properly
 import { getDatabaseStatus } from "./db-config";
 import "dotenv/config";
-import session from "express-session";
-import sessionConfig from "./session-config";
+import passport from "passport";
+import { pool } from "./db";
+import { configureSession } from "./session-config";
+import { storage } from "./storage";
 
 const app = express();
 // Increase JSON payload limit to 50MB for image uploads
@@ -15,8 +17,44 @@ app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 // Set trust proxy for session security in production
 app.set('trust proxy', 1);
 
-// Set up session middleware
-app.use(session(sessionConfig));
+// Set up session middleware with PostgreSQL store
+const sessionMiddleware = configureSession(pool);
+app.use(sessionMiddleware);
+
+// Initialize Passport and restore authentication state from session
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Configure Passport serialization/deserialization
+passport.serializeUser((user: any, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id: number, done) => {
+  try {
+    // First try to find admin user
+    const adminUser = await storage.getAdminUserById(id);
+    if (adminUser) {
+      return done(null, { ...adminUser, userType: "admin" });
+    }
+    
+    // Then try to find consignor user
+    const consignorUser = await storage.getUserById(id);
+    if (consignorUser) {
+      const customer = await storage.getCustomerByUserId(id);
+      return done(null, { 
+        ...consignorUser, 
+        customer,
+        userType: "consignor" 
+      });
+    }
+    
+    // No user found
+    return done(null, null);
+  } catch (error) {
+    return done(error);
+  }
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

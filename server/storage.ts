@@ -1,5 +1,5 @@
 /**
- * Simple in-memory storage implementation
+ * Storage interface and implementation
  */
 import { 
   Customer, InsertCustomer,
@@ -13,8 +13,35 @@ import createMemoryStore from 'memorystore';
 
 const MemoryStore = createMemoryStore(session);
 
-// Very simple in-memory storage
-export class MemStorage {
+// Interface for storage operations
+export interface IStorage {
+  // Session store
+  sessionStore: session.Store;
+
+  // User management
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserById(id: number): Promise<User | undefined>;
+  createUser(userData: InsertUser): Promise<User>;
+  updateUserLastLogin(id: number): Promise<User | undefined>;
+
+  // Admin user management
+  getAdminUserByEmail(email: string): Promise<AdminUser | undefined>;
+  getAdminUserById(id: number): Promise<AdminUser | undefined>;
+  getAllAdminUsers(): Promise<AdminUser[]>;
+
+  // Customer management
+  getCustomerByEmail(email: string): Promise<Customer | undefined>;
+  getCustomerByUserId(userId: number): Promise<Customer | undefined>;
+  createCustomer(data: InsertCustomer): Promise<Customer>;
+
+  // Additional methods from existing interface
+  getClient(): Promise<any>;
+  updateItemImage(id: number, path: string): Promise<void>;
+  getOrderByCustomerIdAndStatus(customerId: number, status: string): Promise<Order | null>;
+}
+
+// In-memory storage implementation
+export class MemStorage implements IStorage {
   private users: User[] = [];
   private customers: Customer[] = [];
   private items: Item[] = [];
@@ -36,11 +63,11 @@ export class MemStorage {
       password: '$2b$10$zMRXQnHlyEpb1vt.vNMsu.cMR7XEj/67Pvw.OuoTZ.GKx3WiYXJj2', // admin123
       name: 'Admin User',
       role: 'admin',
-      createdAt: new Date(),
+      created_at: new Date(),
       provider: 'local',
-      lastLogin: null,
-      externalId: null,
-      profileImageUrl: null
+      last_login: null,
+      external_id: null,
+      profile_image_url: null
     });
 
     // Create a test consignor user
@@ -50,19 +77,20 @@ export class MemStorage {
       password: '$2b$10$zMRXQnHlyEpb1vt.vNMsu.cMR7XEj/67Pvw.OuoTZ.GKx3WiYXJj2', // password123
       name: 'Theo Oenema',
       role: 'consignor',
-      createdAt: new Date(),
+      created_at: new Date(),
       provider: 'local',
-      lastLogin: null,
-      externalId: null,
-      profileImageUrl: null
+      last_login: null,
+      external_id: null,
+      profile_image_url: null
     });
 
     // Create customer for the consignor
     this.customers.push({
       id: 1,
       email: 'theooenema@hotmail.com',
-      name: 'Theo Oenema',
-      role: 'consignor',
+      first_name: 'Theo',
+      last_name: 'Oenema',
+      user_id: 1,
       phone: null,
       state: null,
       postal_code: null,
@@ -70,35 +98,30 @@ export class MemStorage {
       city: null,
       country: null,
       created_at: new Date(),
-      password: '$2b$10$zMRXQnHlyEpb1vt.vNMsu.cMR7XEj/67Pvw.OuoTZ.GKx3WiYXJj2'
+      updated_at: new Date()
     });
   }
 
-  // Only the most essential methods to make the login work
+  // Admin User Methods
+  async getAdminUserByEmail(email: string): Promise<AdminUser | undefined> {
+    return this.adminUsers.find(user => user.email === email);
+  }
+
+  async getAdminUserById(id: number): Promise<AdminUser | undefined> {
+    return this.adminUsers.find(user => user.id === id);
+  }
+
   async getAllAdminUsers(): Promise<AdminUser[]> {
     return this.adminUsers;
   }
 
+  // User Methods
   async getUserByEmail(email: string): Promise<User | undefined> {
-    // Check admin users first
-    const adminUser = this.adminUsers.find(user => user.email === email);
-    if (adminUser) {
-      return {
-        id: adminUser.id,
-        email: adminUser.email,
-        password: adminUser.password,
-        name: adminUser.name,
-        role: adminUser.role,
-        createdAt: adminUser.createdAt,
-        provider: adminUser.provider,
-        lastLogin: adminUser.lastLogin,
-        externalId: adminUser.externalId,
-        profileImageUrl: adminUser.profileImageUrl
-      };
-    }
-    
-    // Then check regular users
     return this.users.find(user => user.email === email);
+  }
+
+  async getUserById(id: number): Promise<User | undefined> {
+    return this.users.find(user => user.id === id);
   }
   
   async createUser(userData: InsertUser): Promise<User> {
@@ -113,44 +136,58 @@ export class MemStorage {
       password: userData.password || null,
       name: userData.name,
       role: userData.role || 'consignor',
-      createdAt: new Date(),
+      created_at: new Date(),
       provider: userData.provider || 'local',
-      lastLogin: null,
-      externalId: null,
-      profileImageUrl: null
+      last_login: null,
+      external_id: null,
+      profile_image_url: null
     };
     
     this.users.push(newUser);
-    
-    // If this is a consignor, create a customer for them
-    if (newUser.role === 'consignor') {
-      this.createCustomer({
-        userId: newId,
-        email: newUser.email,
-        firstName: newUser.name.split(' ')[0] || '',
-        lastName: newUser.name.split(' ').slice(1).join(' ') || '',
-        phone: '',
-        address: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: '',
-        companyName: '',
-        vatNumber: '',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-    }
-    
     return newUser;
   }
 
   async updateUserLastLogin(id: number): Promise<User | undefined> {
     const user = this.users.find(user => user.id === id);
     if (user) {
-      user.lastLogin = new Date();
+      user.last_login = new Date();
     }
     return user;
+  }
+
+  // Customer Methods
+  async getCustomerByEmail(email: string): Promise<Customer | undefined> {
+    return this.customers.find(customer => customer.email === email);
+  }
+
+  async getCustomerByUserId(userId: number): Promise<Customer | undefined> {
+    return this.customers.find(customer => customer.user_id === userId);
+  }
+
+  async createCustomer(data: InsertCustomer): Promise<Customer> {
+    // Generate ID
+    const newId = this.customers.length > 0 
+      ? Math.max(...this.customers.map(c => c.id)) + 1 
+      : 1;
+    
+    const newCustomer: Customer = {
+      id: newId,
+      email: data.email,
+      first_name: data.firstName,
+      last_name: data.lastName,
+      user_id: data.userId,
+      phone: data.phone || null,
+      address: data.address || null,
+      city: data.city || null,
+      state: data.state || null,
+      postal_code: data.postalCode || null,
+      country: data.country || null,
+      created_at: new Date(),
+      updated_at: new Date()
+    };
+    
+    this.customers.push(newCustomer);
+    return newCustomer;
   }
 
   // Stub implementations to make the interface happy
