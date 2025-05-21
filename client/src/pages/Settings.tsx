@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   Card, 
   CardContent, 
@@ -46,7 +47,9 @@ import {
   Trash2,
   AlertTriangle,
   Building2,
-  Calculator
+  Calculator,
+  LogOut,
+  UserCircle
 } from "lucide-react";
 import CommissionCalculator from "@/components/CommissionCalculator";
 
@@ -88,7 +91,34 @@ const consignmentSettingsSchema = z.object({
 
 export default function Settings() {
   const { toast } = useToast();
+  const { logout, user } = useAuth();
   const [activeTab, setActiveTab] = useState("company");
+  
+  // Handle logout
+  const handleLogout = () => {
+    toast({
+      title: "Logging out...",
+      description: "Please wait while we securely log you out."
+    });
+    
+    // Call the logout mutation
+    logout.mutate(undefined, {
+      onSuccess: () => {
+        // Clear all client storage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Redirect to login page
+        window.location.href = '/auth';
+      },
+      onError: () => {
+        // Even if the API call fails, still redirect to login
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/auth';
+      }
+    });
+  };
   
   // Company settings form
   const companyForm = useForm<z.infer<typeof companySettingsSchema>>({
@@ -174,6 +204,13 @@ export default function Settings() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-medium">Platform Settings</h1>
+        <Button 
+          variant="destructive" 
+          className="flex items-center" 
+          onClick={handleLogout}
+        >
+          <LogOut className="mr-2 h-4 w-4" /> Logout
+        </Button>
       </div>
       
       <Tabs defaultValue="company" value={activeTab} onValueChange={setActiveTab}>

@@ -219,14 +219,22 @@ export default function Layout({ children }: LayoutProps) {
               {location === "/consignors" && "Consignors"}
               {location.includes("/dashboard/") && "Customer Dashboard"}
             </h1>
-            <div className="flex items-center">
-              <div className="mr-4 relative">
+            <div className="flex items-center gap-4">
+              <div className="relative">
                 <Bell className="h-5 w-5 text-neutral-600" />
                 <span className="absolute top-0 right-0 w-2 h-2 bg-secondary rounded-full"></span>
               </div>
-              <div className="mr-4">
+              <div>
                 <HelpCircle className="h-5 w-5 text-neutral-600" />
               </div>
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2" 
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" /> 
+                <span>Logout</span>
+              </Button>
             </div>
           </div>
         </header>
