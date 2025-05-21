@@ -233,10 +233,30 @@ router.post('/register', async (req, res) => {
  */
 router.post('/logout', (req, res) => {
   // Log the request for debugging
-  console.log('Logout request received');
+  console.log('Logout request received, session ID:', req.sessionID);
+  console.log('Current session data:', {
+    userType: req.session?.userType,
+    userId: req.session?.userId,
+    customerId: req.session?.customerId,
+    hasSession: !!req.session
+  });
   
-  // Clear JWT token from client if present
+  // Get the cookie name from the session
+  const cookieName = req.app.get('trust proxy') 
+    ? 'dutchthrift.sid' 
+    : 'connect.sid';
+  
+  // Clear all cookies
+  res.clearCookie(cookieName);
   res.clearCookie('dutchthrift.sid');
+  res.clearCookie('connect.sid');
+  
+  // Clear session data first, then destroy
+  if (req.session) {
+    req.session.userId = undefined;
+    req.session.customerId = undefined;
+    req.session.userType = undefined;
+  }
   
   // Destroy the session
   req.session.destroy((err) => {
@@ -250,7 +270,14 @@ router.post('/logout', (req, res) => {
     
     console.log('Session destroyed successfully');
     
-    // Return success response
+    // Return success response with cache control headers
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store'
+    });
+    
     return res.status(200).json({
       success: true,
       message: 'Logged out successfully'
