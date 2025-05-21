@@ -8,8 +8,5 @@ declare module 'express-session' {
   }
 }
 
-// Define the UserTypeValues type for global use
-declare global {
-  // Use a string union type that matches the actual values used
-  type UserTypeValues = string;
-}
+// No need for the global UserTypeValues type declaration
+// We'll use string directly for the userType session value

@@ -369,8 +369,11 @@ router.patch("/:itemId/pricing", requireAdminAuth, async (req: Request, res: Res
       });
     }
     
+    // Create a new instance of the ItemStorage class
+    const itemStorage = new ItemStorage();
+    
     // Get current pricing
-    const currentPricing = await storage.getPricingByItemId(itemId);
+    const currentPricing = await itemStorage.getPricingByItemId(itemId);
     
     if (!currentPricing) {
       return res.status(404).json({
@@ -380,7 +383,7 @@ router.patch("/:itemId/pricing", requireAdminAuth, async (req: Request, res: Res
     }
     
     // Update the pricing
-    const updatedPricing = await storage.updatePricing(currentPricing.id, {
+    const updatedPricing = await itemStorage.updatePricing(currentPricing.id, {
       ...currentPricing,
       ...updates
     });
