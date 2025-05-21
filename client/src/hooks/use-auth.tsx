@@ -111,8 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginAdmin = useMutation({
     mutationFn: async (credentials: LoginCredentials) => {
       try {
-        // Use direct fetch instead of apiRequest to have more control over the response
-        const res = await fetch("/api/auth/admin/login-direct", {
+        // Use our extremely simple login endpoint to avoid parsing issues
+        const res = await fetch("/api/auth/simple-admin-login", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -140,18 +140,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error(errorMessage);
         }
         
-        // Parse the successful response
+        // Parse the successful response - this should be much simpler now
         const responseText = await res.text();
-        let data;
+        console.log("Server response:", responseText);
         
         try {
-          data = JSON.parse(responseText);
+          const data = JSON.parse(responseText);
+          // The simple endpoint returns user directly, not nested
+          return data.user;
         } catch (e) {
           console.error("Failed to parse login response:", e);
           throw new Error("Server returned invalid data format");
         }
-        
-        return data.data.user;
       } catch (error: any) {
         console.error("Admin login error:", error);
         throw error;

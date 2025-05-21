@@ -7,6 +7,7 @@ import { configureSession } from './session-config';
 import authRoutes from './routes/auth/auth.routes';
 import fixedAuthRoutes from './routes/auth/fixed-auth.routes';
 import adminLoginFixRoutes from './routes/auth/admin-login-fix';
+import simpleAdminLogin from './routes/auth/simple-admin-login';
 import itemIntakeRoutes from './routes/item-intake.routes';
 import { attachUserData } from './middleware/auth.middleware';
 import { applyFixes } from './integration-fix';
@@ -29,6 +30,9 @@ export async function registerRoutes(app: express.Express) {
   
   // Register our fixed admin login route
   app.use('/api/auth', adminLoginFixRoutes);
+  
+  // Register our simple admin login route
+  app.use('/api/auth', simpleAdminLogin);
   
   // Register consignor item intake routes
   app.use('/api/consignor/items', itemIntakeRoutes);
