@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
+import { LogoutButton } from "@/components/LogoutButton";
 import {
   Select,
   SelectContent,
@@ -314,41 +314,7 @@ export default function ConsignorSettings() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <Button 
-                variant="destructive" 
-                className="w-full sm:w-auto flex items-center"
-                onClick={async () => {
-                  try {
-                    await logout.mutateAsync();
-                    
-                    // Force remove auth token from localStorage
-                    localStorage.removeItem('authToken');
-                    
-                    // Clear all cookies with path=/
-                    document.cookie.split(';').forEach(cookie => {
-                      document.cookie = cookie
-                        .replace(/^ +/, '')
-                        .replace(/=.*/, `=;expires=${new Date().toUTCString()};path=/`);
-                    });
-                    
-                    // Redirect to login page
-                    setLocation('/auth');
-                    
-                    // Force page reload as a last resort
-                    window.location.href = '/auth';
-                  } catch (error) {
-                    console.error('Logout failed:', error);
-                    toast({
-                      title: 'Logout failed',
-                      description: 'Please try again or refresh the page',
-                      variant: 'destructive',
-                    });
-                  }
-                }}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
+              <LogoutButton />
               
               <p className="text-sm text-gray-500">
                 Logging out will end your current session and return you to the login screen.
