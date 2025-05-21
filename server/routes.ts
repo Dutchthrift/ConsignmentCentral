@@ -6,9 +6,9 @@ import { pool } from './db';
 import { configureSession } from './session-config';
 import authRoutes from './routes/auth/auth.routes';
 import fixedAuthRoutes from './routes/auth/fixed-auth.routes';
-import adminLoginFixRoutes from './routes/auth/admin-login-fix';
-import simpleAdminLogin from './routes/auth/simple-admin-login';
 import itemIntakeRoutes from './routes/item-intake.routes';
+// Import the simplified admin login routes (JavaScript file)
+const adminLogin = require('../admin-login.js');
 import { attachUserData } from './middleware/auth.middleware';
 import { applyFixes } from './integration-fix';
 
@@ -28,11 +28,8 @@ export async function registerRoutes(app: express.Express) {
   // Register original auth routes (fixed routes will override where needed)
   app.use('/api/auth', authRoutes);
   
-  // Register our fixed admin login route
-  app.use('/api/auth', adminLoginFixRoutes);
-  
-  // Register our simple admin login route
-  app.use('/api/auth', simpleAdminLogin);
+  // Register our simplified admin login system at /api/admin-auth
+  app.use('/api/admin-auth', adminLogin);
   
   // Register consignor item intake routes
   app.use('/api/consignor/items', itemIntakeRoutes);
