@@ -3,6 +3,7 @@ import { users, customers } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
+import { executeRawQuery } from '../db';
 
 const scryptAsync = promisify(scrypt);
 
@@ -177,22 +178,23 @@ export default class AuthService {
    */
   async loginConsignor(email: string, password: string): Promise<any> {
     try {
-      // Get customer from database directly using raw query to avoid schema issues
+      // Get customer from database directly
       console.log('Attempting to find consignor with email:', email.toLowerCase());
       
-      // Use the executeRawQuery function from db.ts
-      const customers = await pool.query(
-        'SELECT * FROM customers WHERE email = $1 LIMIT 1',
-        [email.toLowerCase()]
-      );
+      // Use standard query with proper syntax - simpler approach
+      const result = await db
+        .select()
+        .from(customers)
+        .where(eq(customers.email, email.toLowerCase()));
       
-      const customer = customers.rows[0];
+      console.log('Query result:', result.length > 0 ? 'Found customer' : 'No customer found');
       
-      if (!customer) {
+      if (!result.length) {
         console.log('No consignor found with email:', email.toLowerCase());
         throw new Error('Invalid email or password');
       }
-
+      
+      const customer = result[0];
       console.log('Found consignor, verifying password...');
       
       // Verify password
