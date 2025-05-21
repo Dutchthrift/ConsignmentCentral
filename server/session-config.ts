@@ -8,7 +8,8 @@ import session from 'express-session';
 export function configureSession(pool: Pool) {
   const PgSession = connectPgSimple(session);
   
-  return {
+  // Return the actual session middleware function
+  return session({
     store: new PgSession({
       pool,
       tableName: 'session', // Session table name
@@ -23,5 +24,5 @@ export function configureSession(pool: Pool) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
     }
-  };
+  });
 }
