@@ -17,8 +17,7 @@ const loginSchema = z.object({
 const registrationSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
+  name: z.string().min(1), // Combined name field matching database
   phone: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),

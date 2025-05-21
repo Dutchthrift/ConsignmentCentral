@@ -124,12 +124,11 @@ export default class AuthService {
       // Hash password
       const hashedPassword = await hashPassword(userData.password);
 
-      // Format user data for Supabase schema
+      // Format user data for database schema
       const customerData = {
         email: userData.email.toLowerCase(),
         password: hashedPassword,
-        first_name: userData.firstName,
-        last_name: userData.lastName,
+        name: userData.name, // Use the name field from the updated schema
         phone: userData.phone || null,
         address: userData.address || null,
         city: userData.city || null,
@@ -137,7 +136,7 @@ export default class AuthService {
         postal_code: userData.postalCode || null,
         country: userData.country || null,
         created_at: new Date(),
-        updated_at: new Date()
+        role: 'consignor' // Set the role directly
       };
 
       // Insert new customer
@@ -148,7 +147,6 @@ export default class AuthService {
 
       return {
         ...newCustomer,
-        name: `${newCustomer.first_name} ${newCustomer.last_name}`,
         role: 'consignor'
       };
     } catch (error) {
@@ -188,7 +186,7 @@ export default class AuthService {
           const { password: _, ...consignorData } = consignor;
           return {
             ...consignorData,
-            name: `${consignor.first_name} ${consignor.last_name}`, // Use Supabase field names
+            // Name field already exists in database
             role: 'consignor'
           };
         }

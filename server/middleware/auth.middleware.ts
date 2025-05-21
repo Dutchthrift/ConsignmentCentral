@@ -109,7 +109,7 @@ export async function attachUserData(req: Request, res: Response, next: NextFunc
         authReq.user = {
           id: consignor.id,
           email: consignor.email,
-          name: `${consignor.first_name} ${consignor.last_name}`,  // Use Supabase field names
+          name: consignor.name, // Use name field from database
           role: 'consignor',
           customer: consignor
         };
