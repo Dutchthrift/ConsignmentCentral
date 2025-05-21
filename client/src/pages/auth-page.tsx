@@ -39,8 +39,7 @@ export default function AuthPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    firstName: '',
-    lastName: '',
+    name: '', // Use single name field to match database structure
     phone: '',
     address: '',
     city: '',
@@ -91,8 +90,7 @@ export default function AuthPage() {
       !isValidEmail(registerForm.email) || 
       !registerForm.password ||
       registerForm.password !== registerForm.confirmPassword ||
-      !registerForm.firstName ||
-      !registerForm.lastName
+      !registerForm.name
     ) {
       return;
     }
@@ -100,8 +98,7 @@ export default function AuthPage() {
     register.mutate({
       email: registerForm.email,
       password: registerForm.password,
-      firstName: registerForm.firstName,
-      lastName: registerForm.lastName,
+      name: registerForm.name,
       phone: registerForm.phone,
       address: registerForm.address,
       city: registerForm.city,
@@ -240,27 +237,15 @@ export default function AuthPage() {
                   </CardHeader>
                   <form onSubmit={handleRegister}>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="firstName">First Name</Label>
-                          <Input 
-                            id="firstName" 
-                            placeholder="John" 
-                            value={registerForm.firstName}
-                            onChange={(e) => setRegisterForm({...registerForm, firstName: e.target.value})}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="lastName">Last Name</Label>
-                          <Input 
-                            id="lastName" 
-                            placeholder="Doe" 
-                            value={registerForm.lastName}
-                            onChange={(e) => setRegisterForm({...registerForm, lastName: e.target.value})}
-                            required
-                          />
-                        </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fullName">Full Name</Label>
+                        <Input 
+                          id="fullName" 
+                          placeholder="John Doe" 
+                          value={registerForm.name}
+                          onChange={(e) => setRegisterForm({...registerForm, name: e.target.value})}
+                          required
+                        />
                       </div>
                       
                       <div className="space-y-2">
