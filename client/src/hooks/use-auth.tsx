@@ -109,14 +109,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Admin login mutation
   const loginAdmin = useMutation({
     mutationFn: async (credentials: LoginCredentials) => {
-      // Use the fixed direct login endpoint
-      const res = await apiRequest("POST", "/api/auth/admin/login-direct", credentials);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Login failed");
+      try {
+        // Use the fixed direct login endpoint
+        const res = await apiRequest("POST", "/api/auth/admin/login-direct", credentials);
+        if (!res.ok) {
+          // Check if the response is HTML (common error with express)
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('text/html')) {
+            throw new Error("Server error. Please try again.");
+          }
+          // Otherwise try to parse as JSON
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Login failed");
+        }
+        const data = await res.json();
+        return data.data.user;
+      } catch (error: any) {
+        // Handle JSON parse errors
+        if (error.name === 'SyntaxError') {
+          throw new Error("Server returned invalid data. Please try again.");
+        }
+        throw error;
       }
-      const data = await res.json();
-      return data.data.user;
     },
     onSuccess: (userData: AdminUser) => {
       queryClient.setQueryData(["/api/auth/me"], userData);
