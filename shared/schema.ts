@@ -68,8 +68,7 @@ export const customers = pgTable("customers", {
   user_id: integer("user_id").references(() => users.id),
   email: text("email").notNull().unique(),
   password: text("password"), // Hashed password for authentication
-  first_name: text("first_name").notNull(),
-  last_name: text("last_name").notNull(),
+  name: text("name").notNull(), // Single name field instead of first/last name
   phone: text("phone"),
   address: text("address"),
   city: text("city"),

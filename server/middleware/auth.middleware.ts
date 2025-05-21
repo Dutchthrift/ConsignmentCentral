@@ -16,8 +16,18 @@ export interface AuthenticatedRequest extends Request {
 export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   const authReq = req as AuthenticatedRequest;
   
+  // Debug log to see session data
+  console.log('Auth middleware - Session data:', {
+    userId: req.session.userId,
+    customerId: req.session.customerId,
+    userType: req.session.userType,
+    sessionID: req.sessionID,
+    isAuthenticated: req.isAuthenticated?.()
+  });
+  
   // Check if user is authenticated via session
   if (!req.session.userType || (!req.session.userId && !req.session.customerId)) {
+    console.log('Auth middleware - Authentication failed: missing userType or IDs');
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
   

@@ -72,16 +72,14 @@ export default class AuthService {
           id: customers.id,
           email: customers.email,
           password: customers.password,
-          first_name: customers.first_name,
-          last_name: customers.last_name,
+          name: customers.name,
           phone: customers.phone,
           address: customers.address,
           city: customers.city,
           state: customers.state,
           postal_code: customers.postal_code,
           country: customers.country,
-          created_at: customers.created_at,
-          updated_at: customers.updated_at
+          created_at: customers.created_at
         })
         .from(customers)
         .where(eq(customers.email, email.toLowerCase()));
@@ -100,7 +98,6 @@ export default class AuthService {
       const { password: _, ...customerData } = customer;
       return {
         ...customerData,
-        name: `${customer.first_name} ${customer.last_name}`,
         role: 'consignor'
       };
     } catch (error) {

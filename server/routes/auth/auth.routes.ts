@@ -52,6 +52,13 @@ router.post('/admin/login', async (req, res) => {
     req.session.userId = adminUser.id;
     req.session.userType = 'admin';
     
+    // Log session data for debugging
+    console.log('Admin login - Session data:', {
+      userId: req.session.userId,
+      userType: req.session.userType,
+      sessionID: req.sessionID
+    });
+    
     return res.status(200).json({
       success: true,
       data: {
@@ -91,6 +98,13 @@ router.post('/consignor/login', async (req, res) => {
     // Set session data
     req.session.customerId = consignor.id;
     req.session.userType = 'consignor';
+    
+    // Log session data for debugging
+    console.log('Consignor login - Session data:', {
+      customerId: req.session.customerId,
+      userType: req.session.userType,
+      sessionID: req.sessionID
+    });
     
     return res.status(200).json({
       success: true,
