@@ -314,7 +314,35 @@ export default function ConsignorSettings() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <LogoutButton />
+              <Button 
+                variant="destructive" 
+                className="w-full sm:w-auto flex items-center"
+                onClick={() => {
+                  // Create a simple form for a POST logout request
+                  const form = document.createElement('form');
+                  form.method = 'POST';
+                  form.action = '/api/auth/logout';
+                  
+                  // Add a hidden field for CSRF protection
+                  const hiddenField = document.createElement('input');
+                  hiddenField.type = 'hidden';
+                  hiddenField.name = '_logout';
+                  hiddenField.value = Date.now().toString();
+                  form.appendChild(hiddenField);
+                  
+                  // Add the form to the page and submit it
+                  document.body.appendChild(form);
+                  form.submit();
+                  
+                  // Fallback: redirect after a short delay
+                  setTimeout(() => {
+                    window.location.href = '/auth';
+                  }, 1000);
+                }}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
               
               <p className="text-sm text-gray-500">
                 Logging out will end your current session and return you to the login screen.
