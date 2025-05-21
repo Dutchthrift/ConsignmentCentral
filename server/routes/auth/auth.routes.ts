@@ -2,7 +2,7 @@ import express from 'express';
 import AuthService from '../../services/auth.service';
 import { isAuthenticated, attachUserData } from '../../middleware/auth.middleware';
 import { z } from 'zod';
-import { UserTypes } from '../../types';
+import { UserTypes, UserTypeValues } from '../../types';
 
 const router = express.Router();
 const authService = new AuthService();

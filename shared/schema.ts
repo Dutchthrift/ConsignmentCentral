@@ -12,7 +12,8 @@ export const UserRole = {
 // User types
 export const UserType = {
   ADMIN: "admin",
-  CUSTOMER: "customer"
+  CUSTOMER: "customer",
+  CONSIGNOR: "consignor" // Add consignor type to match what we're using
 } as const;
 
 // Auth Providers

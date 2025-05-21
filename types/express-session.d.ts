@@ -2,8 +2,8 @@ import 'express-session';
 
 declare module 'express-session' {
   interface SessionData {
-    userType?: 'admin' | 'consignor';
-    userId?: string;
-    customerId?: string;
+    userType?: string; // Make this less strict
+    userId?: string | number;
+    customerId?: string | number;
   }
 }
