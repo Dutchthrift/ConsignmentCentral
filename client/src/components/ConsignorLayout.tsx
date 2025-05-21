@@ -16,20 +16,27 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
   const { toast } = useToast();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleLogout = async () => {
-    try {
-      await logoutMutation.mutateAsync();
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to log out. Please try again.",
-        variant: "destructive",
-      });
-    }
+  const handleLogout = () => {
+    // Show a toast for better UX
+    toast({
+      title: "Logging out...",
+      description: "Please wait while we securely log you out."
+    });
+    
+    // Create a direct link to logout page
+    window.location.href = '/auth';
+    
+    // Clear all client storage
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // In the background, try to call the logout API
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include'
+    }).catch(err => {
+      console.log('Background logout request failed');
+    });
   };
 
   return (
