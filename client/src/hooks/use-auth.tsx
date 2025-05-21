@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Fetch current user data
   const {
-    data: user,
+    data: userData,
     error,
     isLoading,
   } = useQuery<AdminUser | ConsignorUser | null, Error>({
@@ -100,6 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
   });
+  
+  // Make sure user is never undefined
+  const user = userData || null;
 
   // Helper functions to check user role
   const isAdmin = () => user?.role === "admin";

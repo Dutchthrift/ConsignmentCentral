@@ -21,7 +21,7 @@ export function configureSession(pool: Pool) {
       maxAge: 1000 * 60 * 60 * 24, // 24 hours
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
     }
   };
 }
