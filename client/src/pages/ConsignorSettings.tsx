@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { LogoutButton } from "@/components/LogoutButton";
+import { LogOut } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -318,26 +318,20 @@ export default function ConsignorSettings() {
                 variant="destructive" 
                 className="w-full sm:w-auto flex items-center"
                 onClick={() => {
-                  // Create a simple form for a POST logout request
-                  const form = document.createElement('form');
-                  form.method = 'POST';
-                  form.action = '/api/auth/logout';
+                  // Create a direct link to logout page
+                  window.location.href = '/auth';
                   
-                  // Add a hidden field for CSRF protection
-                  const hiddenField = document.createElement('input');
-                  hiddenField.type = 'hidden';
-                  hiddenField.name = '_logout';
-                  hiddenField.value = Date.now().toString();
-                  form.appendChild(hiddenField);
+                  // Clear all client storage
+                  localStorage.clear();
+                  sessionStorage.clear();
                   
-                  // Add the form to the page and submit it
-                  document.body.appendChild(form);
-                  form.submit();
-                  
-                  // Fallback: redirect after a short delay
-                  setTimeout(() => {
-                    window.location.href = '/auth';
-                  }, 1000);
+                  // In the background, try to call the logout API
+                  fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                  }).catch(err => {
+                    console.log('Background logout request failed');
+                  });
                 }}
               >
                 <LogOut className="mr-2 h-4 w-4" />
