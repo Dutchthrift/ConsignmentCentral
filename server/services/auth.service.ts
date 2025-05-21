@@ -44,7 +44,94 @@ export async function comparePasswords(supplied: string, stored: string): Promis
 /**
  * Authentication service
  */
+// Export the hash password function so it can be used directly
+
 export default class AuthService {
+  /**
+   * Find admin by email
+   */
+  async findAdminByEmail(email: string): Promise<any> {
+    try {
+      const [admin] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email.toLowerCase()));
+      
+      return admin || null;
+    } catch (error) {
+      console.error('Error finding admin by email:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Find consignor by email
+   */
+  async findConsignorByEmail(email: string): Promise<any> {
+    try {
+      const [consignor] = await db
+        .select()
+        .from(customers)
+        .where(eq(customers.email, email.toLowerCase()));
+      
+      return consignor || null;
+    } catch (error) {
+      console.error('Error finding consignor by email:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Create admin user
+   */
+  async createAdmin(email: string, password: string, name: string): Promise<any> {
+    try {
+      const [admin] = await db
+        .insert(users)
+        .values({
+          email: email.toLowerCase(),
+          password: password,
+          name: name,
+          role: 'admin',
+          created_at: new Date()
+        })
+        .returning();
+      
+      return admin;
+    } catch (error) {
+      console.error('Error creating admin:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Create consignor user
+   */
+  async createConsignor(userData: any): Promise<any> {
+    try {
+      const [consignor] = await db
+        .insert(customers)
+        .values({
+          email: userData.email.toLowerCase(),
+          password: userData.password,
+          name: userData.name,
+          phone: userData.phone || null,
+          address: userData.address || null,
+          city: userData.city || null,
+          state: userData.state || null,
+          postal_code: userData.postalCode || null,
+          country: userData.country || null,
+          role: 'consignor',
+          created_at: new Date()
+        })
+        .returning();
+      
+      return consignor;
+    } catch (error) {
+      console.error('Error creating consignor:', error);
+      throw error;
+    }
+  }
   /**
    * Login an admin user
    */

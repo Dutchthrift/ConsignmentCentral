@@ -1,8 +1,9 @@
 import express from 'express';
-import AuthService from '../../services/auth.service';
+import AuthService, { hashPassword } from '../../services/auth.service';
 import { isAuthenticated, attachUserData } from '../../middleware/auth.middleware';
 import { z } from 'zod';
 import { UserTypes } from '../../types';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 const authService = new AuthService();
@@ -246,6 +247,72 @@ router.post('/logout', (req, res) => {
       message: 'Logged out successfully'
     });
   });
+});
+
+/**
+ * Create test accounts route
+ * GET /api/auth/create-test-accounts
+ */
+router.get('/create-test-accounts', async (req, res) => {
+  try {
+    // Check if this is coming from the same origin for security
+    const referer = req.headers.referer || '';
+    if (!referer.includes(req.headers.host || '')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+    
+    // Create admin account
+    const adminEmail = 'admin@test.com';
+    const adminPassword = await hashPassword('adminpass123');
+    const adminName = 'Test Admin';
+    
+    // Create consignor account  
+    const consignorEmail = 'consignor@test.com';
+    const consignorPassword = await hashPassword('testpass123');
+    const consignorName = 'Test Consignor';
+    
+    // Check if accounts already exist
+    const existingAdmin = await authService.findAdminByEmail(adminEmail);
+    const existingConsignor = await authService.findConsignorByEmail(consignorEmail);
+    
+    // Create admin if doesn't exist
+    if (!existingAdmin) {
+      await authService.createAdmin(adminEmail, adminPassword, adminName);
+    }
+    
+    // Create consignor if doesn't exist
+    if (!existingConsignor) {
+      await authService.createConsignor({
+        email: consignorEmail,
+        password: consignorPassword,
+        name: consignorName
+      });
+    }
+    
+    return res.json({
+      success: true,
+      message: 'Test accounts created successfully',
+      testAccounts: {
+        admin: {
+          email: adminEmail,
+          password: 'adminpass123'
+        },
+        consignor: {
+          email: consignorEmail,
+          password: 'testpass123'
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error creating test accounts:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create test accounts'
+    });
+  }
 });
 
 /**

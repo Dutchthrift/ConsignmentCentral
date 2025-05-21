@@ -1,11 +1,10 @@
-import { config } from 'dotenv';
-import { Pool } from '@neondatabase/serverless';
-import crypto from 'crypto';
-import { promisify } from 'util';
+// CommonJS script to add test users to the database
+require('dotenv').config();
+const { Pool } = require('@neondatabase/serverless');
+const crypto = require('crypto');
+const util = require('util');
 
-config();
-
-const scryptAsync = promisify(crypto.scrypt);
+const scryptAsync = util.promisify(crypto.scrypt);
 
 async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
