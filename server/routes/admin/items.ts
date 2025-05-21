@@ -4,9 +4,9 @@ import { db, executeRawQuery } from "../../db";
 import { items, pricing, analyses, shipping, customers } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
 import AuthService from "../../services/auth.service";
+import { requireAdmin } from "../../middleware/auth.middleware";
 
 const router = Router();
-const authService = new AuthService(storage);
 
 // Middleware to check if user is authenticated and is an admin
 const requireAdminAuth = async (req: Request, res: Response, next: Function) => {

@@ -43,22 +43,56 @@ import AuthPage from "@/pages/auth-page";
 
 function Router() {
   const [location] = useLocation();
+  const { user, isLoading } = useAuth();
   
   // Check path types
-  const isAuthPath = location === "/auth";
+  const isLoginPath = location === "/login" || location === "/auth";
+  const isRootPath = location === "/";
   const isStorefrontPath = location.startsWith("/storefront");
   const isSetupPath = location.startsWith("/setup-account") || location.startsWith("/setup-complete");
-  // Explicitly exclude /consignors from consignor paths
   const isConsignorPath = location.startsWith("/consignor") && location !== "/consignor/login";
-  // Ensure admin paths always use admin layout - NOTE: /consignors is an admin path
   const isAdminPath = location === "/consignors" || location.startsWith("/admin");
 
-  // If we're on the auth page, don't use the standard layout
-  if (isAuthPath) {
+  // Redirect from root to appropriate path
+  if (isRootPath) {
+    if (!isLoading) {
+      if (user) {
+        // If logged in, redirect based on role
+        if (user.role === 'admin') {
+          return <Redirect to="/admin" />;
+        } else {
+          return <Redirect to="/consignor/dashboard" />;
+        }
+      } else {
+        // Not logged in, redirect to login page
+        return <Redirect to="/login" />;
+      }
+    } else {
+      // Show loading state while authentication state is being loaded
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+  }
+
+  // If we're on the login page, don't use the standard layout
+  if (isLoginPath) {
+    // If already logged in, redirect to appropriate dashboard
+    if (user && !isLoading) {
+      if (user.role === 'admin') {
+        return <Redirect to="/admin" />;
+      } else {
+        return <Redirect to="/consignor/dashboard" />;
+      }
+    }
+    
     return (
       <>
         <Toaster />
         <Switch>
+          <Route path="/login" component={AuthPage} />
           <Route path="/auth" component={AuthPage} />
         </Switch>
       </>
@@ -82,12 +116,7 @@ function Router() {
       <Switch>
         {/* Admin Dashboard Routes */}
         <ProtectedRoute 
-          path="/" 
-          component={AdminDashboardPage}
-          adminOnly
-        />
-        <ProtectedRoute 
-          path="/dashboard" 
+          path="/admin" 
           component={AdminDashboardPage}
           adminOnly
         />

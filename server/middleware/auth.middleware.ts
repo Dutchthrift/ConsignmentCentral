@@ -84,7 +84,7 @@ export async function attachUserData(req: Request, res: Response, next: NextFunc
         authReq.user = {
           id: adminUser.id,
           email: adminUser.email,
-          name: `${adminUser.firstName} ${adminUser.lastName}`,
+          name: adminUser.name,  // Supabase stores full name in name field
           role: 'admin'
         };
       }
@@ -99,7 +99,7 @@ export async function attachUserData(req: Request, res: Response, next: NextFunc
         authReq.user = {
           id: consignor.id,
           email: consignor.email,
-          name: `${consignor.firstName} ${consignor.lastName}`,
+          name: `${consignor.first_name} ${consignor.last_name}`,  // Use Supabase field names
           role: 'consignor',
           customer: consignor
         };

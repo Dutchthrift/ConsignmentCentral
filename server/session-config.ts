@@ -1,34 +1,27 @@
 import { Pool } from '@neondatabase/serverless';
-import connectPg from 'connect-pg-simple';
+import connectPgSimple from 'connect-pg-simple';
 import session from 'express-session';
 
-declare module 'express-session' {
-  interface SessionData {
-    userId?: number;
-    userType?: "admin" | "consignor";
-    customerId?: number;
-  }
-}
-
 /**
- * Configure session handling with PostgreSQL session store
+ * Configure session middleware
  */
 export function configureSession(pool: Pool) {
-  const PostgresStore = connectPg(session);
+  const PgSession = connectPgSimple(session);
   
   return {
-    store: new PostgresStore({
+    store: new PgSession({
       pool,
-      tableName: 'session',
-      createTableIfMissing: true
+      tableName: 'session', // Session table name
+      createTableIfMissing: true, // Create the session table if it doesn't exist
     }),
-    secret: process.env.SESSION_SECRET || 'dutch-thrift-session-secret',
+    secret: process.env.SESSION_SECRET || 'dutchthrift-session-secret',
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      maxAge: 1000 * 60 * 60 * 24, // 24 hours
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24 * 7 // 1 week
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
     }
   };
 }

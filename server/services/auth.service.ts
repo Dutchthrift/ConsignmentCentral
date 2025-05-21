@@ -16,6 +16,8 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
+  if (!stored || !supplied) return false;
+  
   const [hashed, salt] = stored.split('.');
   const hashedBuf = Buffer.from(hashed, 'hex');
   const suppliedBuf = await scryptAsync(supplied, salt, 64) as Buffer;
@@ -25,7 +27,7 @@ export async function comparePasswords(supplied: string, stored: string): Promis
 /**
  * Authentication service
  */
-export class AuthService {
+export default class AuthService {
   /**
    * Login an admin user
    */
@@ -42,7 +44,7 @@ export class AuthService {
       }
 
       // Verify password
-      const passwordValid = await comparePasswords(password, adminUser.password);
+      const passwordValid = await comparePasswords(password, adminUser.password || '');
       if (!passwordValid) {
         throw new Error('Invalid email or password');
       }
@@ -66,7 +68,21 @@ export class AuthService {
     try {
       // Get customer from database
       const [customer] = await db
-        .select()
+        .select({
+          id: customers.id,
+          email: customers.email,
+          password: customers.password,
+          first_name: customers.first_name,
+          last_name: customers.last_name,
+          phone: customers.phone,
+          address: customers.address,
+          city: customers.city,
+          state: customers.state,
+          postal_code: customers.postal_code,
+          country: customers.country,
+          created_at: customers.created_at,
+          updated_at: customers.updated_at
+        })
         .from(customers)
         .where(eq(customers.email, email.toLowerCase()));
 
@@ -75,7 +91,7 @@ export class AuthService {
       }
 
       // Verify password
-      const passwordValid = await comparePasswords(password, customer.password);
+      const passwordValid = await comparePasswords(password, customer.password || '');
       if (!passwordValid) {
         throw new Error('Invalid email or password');
       }
@@ -84,6 +100,7 @@ export class AuthService {
       const { password: _, ...customerData } = customer;
       return {
         ...customerData,
+        name: `${customer.first_name} ${customer.last_name}`,
         role: 'consignor'
       };
     } catch (error) {
@@ -110,20 +127,20 @@ export class AuthService {
       // Hash password
       const hashedPassword = await hashPassword(userData.password);
 
-      // Format user data
+      // Format user data for Supabase schema
       const customerData = {
         email: userData.email.toLowerCase(),
         password: hashedPassword,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
         phone: userData.phone || null,
         address: userData.address || null,
         city: userData.city || null,
         state: userData.state || null,
-        postalCode: userData.postalCode || null,
+        postal_code: userData.postalCode || null,
         country: userData.country || null,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        created_at: new Date(),
+        updated_at: new Date()
       };
 
       // Insert new customer
@@ -132,10 +149,9 @@ export class AuthService {
         .values(customerData)
         .returning();
 
-      // Return customer data (excluding password)
-      const { password: _, ...newCustomerData } = newCustomer;
       return {
-        ...newCustomerData,
+        ...newCustomer,
+        name: `${newCustomer.first_name} ${newCustomer.last_name}`,
         role: 'consignor'
       };
     } catch (error) {
@@ -160,7 +176,7 @@ export class AuthService {
           const { password: _, ...userData } = adminUser;
           return {
             ...userData,
-            name: `${adminUser.firstName} ${adminUser.lastName}`,
+            name: adminUser.name, // Use name field from Supabase
             role: 'admin'
           };
         }
@@ -175,7 +191,7 @@ export class AuthService {
           const { password: _, ...consignorData } = consignor;
           return {
             ...consignorData,
-            name: `${consignor.firstName} ${consignor.lastName}`,
+            name: `${consignor.first_name} ${consignor.last_name}`, // Use Supabase field names
             role: 'consignor'
           };
         }
