@@ -232,15 +232,25 @@ router.post('/register', async (req, res) => {
  * POST /api/auth/logout
  */
 router.post('/logout', (req, res) => {
+  // Log the request for debugging
+  console.log('Logout request received');
+  
+  // Clear JWT token from client if present
+  res.clearCookie('dutchthrift.sid');
+  
+  // Destroy the session
   req.session.destroy((err) => {
     if (err) {
+      console.error('Error during logout:', err);
       return res.status(500).json({
         success: false,
         message: 'Logout failed'
       });
     }
     
-    res.clearCookie('connect.sid');
+    console.log('Session destroyed successfully');
+    
+    // Return success response
     return res.status(200).json({
       success: true,
       message: 'Logged out successfully'
