@@ -22,8 +22,8 @@ export function isAuthenticated(req: Request, res: Response, next: NextFunction)
   }
   
   // Add helper methods to the request object
-  authReq.isAdmin = () => Boolean(req.session.userType && req.session.userType === 'admin');
-  authReq.isConsignor = () => Boolean(req.session.userType && req.session.userType === 'consignor');
+  authReq.isAdmin = () => Boolean(req.session.userType && (req.session.userType as string) === 'admin');
+  authReq.isConsignor = () => Boolean(req.session.userType && (req.session.userType as string) === 'consignor');
   
   // Continue to the next middleware
   next();
@@ -38,7 +38,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   // First check if authenticated
   isAuthenticated(req, res, () => {
     // Then check if admin
-    if (req.session.userType !== 'admin' || !req.session.userId) {
+    if ((req.session.userType as string) !== 'admin' || !req.session.userId) {
       return res.status(403).json({ success: false, message: 'Forbidden: Admin access required' });
     }
     
@@ -56,7 +56,7 @@ export function requireConsignor(req: Request, res: Response, next: NextFunction
   // First check if authenticated
   isAuthenticated(req, res, () => {
     // Then check if consignor
-    if (req.session.userType !== 'consignor' || !req.session.customerId) {
+    if ((req.session.userType as string) !== 'consignor' || !req.session.customerId) {
       return res.status(403).json({ success: false, message: 'Forbidden: Consignor access required' });
     }
     
@@ -73,7 +73,7 @@ export async function attachUserData(req: Request, res: Response, next: NextFunc
   
   try {
     // Attach user data based on user type
-    if (req.session.userType === 'admin' && req.session.userId) {
+    if (req.session.userType as string === 'admin' && req.session.userId) {
       // Get admin user data
       const [adminUser] = await db
         .select()
@@ -88,7 +88,7 @@ export async function attachUserData(req: Request, res: Response, next: NextFunc
           role: 'admin'
         };
       }
-    } else if (req.session.userType === 'consignor' && req.session.customerId) {
+    } else if ((req.session.userType as string) === 'consignor' && req.session.customerId) {
       // Get consignor/customer data
       const [consignor] = await db
         .select()

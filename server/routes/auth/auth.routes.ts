@@ -49,7 +49,7 @@ router.post('/admin/login', async (req, res) => {
     
     // Set session data
     req.session.userId = adminUser.id;
-    req.session.userType = 'admin' as 'admin' | 'consignor';
+    req.session.userType = 'admin';
     
     return res.status(200).json({
       success: true,
