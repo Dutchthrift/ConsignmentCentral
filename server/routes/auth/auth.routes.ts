@@ -68,11 +68,26 @@ router.post('/admin/login', async (req, res) => {
       cookie: req.session.cookie
     });
     
+    // Generate JWT token for alternative authentication method
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { 
+        id: adminUser.id,
+        email: adminUser.email,
+        role: 'admin',
+        name: adminUser.name 
+      },
+      process.env.JWT_SECRET || 'dutch-thrift-jwt-secret',
+      { expiresIn: '7d' }
+    );
+    
+    console.log('Generated admin JWT token for authentication');
+    
     return res.status(200).json({
       success: true,
       data: {
         user: adminUser,
-        token: '' // We're using session auth, so no token needed
+        token: token // Include JWT token for alternative authentication
       }
     });
   } catch (error: any) {
@@ -125,12 +140,27 @@ router.post('/consignor/login', async (req, res) => {
       cookie: req.session.cookie
     });
     
+    // Generate JWT token for alternative authentication method
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { 
+        id: consignor.id,
+        email: consignor.email,
+        role: 'consignor',
+        name: consignor.name 
+      },
+      process.env.JWT_SECRET || 'dutch-thrift-jwt-secret',
+      { expiresIn: '7d' }
+    );
+    
+    console.log('Generated JWT token for authentication');
+    
     return res.status(200).json({
       success: true,
       data: {
         user: consignor,
         customer: consignor,
-        token: '' // We're using session auth, so no token needed
+        token: token // Include JWT token for alternative authentication
       }
     });
   } catch (error: any) {
