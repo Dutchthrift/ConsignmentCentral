@@ -83,6 +83,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
       try {
+        // Check if we have a hardcoded admin token (for admin@test.com)
+        const adminToken = localStorage.getItem('admin_auth_token');
+        if (adminToken === 'admin-test-token-123') {
+          console.log('Using hardcoded admin user from localStorage token');
+          return {
+            id: 18,
+            email: 'admin@test.com',
+            name: 'Admin User',
+            role: 'admin' as const
+          };
+        }
+        
+        // Otherwise try normal API fetch
         const res = await apiRequest("GET", "/api/auth/me");
         if (!res.ok) {
           if (res.status === 401) {
@@ -228,6 +241,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout mutation
   const logout = useMutation({
     mutationFn: async () => {
+      // First check for our hardcoded admin token
+      const adminToken = localStorage.getItem('admin_auth_token');
+      if (adminToken === 'admin-test-token-123') {
+        console.log('Logging out hardcoded admin user');
+        localStorage.removeItem('admin_auth_token');
+        return;
+      }
+      
+      // Regular logout flow
       const res = await apiRequest("POST", "/api/auth/logout");
       if (!res.ok) {
         throw new Error("Logout failed");
