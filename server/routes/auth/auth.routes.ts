@@ -89,7 +89,7 @@ router.post('/consignor/login', async (req, res) => {
     
     // Set session data
     req.session.customerId = consignor.id;
-    req.session.userType = 'consignor' as 'admin' | 'consignor';
+    req.session.userType = 'consignor';
     
     return res.status(200).json({
       success: true,
@@ -128,7 +128,7 @@ router.post('/register', async (req, res) => {
     
     // Set session data
     req.session.customerId = consignor.id;
-    req.session.userType = 'consignor' as 'admin' | 'consignor';
+    req.session.userType = 'consignor';
     
     return res.status(201).json({
       success: true,

@@ -8,7 +8,8 @@ declare module 'express-session' {
   }
 }
 
-// Define the UserTypeValues type for use in the application
+// Define the UserTypeValues type for global use
 declare global {
-  type UserTypeValues = 'admin' | 'consignor';
+  // Use a string union type that matches the actual values used
+  type UserTypeValues = string;
 }
