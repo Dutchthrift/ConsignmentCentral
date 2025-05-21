@@ -45,53 +45,50 @@ router.post('/admin/login-direct', async (req, res) => {
     
     const adminUser = result.rows[0];
     
-    // For development, allow any password for admin@test.com
-    let passwordValid = false;
-    if (email.toLowerCase() === 'admin@test.com') {
-      passwordValid = true;
-    } else {
-      // In production, compare password properly
-      // We skip this for now to ensure login works
-      passwordValid = password === adminUser.password;
-    }
-    
-    if (!passwordValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
+    // For development, use hardcoded admin login
+    if (email.toLowerCase() === 'admin@test.com' && password === 'adminpass123') {
+      // Set session data
+      req.session.userId = adminUser.id;
+      req.session.userType = 'admin';
+      
+      // Log session data for debugging
+      console.log('Admin login successful - Session data:', {
+        userId: req.session.userId,
+        userType: req.session.userType,
+        sessionID: req.sessionID
+      });
+      
+      // Save session before sending response
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            console.error('Session save error:', err);
+            reject(err);
+          } else {
+            console.log('Session saved successfully');
+            resolve();
+          }
+        });
+      });
+      
+      // Return successful login with user details
+      return res.status(200).json({
+        success: true,
+        data: {
+          user: {
+            id: adminUser.id,
+            email: adminUser.email,
+            name: adminUser.name || 'Admin User',
+            role: 'admin'
+          }
+        }
       });
     }
     
-    // Set session data
-    req.session.userId = adminUser.id;
-    req.session.userType = 'admin';
-    
-    // Log session data for debugging
-    console.log('Admin login successful - Session data:', {
-      userId: req.session.userId,
-      userType: req.session.userType,
-      sessionID: req.sessionID
-    });
-    
-    // Explicitly save session
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-      } else {
-        console.log('Session saved successfully');
-      }
-    });
-    
-    return res.status(200).json({
-      success: true,
-      data: {
-        user: {
-          id: adminUser.id,
-          email: adminUser.email,
-          name: adminUser.name,
-          role: 'admin'
-        }
-      }
+    // If we get here, the password was incorrect
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid email or password'
     });
   } catch (error) {
     console.error('Admin login error:', error);

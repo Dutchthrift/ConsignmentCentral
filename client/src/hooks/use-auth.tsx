@@ -39,6 +39,7 @@ interface ConsignorUser extends User {
 // Login credentials
 interface LoginCredentials {
   email: string;
+  username?: string; // Support both email and username for compatibility
   password: string;
 }
 

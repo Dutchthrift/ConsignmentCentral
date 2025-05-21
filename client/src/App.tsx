@@ -102,6 +102,25 @@ function Router() {
     );
   }
   
+  // Special case for admin login
+  if (location === "/admin/login") {
+    // Import dynamic to avoid circular dependency
+    const AdminLogin = React.lazy(() => import("./pages/AdminLogin"));
+    
+    return (
+      <>
+        <Toaster />
+        <React.Suspense fallback={
+          <div className="flex items-center justify-center min-h-screen">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        }>
+          <AdminLogin />
+        </React.Suspense>
+      </>
+    );
+  }
+  
   // Use different layouts based on path
   let AppLayout = Layout; // Default admin layout
   

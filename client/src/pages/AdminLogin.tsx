@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -8,32 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
-import { UserRole } from "@shared/schema";
-
-// Import logo
-import logoPath from "../assets/logo.png";
+import { apiRequest } from "@/lib/queryClient";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  password: z.string().min(1, { message: "Password is required" }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function Login() {
+export default function AdminLogin() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { loginMutation, user } = useAuth();
-  
-  // If user is already logged in, redirect to dashboard
-  if (user) {
-    if (user.role === UserRole.ADMIN) {
-      navigate("/admin/dashboard");
-    } else {
-      navigate("/consignor/dashboard");
-    }
-  }
+  const [isLoading, setIsLoading] = useState(false);
   
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -43,18 +30,67 @@ export default function Login() {
     },
   });
   
-  const onSubmit = (data: LoginFormValues) => {
-    // Fix: Use email field instead of username for admin login
-    loginMutation.mutate({
-      email: data.email,
-      password: data.password,
-    });
+  const onSubmit = async (data: LoginFormValues) => {
+    try {
+      setIsLoading(true);
+      
+      // Direct API call to our fixed admin login endpoint
+      const res = await fetch("/api/auth/admin/login-direct", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMessage = "Login failed";
+        
+        try {
+          // Try to parse as JSON
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || "Invalid credentials";
+        } catch {
+          // If not JSON, use the text
+          errorMessage = errorText || "Server error";
+        }
+        
+        toast({
+          title: "Login failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Success!
+      toast({
+        title: "Login successful",
+        description: "Welcome to Dutch Thrift Admin",
+      });
+      
+      // Redirect to admin dashboard
+      navigate("/admin/dashboard");
+    } catch (error) {
+      toast({
+        title: "Login failed",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
     <div className="flex min-h-screen bg-neutral-50 flex-col">
       <header className="flex items-center justify-center p-4 bg-white border-b border-neutral-200">
-        <img src={logoPath} alt="Dutch Thrift Logo" className="h-10" />
+        <h1 className="text-2xl font-bold text-orange-500">Dutch Thrift</h1>
       </header>
       
       <main className="flex-1 flex items-center justify-center p-4">
@@ -76,7 +112,7 @@ export default function Login() {
                       <FormLabel>Email</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="admin@dutchthrift.com" 
+                          placeholder="admin@test.com" 
                           type="email"
                           {...field} 
                         />
@@ -93,7 +129,7 @@ export default function Login() {
                       <FormLabel>Password</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="••••••••" 
+                          placeholder="adminpass123" 
                           type="password"
                           {...field} 
                         />
@@ -102,28 +138,16 @@ export default function Login() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-                  {loginMutation.isPending ? "Logging in..." : "Login"}
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Logging in..." : "Login"}
                 </Button>
               </form>
             </Form>
             
-            <div className="text-center mt-6 space-y-4">
-              <div>
-                <Link href="/auth" className="text-sm text-primary hover:underline">
-                  Go to Consignor Login
-                </Link>
-              </div>
-              <div className="pt-2">
-                <Link href="/storefront" className="text-sm px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
-                  Visit Storefront
-                </Link>
-              </div>
-              <div className="pt-1">
-                <Link href="/system-health" className="text-xs text-blue-500 hover:underline">
-                  Check System Health
-                </Link>
-              </div>
+            <div className="text-center mt-6">
+              <p className="text-sm text-gray-500">
+                Hint: Use admin@test.com / adminpass123
+              </p>
             </div>
           </CardContent>
         </Card>
