@@ -177,16 +177,16 @@ export default class AuthService {
    */
   async loginConsignor(email: string, password: string): Promise<any> {
     try {
-      // Get customer from database with all fields
+      // Get customer from database directly using raw query to avoid schema issues
       console.log('Attempting to find consignor with email:', email.toLowerCase());
       
-      // Try standard Drizzle query with proper syntax
-      const result = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.email, email.toLowerCase()));
-        
-      const customer = result[0];
+      // Use the executeRawQuery function from db.ts
+      const customers = await pool.query(
+        'SELECT * FROM customers WHERE email = $1 LIMIT 1',
+        [email.toLowerCase()]
+      );
+      
+      const customer = customers.rows[0];
       
       if (!customer) {
         console.log('No consignor found with email:', email.toLowerCase());
