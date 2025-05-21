@@ -142,7 +142,7 @@ router.post('/consignor/login', async (req, res) => {
     });
     
     // Generate JWT token for alternative authentication method
-    const jwt = require('jsonwebtoken');
+    import jwt from 'jsonwebtoken';
     const token = jwt.sign(
       { 
         id: consignor.id,

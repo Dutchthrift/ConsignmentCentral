@@ -66,7 +66,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
 // Customer table (for consignors)
 export const customers = pgTable("customers", {
   id: serial("id").primaryKey(),
-  user_id: integer("user_id").references(() => users.id),
+  // Removed user_id since it doesn't exist in the actual database
   email: text("email").notNull().unique(),
   password: text("password"), // Hashed password for authentication
   name: text("name").notNull(), // Single name field instead of first/last name
@@ -76,10 +76,8 @@ export const customers = pgTable("customers", {
   state: text("state"), // This is used for payout method
   postal_code: text("postal_code"), // This is used for IBAN
   country: text("country").default("NL"),
-  company_name: text("company_name"),
-  vat_number: text("vat_number"),
+  role: text("role").default("consignor"), // Added role field that exists in the DB
   created_at: timestamp("created_at").defaultNow().notNull(),
-  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const insertCustomerSchema = createInsertSchema(customers).omit({
