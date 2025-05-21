@@ -49,7 +49,7 @@ router.post('/admin/login', async (req, res) => {
     
     // Set session data
     req.session.userId = adminUser.id;
-    req.session.userType = 'admin';
+    req.session.userType = 'admin' as 'admin' | 'consignor';
     
     return res.status(200).json({
       success: true,
@@ -89,7 +89,7 @@ router.post('/consignor/login', async (req, res) => {
     
     // Set session data
     req.session.customerId = consignor.id;
-    req.session.userType = 'consignor';
+    req.session.userType = 'consignor' as 'admin' | 'consignor';
     
     return res.status(200).json({
       success: true,

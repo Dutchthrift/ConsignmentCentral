@@ -46,7 +46,6 @@ import AuthPage from "@/pages/auth-page";
 function Router() {
   const [location] = useLocation();
   
-  // Import useAuth directly in the component to avoid build errors
   const { user, isLoading } = useAuth();
   
   // Check path types

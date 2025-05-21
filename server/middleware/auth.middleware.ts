@@ -22,8 +22,8 @@ export function isAuthenticated(req: Request, res: Response, next: NextFunction)
   }
   
   // Add helper methods to the request object
-  authReq.isAdmin = () => req.session.userType === 'admin';
-  authReq.isConsignor = () => req.session.userType === 'consignor';
+  authReq.isAdmin = () => req.session.userType && req.session.userType === 'admin';
+  authReq.isConsignor = () => req.session.userType && req.session.userType === 'consignor';
   
   // Continue to the next middleware
   next();
