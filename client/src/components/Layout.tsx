@@ -2,8 +2,11 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Separator } from "@/components/ui/separator";
-// Import logo
-import logoPath from "../assets/dutch_thrift_logo.jpeg";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+// Use a placeholder for the logo, as we don't have direct access to the asset
+const logoPath = "/assets/logo.svg";
 
 // Icons
 import {
@@ -18,7 +21,8 @@ import {
   HelpCircle,
   Bell,
   Brain,
-  Users
+  Users,
+  LogOut
 } from "lucide-react";
 
 type MenuItem = {
@@ -48,9 +52,40 @@ export default function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { logout, user } = useAuth();
+  const { toast } = useToast();
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
+  };
+  
+  const handleLogout = () => {
+    // Show a toast for better UX
+    toast({
+      title: "Logging out...",
+      description: "Please wait while we securely log you out."
+    });
+    
+    // Call the logout mutation from useAuth
+    logout.mutate(undefined, {
+      onSuccess: () => {
+        // Clear all client storage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Redirect to login page
+        window.location.href = '/auth';
+      },
+      onError: () => {
+        // Even if the API call fails, still redirect to login
+        // and clear storage as fallback
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/auth';
+        
+        console.log('Logout API request failed, forcing redirect');
+      }
+    });
   };
 
   return (
@@ -83,14 +118,24 @@ export default function Layout({ children }: LayoutProps) {
         </nav>
         
         <div className="p-4 border-t border-neutral-700">
-          <div className="flex items-center">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <span className="text-white text-sm font-medium">JD</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                <span className="text-white text-sm font-medium">{user?.name?.charAt(0) || "A"}</span>
+              </div>
+              <div className="ml-2">
+                <p className="text-sm font-medium">{user?.name || "Admin"}</p>
+                <p className="text-xs text-neutral-400">Administrator</p>
+              </div>
             </div>
-            <div className="ml-2">
-              <p className="text-sm font-medium">John Doe</p>
-              <p className="text-xs text-neutral-400">Administrator</p>
-            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-neutral-400 hover:text-white hover:bg-neutral-700"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </aside>
@@ -143,6 +188,20 @@ export default function Layout({ children }: LayoutProps) {
                     </Link>
                   </li>
                 ))}
+                
+                {/* Logout Button */}
+                <li>
+                  <button
+                    onClick={() => {
+                      toggleMobileMenu();
+                      handleLogout();
+                    }}
+                    className="flex items-center px-4 py-3 w-full text-left hover:bg-neutral-700"
+                  >
+                    <LogOut className="mr-2 h-5 w-5" />
+                    <span>Logout</span>
+                  </button>
+                </li>
               </ul>
             </nav>
           </div>
