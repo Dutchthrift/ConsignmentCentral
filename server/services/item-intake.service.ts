@@ -204,14 +204,13 @@ export class ItemIntakeService {
         });
         
         try {
-          // Ensure content is not null before parsing
-          const content = response.choices[0].message.content || '{}';
-          aiResult = JSON.parse(content);
+          const messageContent = response.choices[0].message.content;
+          aiResult = messageContent ? JSON.parse(messageContent) : {};
         } catch (error) {
           console.error('Error parsing AI response:', error);
           aiResult = {
             error: "Could not parse AI response",
-            raw_response: response.choices[0].message.content
+            raw_response: response.choices[0].message.content || ''
           };
         }
       } else {
