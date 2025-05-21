@@ -39,7 +39,7 @@ export async function applyFixes(app: express.Express) {
  * Make global pool available for route handlers
  */
 declare global {
-  var pool: typeof pool;
+  var pool: any;
 }
 
 global.pool = pool;

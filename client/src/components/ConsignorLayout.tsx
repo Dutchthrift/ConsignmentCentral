@@ -12,7 +12,7 @@ interface ConsignorLayoutProps {
 
 export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
   const [location] = useLocation();
-  const { user, logoutMutation } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 

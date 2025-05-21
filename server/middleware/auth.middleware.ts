@@ -1,127 +1,85 @@
+/**
+ * Authentication middleware for the Dutch Thrift consignment platform
+ */
 import { Request, Response, NextFunction } from 'express';
-import { db } from '../db';
-import { users, customers } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { UserTypes } from '../types';
+import BcryptAuthService from '../services/bcrypt-auth.service';
 
-// Extended request interface with authentication properties
-export interface AuthenticatedRequest extends Request {
-  user?: any;
-  isAdmin: () => boolean;
-  isConsignor: () => boolean;
-}
+const authService = new BcryptAuthService();
 
 /**
- * Check if the user is authenticated
- */
-export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
-  const authReq = req as AuthenticatedRequest;
-  
-  // Debug log to see session data
-  console.log('Auth middleware - Session data:', {
-    userId: req.session.userId,
-    customerId: req.session.customerId,
-    userType: req.session.userType,
-    sessionID: req.sessionID,
-    cookie: req.session.cookie,
-    isAuthenticated: req.isAuthenticated?.(),
-    path: req.path,
-    method: req.method
-  });
-  
-  // Check if user is authenticated via session
-  if (!req.session.userType || (!req.session.userId && !req.session.customerId)) {
-    console.log('Auth middleware - Authentication failed: missing userType or IDs');
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-  
-  // Add helper methods to the request object
-  authReq.isAdmin = () => Boolean(req.session.userType && req.session.userType === 'admin');
-  authReq.isConsignor = () => Boolean(req.session.userType && req.session.userType === 'consignor');
-  
-  // Continue to the next middleware
-  next();
-}
-
-/**
- * Require admin role
- */
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  const authReq = req as AuthenticatedRequest;
-  
-  // First check if authenticated
-  isAuthenticated(req, res, () => {
-    // Then check if admin
-    if (req.session.userType !== 'admin' || !req.session.userId) {
-      return res.status(403).json({ success: false, message: 'Forbidden: Admin access required' });
-    }
-    
-    // Continue to the next middleware
-    next();
-  });
-}
-
-/**
- * Require consignor role
- */
-export function requireConsignor(req: Request, res: Response, next: NextFunction) {
-  const authReq = req as AuthenticatedRequest;
-  
-  // First check if authenticated
-  isAuthenticated(req, res, () => {
-    // Then check if consignor
-    if (req.session.userType !== 'consignor' || !req.session.customerId) {
-      return res.status(403).json({ success: false, message: 'Forbidden: Consignor access required' });
-    }
-    
-    // Continue to the next middleware
-    next();
-  });
-}
-
-/**
- * Attach the user data to the request object
+ * Middleware to attach user data to the request object
+ * This supports both the original auth implementation and our fixed auth system
  */
 export async function attachUserData(req: Request, res: Response, next: NextFunction) {
-  const authReq = req as AuthenticatedRequest;
-  
   try {
-    // Attach user data based on user type
-    if (req.session.userType === 'admin' && req.session.userId) {
-      // Get admin user data
-      const [adminUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, req.session.userId));
-      
-      if (adminUser) {
-        authReq.user = {
-          id: adminUser.id,
-          email: adminUser.email,
-          name: adminUser.name,  // Supabase stores full name in name field
-          role: 'admin'
-        };
-      }
-    } else if (req.session.userType === 'consignor' && req.session.customerId) {
-      // Get consignor/customer data
-      const [consignor] = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.id, req.session.customerId));
-      
-      if (consignor) {
-        authReq.user = {
-          id: consignor.id,
-          email: consignor.email,
-          name: consignor.name, // Use name field from database
-          role: 'consignor',
-          customer: consignor
-        };
+    // Skip for static assets or auth routes
+    if (req.path.startsWith('/assets') || req.path.startsWith('/api/auth')) {
+      return next();
+    }
+    
+    // Log the session for debugging (without sensitive data)
+    console.log('Session in middleware:', {
+      hasSession: !!req.session,
+      userType: req.session?.userType,
+      userId: req.session?.userId,
+      customerId: req.session?.customerId
+    });
+    
+    // Attach user data if session exists
+    if (req.session) {
+      // Support both auth methods: Original (userId) and fixed (customerId)
+      if (req.session.customerId) {
+        // Retrieve consignor data using our fixed auth service
+        const userData = await authService.getCurrentUser(
+          undefined, 
+          req.session.customerId, 
+          UserTypes.CONSIGNOR
+        );
+        
+        if (userData) {
+          // Set user data on request for use in route handlers
+          req.user = userData;
+        }
+      } else if (req.session.userId) {
+        // Continue to support the original implementation (admin users)
+        // This case is handled by Passport, so we don't need to do anything
       }
     }
     
     next();
   } catch (error) {
-    console.error('Error attaching user data:', error);
+    console.error('Error in auth middleware:', error);
     next();
   }
+}
+
+/**
+ * Middleware to require consignor authentication
+ */
+export function requireConsignorAuth(req: Request, res: Response, next: NextFunction) {
+  // Check if user is authenticated and is a consignor
+  if (!req.user || req.session?.userType !== UserTypes.CONSIGNOR) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+  
+  next();
+}
+
+/**
+ * Middleware to require admin authentication
+ */
+export function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+  // Check if user is authenticated and is an admin
+  if (!req.user || req.session?.userType !== UserTypes.ADMIN) {
+    return res.status(401).json({
+      success: false,
+      message: 'Admin authentication required'
+    });
+  }
+  
+  next();
 }

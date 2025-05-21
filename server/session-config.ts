@@ -1,35 +1,38 @@
-import { Pool } from '@neondatabase/serverless';
-import connectPgSimple from 'connect-pg-simple';
+/**
+ * Session configuration for the Dutch Thrift consignment platform
+ */
 import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
+import { Pool } from '@neondatabase/serverless';
 
 /**
- * Configure session middleware
+ * Configure session middleware with PostgreSQL session store
  */
 export function configureSession(pool: Pool) {
   const PgSession = connectPgSimple(session);
   
-  // Create session options
-  const sessionOptions = {
-    store: new PgSession({
-      pool,
-      tableName: 'session', // Session table name
-      createTableIfMissing: true, // Create the session table if it doesn't exist
-      errorLog: (err) => console.error('Session store error:', err)
-    }),
-    secret: process.env.SESSION_SECRET || 'dutchthrift-session-secret',
-    resave: true, // Changed to ensure session is saved on each request
+  // Configure session store
+  const sessionStore = new PgSession({
+    pool,
+    tableName: 'session',
+    createTableIfMissing: true,
+  });
+  
+  // Session configuration
+  const sessionOptions: session.SessionOptions = {
+    store: sessionStore,
+    secret: process.env.SESSION_SECRET || 'dutch-thrift-session-secret',
+    resave: false,
     saveUninitialized: false,
-    name: 'dutchthrift.sid', // Custom cookie name
-    rolling: true, // Force cookie to be set on every response
+    name: 'dutchthrift.sid',
     cookie: {
-      maxAge: 1000 * 60 * 60 * 24 * 30, // Extended to 30 days
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
       httpOnly: true,
-      secure: false, // Set to false for development
-      sameSite: 'lax' as const,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       path: '/'
     }
   };
   
-  // Return the session middleware with proper options
   return session(sessionOptions);
 }
