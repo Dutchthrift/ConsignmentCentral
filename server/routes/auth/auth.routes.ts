@@ -164,6 +164,23 @@ router.post('/register', async (req, res) => {
     req.session.customerId = consignor.id;
     req.session.userType = UserTypes.CONSIGNOR;
     
+    // Explicitly save session
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error during registration:', err);
+      } else {
+        console.log('Registration - Session saved successfully with customerId:', consignor.id);
+      }
+    });
+    
+    // Log session data for debugging
+    console.log('Registration - Session data:', {
+      customerId: req.session.customerId,
+      userType: req.session.userType,
+      sessionID: req.sessionID,
+      cookie: req.session.cookie
+    });
+    
     return res.status(201).json({
       success: true,
       data: {

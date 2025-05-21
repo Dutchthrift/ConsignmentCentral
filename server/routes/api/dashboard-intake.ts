@@ -54,8 +54,18 @@ function calculateCommissionAndPayout(estimatedValue: number): {
   return { commissionRate, payoutValue };
 }
 
+// Import required dependencies
+import { Pool } from '@neondatabase/serverless';
+import jwt from 'jsonwebtoken';
+
+// Create a database connection pool
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
 // POST /api/dashboard/intake - Submit a new item with proper order linking
 router.post('/intake', async (req, res) => {
+  // Define a client variable that we'll use for database connection
+  let client;
+  
   try {
     console.log('Received dashboard intake request');
     
@@ -65,23 +75,38 @@ router.post('/intake', async (req, res) => {
     console.log("Cookies:", req.headers.cookie);
     console.log("Auth header:", req.headers.authorization);
     
-    // Extract customer ID from authenticated session or JWT token
-    const customerId = req.session?.customerId || 
-                       req.user?.id || 
-                       (req.isAuthenticated() && req.session?.passport?.user) || 
-                       (req.headers.authorization && req.headers.authorization.startsWith('Bearer ') && 
-                        JSON.parse(Buffer.from(req.headers.authorization.split(' ')[1].split('.')[1], 'base64').toString()).id);
+    // Extract customer ID from authenticated session
+    let customerId = req.session?.customerId;
+    
+    // Log detailed session info
+    console.log('Session customerId:', customerId);
+    console.log('Session userType:', req.session?.userType);
+    
+    // If session doesn't have customerId, try to extract from authorization header
+    if (!customerId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const decodedToken = jwt.verify(token, process.env.JWT_SECRET || 'dutch-thrift-jwt-secret');
+        if (typeof decodedToken === 'object' && decodedToken !== null && 'id' in decodedToken) {
+          customerId = decodedToken.id;
+          console.log('Extracted customerId from token:', customerId);
+        }
+      } catch (tokenError) {
+        console.error('Token verification failed:', tokenError);
+      }
+    }
     
     if (!customerId) {
       console.log('No customer ID found in session or token');
-      console.log('Session userType:', req.session?.userType);
-      console.log('Session customerId:', req.session?.customerId);
-      console.log('Session userId:', req.session?.userId);
+      console.log('Full session object:', JSON.stringify(req.session));
       return res.status(401).json({ 
         success: false, 
         message: "Authentication required: You must be logged in to submit items" 
       });
     }
+    
+    // Get a client from the pool
+    client = await pool.connect();
     
     console.log(`Processing intake for customer ID: ${customerId}`);
     
