@@ -109,7 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Admin login mutation
   const loginAdmin = useMutation({
     mutationFn: async (credentials: LoginCredentials) => {
-      const res = await apiRequest("POST", "/api/auth/admin/login", credentials);
+      // Use the fixed direct login endpoint
+      const res = await apiRequest("POST", "/api/auth/admin/login-direct", credentials);
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Login failed");
