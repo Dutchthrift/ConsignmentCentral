@@ -55,7 +55,6 @@ function calculateCommissionAndPayout(estimatedValue: number): {
 }
 
 // Import required dependencies
-import { Pool } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 
 // Create a database connection pool
@@ -424,7 +423,7 @@ router.post('/intake', async (req, res) => {
       await client.query('COMMIT');
       console.log('Successfully completed intake transaction - COMMITTED to database');
       
-    } catch (dbError) {
+    } catch (dbError: unknown) {
       // Any error will trigger a rollback
       try {
         await client.query('ROLLBACK');
@@ -436,18 +435,24 @@ router.post('/intake', async (req, res) => {
       return res.status(500).json({ 
         success: false, 
         message: "Database error during item submission",
-        error: process.env.NODE_ENV === 'development' ? dbError.message : 'Internal server error'
+        error: process.env.NODE_ENV === 'development' ? 
+          (dbError instanceof Error ? dbError.message : 'Unknown database error') : 
+          'Internal server error'
       });
     } finally {
       // Always release the client back to the pool
-      client.release();
+      if (client) {
+        client.release();
+      }
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Unexpected error in dashboard intake route:', error);
     return res.status(500).json({ 
       success: false, 
       message: "Failed to process item submission",
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      error: process.env.NODE_ENV === 'development' ? 
+        (error instanceof Error ? error.message : 'Unknown error') : 
+        'Internal server error'
     });
   }
 });

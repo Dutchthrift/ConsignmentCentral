@@ -222,8 +222,30 @@ router.post('/logout', (req, res) => {
  * Get current user route
  * GET /api/auth/me
  */
-router.get('/me', attachUserData, async (req, res) => {
+router.get('/me', async (req, res) => {
+  // Log detailed session information for debugging
+  console.log('GET /api/auth/me - Session debug:', {
+    hasSession: !!req.session,
+    sessionID: req.sessionID,
+    userId: req.session?.userId,
+    customerId: req.session?.customerId,
+    userType: req.session?.userType,
+    cookie: req.session?.cookie,
+    headers: {
+      cookie: req.headers.cookie,
+      authorization: req.headers.authorization
+    }
+  });
+
   try {
+    // Check if session exists and has necessary data
+    if (!req.session || (!req.session.userId && !req.session.customerId)) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authenticated'
+      });
+    }
+    
     // Get user data from session
     const userData = await authService.getCurrentUser(
       req.session.userId, 
@@ -232,14 +254,27 @@ router.get('/me', attachUserData, async (req, res) => {
     );
     
     if (!userData) {
+      console.log('User data not found for session values:', {
+        userId: req.session.userId,
+        customerId: req.session.customerId,
+        userType: req.session.userType
+      });
+      
       return res.status(401).json({
         success: false,
         message: 'Not authenticated'
       });
     }
     
+    console.log('Successfully retrieved user data:', {
+      id: userData.id,
+      role: userData.role,
+      email: userData.email
+    });
+    
     return res.status(200).json(userData);
   } catch (error: any) {
+    console.error('Error in /me endpoint:', error);
     return res.status(401).json({
       success: false,
       message: error.message || 'Authentication failed'

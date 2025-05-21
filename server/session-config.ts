@@ -14,15 +14,17 @@ export function configureSession(pool: Pool) {
       pool,
       tableName: 'session', // Session table name
       createTableIfMissing: true, // Create the session table if it doesn't exist
+      errorLog: (err) => console.error('Session store error:', err)
     }),
     secret: process.env.SESSION_SECRET || 'dutchthrift-session-secret',
     resave: true, // Changed to ensure session is saved on each request
     saveUninitialized: false,
     name: 'dutchthrift.sid', // Custom cookie name
+    rolling: true, // Force cookie to be set on every response
     cookie: {
-      maxAge: 1000 * 60 * 60 * 24 * 7, // Extended to 7 days
+      maxAge: 1000 * 60 * 60 * 24 * 30, // Extended to 30 days
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Set to false for development
       sameSite: 'lax' as const,
       path: '/'
     }

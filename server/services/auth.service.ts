@@ -189,6 +189,8 @@ export default class AuthService {
    */
   async getCurrentUser(userId: number | undefined, customerId: number | undefined, userType: string | undefined): Promise<any> {
     try {
+      console.log('getCurrentUser called with:', { userId, customerId, userType });
+      
       if (userType === 'admin' && userId) {
         // Get admin user data
         const [adminUser] = await db
@@ -197,33 +199,86 @@ export default class AuthService {
           .where(eq(users.id, userId));
         
         if (adminUser) {
+          console.log('Found admin user:', adminUser.email);
           const { password: _, ...userData } = adminUser;
           return {
             ...userData,
             name: adminUser.name, // Use name field from Supabase
             role: 'admin'
           };
+        } else {
+          console.log('Admin user not found with ID:', userId);
         }
       } else if (userType === 'consignor' && customerId) {
         // Get consignor/customer data
+        console.log('Looking up consignor with ID:', customerId);
         const [consignor] = await db
           .select()
           .from(customers)
           .where(eq(customers.id, customerId));
         
         if (consignor) {
+          console.log('Found consignor:', consignor.email);
           const { password: _, ...consignorData } = consignor;
           return {
             ...consignorData,
-            // Name field already exists in database
-            role: 'consignor'
+            role: 'consignor',
+            customer: consignorData // Include customer data directly
           };
+        } else {
+          console.log('Consignor not found with ID:', customerId);
         }
+      } else {
+        console.log('Invalid user type or missing ID:', { userType, userId, customerId });
       }
       
       return null;
     } catch (error) {
       console.error('Get current user error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get admin by ID
+   */
+  async getAdminById(id: number): Promise<any> {
+    try {
+      const [admin] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id));
+      
+      if (admin) {
+        const { password: _, ...adminData } = admin;
+        return adminData;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Get admin by ID error:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get consignor by ID
+   */
+  async getConsignorById(id: number): Promise<any> {
+    try {
+      const [consignor] = await db
+        .select()
+        .from(customers)
+        .where(eq(customers.id, id));
+      
+      if (consignor) {
+        const { password: _, ...consignorData } = consignor;
+        return consignorData;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Get consignor by ID error:', error);
       throw error;
     }
   }
