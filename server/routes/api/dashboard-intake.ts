@@ -59,14 +59,24 @@ router.post('/intake', async (req, res) => {
   try {
     console.log('Received dashboard intake request');
     
+    // Log the entire session data for debugging as requested
+    console.log("Session data:", req.session);
+    console.log("Session ID:", req.sessionID);
+    console.log("Cookies:", req.headers.cookie);
+    console.log("Auth header:", req.headers.authorization);
+    
     // Extract customer ID from authenticated session or JWT token
-    const customerId = req.user?.id || 
+    const customerId = req.session?.customerId || 
+                       req.user?.id || 
                        (req.isAuthenticated() && req.session?.passport?.user) || 
                        (req.headers.authorization && req.headers.authorization.startsWith('Bearer ') && 
                         JSON.parse(Buffer.from(req.headers.authorization.split(' ')[1].split('.')[1], 'base64').toString()).id);
     
     if (!customerId) {
       console.log('No customer ID found in session or token');
+      console.log('Session userType:', req.session?.userType);
+      console.log('Session customerId:', req.session?.customerId);
+      console.log('Session userId:', req.session?.userId);
       return res.status(401).json({ 
         success: false, 
         message: "Authentication required: You must be logged in to submit items" 

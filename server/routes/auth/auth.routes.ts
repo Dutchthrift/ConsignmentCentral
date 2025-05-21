@@ -51,11 +51,21 @@ router.post('/admin/login', async (req, res) => {
     req.session.userId = adminUser.id;
     req.session.userType = UserTypes.ADMIN;
     
+    // Save session explicitly to ensure persistence
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+      } else {
+        console.log('Session saved successfully');
+      }
+    });
+    
     // Log session data for debugging
     console.log('Admin login - Session data:', {
       userId: req.session.userId,
       userType: req.session.userType,
-      sessionID: req.sessionID
+      sessionID: req.sessionID,
+      cookie: req.session.cookie
     });
     
     return res.status(200).json({
@@ -98,11 +108,21 @@ router.post('/consignor/login', async (req, res) => {
     req.session.customerId = consignor.id;
     req.session.userType = UserTypes.CONSIGNOR;
     
+    // Save session explicitly to ensure persistence
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+      } else {
+        console.log('Session saved successfully');
+      }
+    });
+    
     // Log session data for debugging
     console.log('Consignor login - Session data:', {
       customerId: req.session.customerId,
       userType: req.session.userType,
-      sessionID: req.sessionID
+      sessionID: req.sessionID,
+      cookie: req.session.cookie
     });
     
     return res.status(200).json({
