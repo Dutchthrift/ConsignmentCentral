@@ -1,36 +1,34 @@
-import session from 'express-session';
-import { Pool } from 'pg';
+import { Pool } from '@neondatabase/serverless';
 import connectPg from 'connect-pg-simple';
+import session from 'express-session';
+
+declare module 'express-session' {
+  interface SessionData {
+    userId?: number;
+    userType?: "admin" | "consignor";
+    customerId?: number;
+  }
+}
 
 /**
  * Configure session handling with PostgreSQL session store
  */
 export function configureSession(pool: Pool) {
-  // Initialize PostgreSQL session store
   const PostgresStore = connectPg(session);
   
-  // Extend session data with our custom properties
-  declare module 'express-session' {
-    interface SessionData {
-      userId?: number;
-      userType?: "admin" | "consignor";
-    }
-  }
-  
-  // Session configuration
   return {
     store: new PostgresStore({
       pool,
-      tableName: 'sessions', // Table name for sessions
-      createTableIfMissing: true // Create the table if it doesn't exist
+      tableName: 'session',
+      createTableIfMissing: true
     }),
-    secret: process.env.SESSION_SECRET || 'dutch-thrift-secret-key',
+    secret: process.env.SESSION_SECRET || 'dutch-thrift-session-secret',
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: 1000 * 60 * 60 * 24 * 7 // 1 week
     }
   };
 }

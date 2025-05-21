@@ -1,190 +1,189 @@
-import { IStorage } from '../storage';
-import { User, AdminUser, InsertUser, insertCustomerSchema, InsertCustomer } from '@shared/schema';
-import { createHash, timingSafeEqual, randomBytes, scrypt } from 'crypto';
+import { db } from '../db';
+import { users, customers } from '@shared/schema';
+import { eq } from 'drizzle-orm';
+import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
-import jwt from 'jsonwebtoken';
 
 const scryptAsync = promisify(scrypt);
 
-// Authentication service
+/**
+ * Password utilities
+ */
+export async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString('hex');
+  const buf = await scryptAsync(password, salt, 64) as Buffer;
+  return `${buf.toString('hex')}.${salt}`;
+}
+
+export async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
+  const [hashed, salt] = stored.split('.');
+  const hashedBuf = Buffer.from(hashed, 'hex');
+  const suppliedBuf = await scryptAsync(supplied, salt, 64) as Buffer;
+  return timingSafeEqual(hashedBuf, suppliedBuf);
+}
+
+/**
+ * Authentication service
+ */
 export class AuthService {
-  constructor(private storage: IStorage) {}
-
   /**
-   * Hash a password for secure storage
+   * Login an admin user
    */
-  async hashPassword(password: string): Promise<string> {
-    const salt = randomBytes(16).toString('hex');
-    const derivedKey = await scryptAsync(password, salt, 64) as Buffer;
-    return `${derivedKey.toString('hex')}.${salt}`;
-  }
-
-  /**
-   * Compare a plain password with a hashed password
-   */
-  async verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
+  async loginAdmin(email: string, password: string): Promise<any> {
     try {
-      const [hashedPart, salt] = hashedPassword.split('.');
-      
-      if (!hashedPart || !salt) {
-        return false;
+      // Get user from database
+      const [adminUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email.toLowerCase()));
+
+      if (!adminUser) {
+        throw new Error('Invalid email or password');
       }
-      
-      const hashedPasswordBuf = Buffer.from(hashedPart, 'hex');
-      const suppliedPasswordBuf = await scryptAsync(plainPassword, salt, 64) as Buffer;
-      
-      return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+
+      // Verify password
+      const passwordValid = await comparePasswords(password, adminUser.password);
+      if (!passwordValid) {
+        throw new Error('Invalid email or password');
+      }
+
+      // Return user data (excluding password)
+      const { password: _, ...userData } = adminUser;
+      return {
+        ...userData,
+        role: 'admin'
+      };
     } catch (error) {
-      console.error('Password verification error:', error);
-      return false;
+      console.error('Admin login error:', error);
+      throw error;
     }
   }
 
   /**
-   * Generate a JWT token for a user
+   * Login a consignor (customer)
    */
-  generateToken(user: any, userType: 'admin' | 'consignor'): string {
-    const payload = {
-      id: user.id,
-      email: user.email,
-      userType,
-      isAdmin: userType === 'admin'
-    };
-    
-    return jwt.sign(
-      payload,
-      process.env.JWT_SECRET || 'dutch-thrift-secret-key',
-      { expiresIn: '7d' }
-    );
-  }
-
-  /**
-   * Verify a JWT token
-   */
-  verifyToken(token: string): any {
+  async loginConsignor(email: string, password: string): Promise<any> {
     try {
-      return jwt.verify(token, process.env.JWT_SECRET || 'dutch-thrift-secret-key');
+      // Get customer from database
+      const [customer] = await db
+        .select()
+        .from(customers)
+        .where(eq(customers.email, email.toLowerCase()));
+
+      if (!customer) {
+        throw new Error('Invalid email or password');
+      }
+
+      // Verify password
+      const passwordValid = await comparePasswords(password, customer.password);
+      if (!passwordValid) {
+        throw new Error('Invalid email or password');
+      }
+
+      // Return customer data (excluding password)
+      const { password: _, ...customerData } = customer;
+      return {
+        ...customerData,
+        role: 'consignor'
+      };
     } catch (error) {
-      throw new Error('Invalid token');
+      console.error('Consignor login error:', error);
+      throw error;
     }
   }
 
   /**
-   * Authenticate an admin user
+   * Register a new consignor (customer)
    */
-  async authenticateAdmin(email: string, password: string): Promise<{ admin: AdminUser, token: string } | null> {
-    const admin = await this.storage.getAdminUserByEmail(email);
-    
-    if (!admin) {
-      return null;
-    }
-    
-    const isPasswordValid = await this.verifyPassword(password, admin.password);
-    
-    if (!isPasswordValid) {
-      return null;
-    }
-    
-    // Update last login time
-    await this.storage.updateUserLastLogin(admin.id);
-    
-    // Generate JWT token
-    const token = this.generateToken(admin, 'admin');
-    
-    return { admin, token };
-  }
-
-  /**
-   * Authenticate a consignor user
-   */
-  async authenticateConsignor(email: string, password: string): Promise<{ user: User, customer: any, token: string } | null> {
-    const user = await this.storage.getUserByEmail(email);
-    
-    if (!user) {
-      return null;
-    }
-    
-    const isPasswordValid = await this.verifyPassword(password, user.password || '');
-    
-    if (!isPasswordValid) {
-      return null;
-    }
-    
-    // Update last login time
-    await this.storage.updateUserLastLogin(user.id);
-    
-    // Get customer information
-    const customer = await this.storage.getCustomerByUserId(user.id);
-    
-    if (!customer) {
-      return null;
-    }
-    
-    // Generate JWT token
-    const token = this.generateToken(user, 'consignor');
-    
-    return { user, customer, token };
-  }
-
-  /**
-   * Register a new consignor user
-   */
-  async registerConsignor(userData: { 
-    email: string; 
-    password: string; 
-    firstName: string; 
-    lastName: string; 
-    phone?: string; 
-    address?: string; 
-    city?: string; 
-    state?: string; 
-    postalCode?: string; 
-    country?: string; 
-  }): Promise<{ user: User, customer: any, token: string } | null> {
+  async registerConsignor(userData: any): Promise<any> {
     try {
-      // Check if user already exists
-      const existingUser = await this.storage.getUserByEmail(userData.email);
-      
+      // Check if email already exists
+      const [existingUser] = await db
+        .select()
+        .from(customers)
+        .where(eq(customers.email, userData.email.toLowerCase()));
+
       if (existingUser) {
-        throw new Error('User with this email already exists');
+        throw new Error('Email already registered');
       }
-      
-      // Hash the password
-      const hashedPassword = await this.hashPassword(userData.password);
-      
-      // Create the user
-      const newUser = await this.storage.createUser({
-        email: userData.email,
+
+      // Hash password
+      const hashedPassword = await hashPassword(userData.password);
+
+      // Format user data
+      const customerData = {
+        email: userData.email.toLowerCase(),
         password: hashedPassword,
-        name: `${userData.firstName} ${userData.lastName}`,
-        role: 'consignor',
-        provider: 'local'
-      });
-      
-      // Create customer profile
-      const customerData: InsertCustomer = {
-        email: userData.email,
-        first_name: userData.firstName,
-        last_name: userData.lastName, 
-        user_id: newUser.id,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
         phone: userData.phone || null,
         address: userData.address || null,
         city: userData.city || null,
-        state: userData.state || null, 
-        postal_code: userData.postalCode || null,
-        country: userData.country || 'NL',
-        company_name: null,
-        vat_number: null
+        state: userData.state || null,
+        postalCode: userData.postalCode || null,
+        country: userData.country || null,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
-      
-      const customer = await this.storage.createCustomer(customerData);
-      
-      // Generate token
-      const token = this.generateToken(newUser, 'consignor');
-      
-      return { user: newUser, customer, token };
+
+      // Insert new customer
+      const [newCustomer] = await db
+        .insert(customers)
+        .values(customerData)
+        .returning();
+
+      // Return customer data (excluding password)
+      const { password: _, ...newCustomerData } = newCustomer;
+      return {
+        ...newCustomerData,
+        role: 'consignor'
+      };
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('Consignor registration error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get current user data
+   */
+  async getCurrentUser(userId: number | undefined, customerId: number | undefined, userType: string | undefined): Promise<any> {
+    try {
+      if (userType === 'admin' && userId) {
+        // Get admin user data
+        const [adminUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId));
+        
+        if (adminUser) {
+          const { password: _, ...userData } = adminUser;
+          return {
+            ...userData,
+            name: `${adminUser.firstName} ${adminUser.lastName}`,
+            role: 'admin'
+          };
+        }
+      } else if (userType === 'consignor' && customerId) {
+        // Get consignor/customer data
+        const [consignor] = await db
+          .select()
+          .from(customers)
+          .where(eq(customers.id, customerId));
+        
+        if (consignor) {
+          const { password: _, ...consignorData } = consignor;
+          return {
+            ...consignorData,
+            name: `${consignor.firstName} ${consignor.lastName}`,
+            role: 'consignor'
+          };
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Get current user error:', error);
       throw error;
     }
   }
