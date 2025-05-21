@@ -4,7 +4,7 @@
  */
 import { pool } from '../db';
 import { v4 as uuidv4 } from 'uuid';
-import { openai } from '../lib/ai-client';
+import OpenAI from 'openai';
 
 interface ItemData {
   title: string;
@@ -188,7 +188,12 @@ export class ItemIntakeService {
       if (process.env.OPENAI_API_KEY) {
         console.log('Using OpenAI for item analysis');
         
-        const response = await openai.chat.completions.create({
+        // Initialize OpenAI client
+        const aiClient = new OpenAI({
+          apiKey: process.env.OPENAI_API_KEY,
+        });
+        
+        const response = await aiClient.chat.completions.create({
           model: "gpt-4", // Using GPT-4 for better accuracy
           messages: [
             { role: "system", content: "You are an expert appraiser for luxury consignment items. Provide professional valuations and assessments." },
@@ -199,7 +204,9 @@ export class ItemIntakeService {
         });
         
         try {
-          aiResult = JSON.parse(response.choices[0].message.content);
+          // Ensure content is not null before parsing
+          const content = response.choices[0].message.content || '{}';
+          aiResult = JSON.parse(content);
         } catch (error) {
           console.error('Error parsing AI response:', error);
           aiResult = {

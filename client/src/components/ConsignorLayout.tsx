@@ -16,6 +16,8 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
   const { toast } = useToast();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const { logout } = useAuth();
+  
   const handleLogout = () => {
     // Show a toast for better UX
     toast({
@@ -23,19 +25,25 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
       description: "Please wait while we securely log you out."
     });
     
-    // Create a direct link to logout page
-    window.location.href = '/auth';
-    
-    // Clear all client storage
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    // In the background, try to call the logout API
-    fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'include'
-    }).catch(err => {
-      console.log('Background logout request failed');
+    // Call the logout mutation from useAuth
+    logout.mutate(undefined, {
+      onSuccess: () => {
+        // Clear all client storage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Redirect to login page
+        window.location.href = '/auth';
+      },
+      onError: () => {
+        // Even if the API call fails, still redirect to login
+        // and clear storage as fallback
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/auth';
+        
+        console.log('Logout API request failed, forcing redirect');
+      }
     });
   };
 
