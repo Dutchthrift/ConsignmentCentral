@@ -8,7 +8,7 @@ import { attachUserData } from './middleware/auth.middleware';
 
 export function registerRoutes(app: express.Express) {
   // Configure session middleware
-  app.use(session(configureSession(pool)));
+  app.use(configureSession(pool));
 
   // Add user data to requests where available
   app.use(attachUserData);

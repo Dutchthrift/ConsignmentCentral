@@ -26,8 +26,7 @@ interface ConsignorUser extends User {
   customer: {
     id: number;
     email: string;
-    first_name: string;
-    last_name: string;
+    name: string; // Single name field to match database structure
     phone: string | null;
     address: string | null;
     city: string | null;
@@ -45,8 +44,7 @@ interface LoginCredentials {
 
 // Registration data
 interface RegisterData extends LoginCredentials {
-  firstName: string;
-  lastName: string;
+  name: string; // Single name field to match database structure
   phone?: string;
   address?: string;
   city?: string;
