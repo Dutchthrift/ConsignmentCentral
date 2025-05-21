@@ -258,12 +258,40 @@ export default class AuthService {
         role: 'consignor' // Set the role directly
       };
 
-      // Insert new customer
+      // Insert new customer using direct SQL to ensure compatibility with Supabase
       console.log('Inserting new consignor into database...');
-      const [newCustomer] = await db
-        .insert(customers)
-        .values(customerData)
-        .returning();
+      
+      // Use direct SQL query for better visibility in Supabase
+      const result = await executeRawQuery(`
+        INSERT INTO customers (
+          email, password, name, phone, address, city, state, postal_code, country, role, created_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+        ) RETURNING *
+      `, [
+        customerData.email,
+        customerData.password,
+        customerData.name,
+        customerData.phone,
+        customerData.address,
+        customerData.city,
+        customerData.state,
+        customerData.postal_code,
+        customerData.country || 'NL',
+        customerData.role,
+        customerData.created_at
+      ]);
+      
+      const newCustomer = result[0];
+      
+      // Log detailed information about the inserted record for verification
+      console.log('Customer record inserted into database:', {
+        id: newCustomer.id,
+        email: newCustomer.email,
+        name: newCustomer.name,
+        role: newCustomer.role,
+        created_at: newCustomer.created_at
+      });
       
       console.log('Registration successful, consignor created with ID:', newCustomer.id);
 
