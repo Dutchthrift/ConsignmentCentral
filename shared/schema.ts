@@ -67,6 +67,7 @@ export const customers = pgTable("customers", {
   id: serial("id").primaryKey(),
   user_id: integer("user_id").references(() => users.id),
   email: text("email").notNull().unique(),
+  password: text("password"), // Hashed password for authentication
   first_name: text("first_name").notNull(),
   last_name: text("last_name").notNull(),
   phone: text("phone"),

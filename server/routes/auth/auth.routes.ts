@@ -128,7 +128,7 @@ router.post('/register', async (req, res) => {
     
     // Set session data
     req.session.customerId = consignor.id;
-    req.session.userType = 'consignor';
+    req.session.userType = 'consignor' as 'admin' | 'consignor';
     
     return res.status(201).json({
       success: true,
