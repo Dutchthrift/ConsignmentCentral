@@ -1,452 +1,420 @@
-import { useState, useEffect } from "react";
-import { useLocation, useRoute, Redirect } from "wouter";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useAuth } from "@/hooks/use-auth";
-import { Loader2 } from "lucide-react";
+import React, { useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { useLocation } from 'wouter';
 
-// Login form schema with validation
-const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  userType: z.enum(["admin", "consignor"])
-});
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Registration form schema with validation
-const registerSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  confirmPassword: z.string(),
-  firstName: z.string().min(1, { message: "First name is required" }),
-  lastName: z.string().min(1, { message: "Last name is required" }),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  postalCode: z.string().optional(),
-  country: z.string().optional(),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"]
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-type RegisterFormValues = z.infer<typeof registerSchema>;
-
-const AuthPage = () => {
-  const [activeTab, setActiveTab] = useState<string>("login");
-  const [location, navigate] = useLocation();
-  const { user, isLoading, loginMutation, registerMutation } = useAuth();
+export default function AuthPage() {
+  const [, navigate] = useLocation();
+  const { user, isLoading, loginAdmin, loginConsignor, register } = useAuth();
+  const [activeTab, setActiveTab] = useState<string>('consignorLogin');
   
-  // If user is already logged in, redirect to home page
-  if (user) {
-    return <Redirect to="/" />;
+  // Redirect if already logged in
+  if (user && !isLoading) {
+    if (user.role === 'admin') {
+      navigate('/admin');
+    } else {
+      navigate('/consignor/dashboard');
+    }
   }
-
-  // Login form setup
-  const loginForm = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      userType: "consignor"
-    }
+  
+  // Admin login form state
+  const [adminForm, setAdminForm] = useState({
+    email: '',
+    password: ''
   });
-
-  // Register form setup
-  const registerForm = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      confirmPassword: "",
-      firstName: "",
-      lastName: "",
-      phone: "",
-      address: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: ""
-    }
+  
+  // Consignor login form state
+  const [consignorLoginForm, setConsignorLoginForm] = useState({
+    email: '',
+    password: ''
   });
-
-  // Handle login form submission
-  const onLoginSubmit = (values: LoginFormValues) => {
-    loginMutation.mutate(values);
+  
+  // Consignor registration form state
+  const [registerForm, setRegisterForm] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: ''
+  });
+  
+  // Basic email validation
+  const isValidEmail = (email: string) => {
+    return /\S+@\S+\.\S+/.test(email);
   };
-
-  // Handle registration form submission
-  const onRegisterSubmit = (values: RegisterFormValues) => {
-    // Remove confirmPassword field before sending to API
-    const { confirmPassword, ...registerData } = values;
-    registerMutation.mutate(registerData);
+  
+  // Handle admin login
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!isValidEmail(adminForm.email) || !adminForm.password) {
+      return; // Basic validation
+    }
+    
+    loginAdmin.mutate({
+      email: adminForm.email,
+      password: adminForm.password
+    });
   };
-
+  
+  // Handle consignor login
+  const handleConsignorLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!isValidEmail(consignorLoginForm.email) || !consignorLoginForm.password) {
+      return; // Basic validation
+    }
+    
+    loginConsignor.mutate({
+      email: consignorLoginForm.email,
+      password: consignorLoginForm.password
+    });
+  };
+  
+  // Handle consignor registration
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (
+      !isValidEmail(registerForm.email) || 
+      !registerForm.password ||
+      registerForm.password !== registerForm.confirmPassword ||
+      !registerForm.firstName ||
+      !registerForm.lastName
+    ) {
+      return;
+    }
+    
+    register.mutate({
+      email: registerForm.email,
+      password: registerForm.password,
+      firstName: registerForm.firstName,
+      lastName: registerForm.lastName,
+      phone: registerForm.phone,
+      address: registerForm.address,
+      city: registerForm.city,
+      state: registerForm.state,
+      postalCode: registerForm.postalCode,
+      country: registerForm.country
+    });
+  };
+  
   return (
-    <div className="flex min-h-screen">
-      {/* Left Column - Authentication Forms */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-4 md:p-8">
-        <div className="w-full max-w-md">
-          <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
-            </TabsList>
+    <div className="flex min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="flex flex-col md:flex-row w-full">
+        {/* Left side - Auth forms */}
+        <div className="flex items-center justify-center p-6 w-full md:w-1/2">
+          <div className="w-full max-w-md">
+            <div className="mb-8 text-center">
+              <h1 className="text-3xl font-bold text-primary">Dutch Thrift</h1>
+              <p className="text-gray-500 dark:text-gray-400 mt-2">Premium Consignment Platform</p>
+            </div>
             
-            {/* Login Tab */}
-            <TabsContent value="login">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Login to your account</CardTitle>
-                  <CardDescription>Enter your credentials to access the platform</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Form {...loginForm}>
-                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                      <FormField
-                        control={loginForm.control}
-                        name="userType"
-                        render={({ field }) => (
-                          <FormItem className="space-y-1">
-                            <FormLabel>Account Type</FormLabel>
-                            <div className="flex space-x-2">
-                              <Button
-                                type="button"
-                                variant={field.value === "admin" ? "default" : "outline"}
-                                onClick={() => field.onChange("admin")}
-                                className="w-full"
-                              >
-                                Admin
-                              </Button>
-                              <Button
-                                type="button"
-                                variant={field.value === "consignor" ? "default" : "outline"}
-                                onClick={() => field.onChange("consignor")}
-                                className="w-full"
-                              >
-                                Consignor
-                              </Button>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={loginForm.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input placeholder="you@example.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={loginForm.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="••••••••" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
+            <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid grid-cols-2 mb-4">
+                <TabsTrigger value="consignorLogin">Consignor Login</TabsTrigger>
+                <TabsTrigger value="adminLogin">Admin Login</TabsTrigger>
+              </TabsList>
+              
+              {/* Consignor Login */}
+              <TabsContent value="consignorLogin">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Consignor Login</CardTitle>
+                    <CardDescription>Enter your credentials to access your consignor account.</CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleConsignorLogin}>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="consignorEmail">Email</Label>
+                        <Input 
+                          id="consignorEmail" 
+                          type="email" 
+                          placeholder="your@email.com" 
+                          value={consignorLoginForm.email}
+                          onChange={(e) => setConsignorLoginForm({...consignorLoginForm, email: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="consignorPassword">Password</Label>
+                        <Input 
+                          id="consignorPassword" 
+                          type="password" 
+                          placeholder="••••••••" 
+                          value={consignorLoginForm.password}
+                          onChange={(e) => setConsignorLoginForm({...consignorLoginForm, password: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex flex-col gap-4">
                       <Button 
                         type="submit" 
-                        className="w-full"
-                        disabled={loginMutation.isPending}
+                        className="w-full" 
+                        disabled={loginConsignor.isPending}
                       >
-                        {loginMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                            Logging in...
-                          </>
-                        ) : (
-                          "Login"
-                        )}
+                        {loginConsignor.isPending ? 'Logging in...' : 'Login'}
                       </Button>
-                    </form>
-                  </Form>
-                </CardContent>
-                <CardFooter className="flex justify-center">
-                  <p className="text-sm text-muted-foreground">
-                    Don't have an account?{" "}
-                    <Button 
-                      variant="link" 
-                      className="p-0" 
-                      onClick={() => setActiveTab("register")}
-                    >
-                      Register
-                    </Button>
-                  </p>
-                </CardFooter>
-              </Card>
-            </TabsContent>
-            
-            {/* Register Tab */}
-            <TabsContent value="register">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Create a consignor account</CardTitle>
-                  <CardDescription>Join our platform to consign your items</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Form {...registerForm}>
-                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={registerForm.control}
-                          name="firstName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>First Name</FormLabel>
-                              <FormControl>
-                                <Input placeholder="John" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={registerForm.control}
-                          name="lastName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Last Name</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Doe" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
+                      <p className="text-sm text-center text-gray-500 dark:text-gray-400">
+                        Don't have an account?{' '}
+                        <a 
+                          href="#" 
+                          className="text-primary hover:underline"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setActiveTab('register');
+                          }}
+                        >
+                          Register here
+                        </a>
+                      </p>
+                    </CardFooter>
+                  </form>
+                </Card>
+              </TabsContent>
+              
+              {/* Admin Login */}
+              <TabsContent value="adminLogin">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Admin Login</CardTitle>
+                    <CardDescription>Enter your admin credentials to access the control panel.</CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleAdminLogin}>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="adminEmail">Email</Label>
+                        <Input 
+                          id="adminEmail" 
+                          type="email" 
+                          placeholder="admin@dutchthrift.com" 
+                          value={adminForm.email}
+                          onChange={(e) => setAdminForm({...adminForm, email: e.target.value})}
+                          required
                         />
                       </div>
-                      
-                      <FormField
-                        control={registerForm.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input placeholder="you@example.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={registerForm.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Password</FormLabel>
-                              <FormControl>
-                                <Input type="password" placeholder="••••••••" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={registerForm.control}
-                          name="confirmPassword"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Confirm Password</FormLabel>
-                              <FormControl>
-                                <Input type="password" placeholder="••••••••" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
+                      <div className="space-y-2">
+                        <Label htmlFor="adminPassword">Password</Label>
+                        <Input 
+                          id="adminPassword" 
+                          type="password" 
+                          placeholder="••••••••" 
+                          value={adminForm.password}
+                          onChange={(e) => setAdminForm({...adminForm, password: e.target.value})}
+                          required
                         />
                       </div>
-                      
-                      <FormField
-                        control={registerForm.control}
-                        name="phone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Phone (optional)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="+31 6 12345678" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <div className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-700">Address Information (optional)</h3>
-                        
-                        <FormField
-                          control={registerForm.control}
-                          name="address"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Street Address</FormLabel>
-                              <FormControl>
-                                <Input placeholder="123 Main St" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={registerForm.control}
-                            name="city"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>City</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Amsterdam" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={registerForm.control}
-                            name="postalCode"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Postal Code</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="1234 AB" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
+                    </CardContent>
+                    <CardFooter>
+                      <Button 
+                        type="submit" 
+                        className="w-full" 
+                        disabled={loginAdmin.isPending}
+                      >
+                        {loginAdmin.isPending ? 'Logging in...' : 'Login'}
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </Card>
+              </TabsContent>
+              
+              {/* Registration */}
+              <TabsContent value="register">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Create a Consignor Account</CardTitle>
+                    <CardDescription>Enter your details to register as a consignor.</CardDescription>
+                  </CardHeader>
+                  <form onSubmit={handleRegister}>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="firstName">First Name</Label>
+                          <Input 
+                            id="firstName" 
+                            placeholder="John" 
+                            value={registerForm.firstName}
+                            onChange={(e) => setRegisterForm({...registerForm, firstName: e.target.value})}
+                            required
                           />
                         </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={registerForm.control}
-                            name="state"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>State/Province</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Noord-Holland" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={registerForm.control}
-                            name="country"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Country</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Netherlands" defaultValue="Netherlands" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
+                        <div className="space-y-2">
+                          <Label htmlFor="lastName">Last Name</Label>
+                          <Input 
+                            id="lastName" 
+                            placeholder="Doe" 
+                            value={registerForm.lastName}
+                            onChange={(e) => setRegisterForm({...registerForm, lastName: e.target.value})}
+                            required
                           />
                         </div>
                       </div>
                       
+                      <div className="space-y-2">
+                        <Label htmlFor="regEmail">Email</Label>
+                        <Input 
+                          id="regEmail" 
+                          type="email" 
+                          placeholder="your@email.com" 
+                          value={registerForm.email}
+                          onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})}
+                          required
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="regPassword">Password</Label>
+                          <Input 
+                            id="regPassword" 
+                            type="password" 
+                            placeholder="••••••••" 
+                            value={registerForm.password}
+                            onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="confirmPassword">Confirm Password</Label>
+                          <Input 
+                            id="confirmPassword" 
+                            type="password" 
+                            placeholder="••••••••" 
+                            value={registerForm.confirmPassword}
+                            onChange={(e) => setRegisterForm({...registerForm, confirmPassword: e.target.value})}
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone Number (optional)</Label>
+                        <Input 
+                          id="phone" 
+                          type="tel" 
+                          placeholder="+1 (555) 123-4567" 
+                          value={registerForm.phone}
+                          onChange={(e) => setRegisterForm({...registerForm, phone: e.target.value})}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="address">Address (optional)</Label>
+                        <Input 
+                          id="address" 
+                          placeholder="123 Main St" 
+                          value={registerForm.address}
+                          onChange={(e) => setRegisterForm({...registerForm, address: e.target.value})}
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="city">City (optional)</Label>
+                          <Input 
+                            id="city" 
+                            placeholder="Amsterdam" 
+                            value={registerForm.city}
+                            onChange={(e) => setRegisterForm({...registerForm, city: e.target.value})}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="state">State/Province (optional)</Label>
+                          <Input 
+                            id="state" 
+                            placeholder="North Holland" 
+                            value={registerForm.state}
+                            onChange={(e) => setRegisterForm({...registerForm, state: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="postalCode">Postal Code (optional)</Label>
+                          <Input 
+                            id="postalCode" 
+                            placeholder="1011 AB" 
+                            value={registerForm.postalCode}
+                            onChange={(e) => setRegisterForm({...registerForm, postalCode: e.target.value})}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="country">Country (optional)</Label>
+                          <Input 
+                            id="country" 
+                            placeholder="Netherlands" 
+                            value={registerForm.country}
+                            onChange={(e) => setRegisterForm({...registerForm, country: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex flex-col gap-4">
                       <Button 
                         type="submit" 
-                        className="w-full"
-                        disabled={registerMutation.isPending}
+                        className="w-full" 
+                        disabled={register.isPending}
                       >
-                        {registerMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                            Creating Account...
-                          </>
-                        ) : (
-                          "Create Account"
-                        )}
+                        {register.isPending ? 'Registering...' : 'Register'}
                       </Button>
-                    </form>
-                  </Form>
-                </CardContent>
-                <CardFooter className="flex justify-center">
-                  <p className="text-sm text-muted-foreground">
-                    Already have an account?{" "}
-                    <Button 
-                      variant="link" 
-                      className="p-0" 
-                      onClick={() => setActiveTab("login")}
-                    >
-                      Login
-                    </Button>
-                  </p>
-                </CardFooter>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                      <p className="text-sm text-center text-gray-500 dark:text-gray-400">
+                        Already have an account?{' '}
+                        <a 
+                          href="#" 
+                          className="text-primary hover:underline"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setActiveTab('consignorLogin');
+                          }}
+                        >
+                          Login here
+                        </a>
+                      </p>
+                    </CardFooter>
+                  </form>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
-      </div>
-      
-      {/* Right Column - Hero Section */}
-      <div className="hidden md:flex md:w-1/2 bg-primary flex items-center justify-center">
-        <div className="max-w-md p-8 text-white">
-          <h1 className="text-3xl font-bold mb-4">Dutch Thrift Consignment Platform</h1>
-          <p className="mb-6">
-            Join our platform and turn your pre-loved items into cash. We make consignment 
-            easy with AI-powered valuations, transparent pricing, and a seamless selling experience.
-          </p>
-          <div className="space-y-4">
-            <div className="flex items-start space-x-2">
-              <div className="bg-white text-primary p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+        
+        {/* Right side - Hero section */}
+        <div className="hidden md:flex items-center justify-center p-6 bg-primary/10 w-1/2">
+          <div className="max-w-md text-center">
+            <h2 className="text-3xl font-bold text-primary mb-6">Dutch Thrift Consignment Platform</h2>
+            <div className="space-y-4 text-left">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+                <h3 className="font-semibold text-lg mb-2">Premium Consignment Services</h3>
+                <p className="text-gray-600 dark:text-gray-300">Turn your quality unused items into cash with our expert consignment services. We handle everything from valuation to sale.</p>
               </div>
-              <p className="text-sm">AI-powered item valuation for accurate pricing</p>
-            </div>
-            <div className="flex items-start space-x-2">
-              <div className="bg-white text-primary p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+              
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+                <h3 className="font-semibold text-lg mb-2">AI-Powered Valuation</h3>
+                <p className="text-gray-600 dark:text-gray-300">Our cutting-edge AI technology analyzes your items to provide accurate market values and optimal pricing strategies.</p>
               </div>
-              <p className="text-sm">Transparent commission structure with no hidden fees</p>
-            </div>
-            <div className="flex items-start space-x-2">
-              <div className="bg-white text-primary p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+              
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+                <h3 className="font-semibold text-lg mb-2">Transparent Process</h3>
+                <p className="text-gray-600 dark:text-gray-300">Track your consignments at every stage. From intake to payout, know exactly where your items are in the sales process.</p>
               </div>
-              <p className="text-sm">Secure dashboard to track your items and earnings</p>
             </div>
           </div>
         </div>
       </div>
     </div>
   );
-};
-
-export default AuthPage;
+}

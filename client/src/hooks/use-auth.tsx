@@ -1,53 +1,50 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useEffect } from "react";
 import {
   useQuery,
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { User, InsertUser } from "@shared/schema";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "../lib/queryClient";
 
-// Types for our auth data
-type AuthContextType = {
-  user: UserData | null;
-  isLoading: boolean;
-  error: Error | null;
-  loginMutation: UseMutationResult<LoginResponse, Error, LoginData>;
-  logoutMutation: UseMutationResult<LogoutResponse, Error, void>;
-  registerMutation: UseMutationResult<RegisterResponse, Error, RegisterData>;
-};
-
-// User data returned from the API
-interface UserData {
+// Types for user data
+interface User {
   id: number;
   email: string;
   name: string;
   role: string;
-  customer?: any; // Customer data for consignors
 }
 
-// Login request data
-interface LoginData {
-  email: string;
-  password: string;
-  userType: "admin" | "consignor"; // Used to determine which login endpoint to use
+// Admin user type
+interface AdminUser extends User {
+  role: 'admin';
 }
 
-// Login response from API
-interface LoginResponse {
-  success: boolean;
-  data: {
-    user: UserData;
-    token: string;
-    customer?: any;
+// Consignor user type
+interface ConsignorUser extends User {
+  role: 'consignor';
+  customer: {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+    phone: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    postal_code: string | null;
+    country: string | null;
   };
 }
 
-// Register request data
-interface RegisterData {
+// Login credentials
+interface LoginCredentials {
   email: string;
   password: string;
+}
+
+// Registration data
+interface RegisterData extends LoginCredentials {
   firstName: string;
   lastName: string;
   phone?: string;
@@ -58,124 +55,150 @@ interface RegisterData {
   country?: string;
 }
 
-// Register response from API
-interface RegisterResponse {
-  success: boolean;
-  data: {
-    user: UserData;
-    token: string;
-    customer: any;
-  };
+// Auth context type
+interface AuthContextType {
+  user: AdminUser | ConsignorUser | null;
+  isLoading: boolean;
+  error: Error | null;
+  isAdmin: () => boolean;
+  isConsignor: () => boolean;
+  loginAdmin: UseMutationResult<AdminUser, Error, LoginCredentials>;
+  loginConsignor: UseMutationResult<ConsignorUser, Error, LoginCredentials>;
+  register: UseMutationResult<ConsignorUser, Error, RegisterData>;
+  logout: UseMutationResult<void, Error, void>;
 }
 
-// Logout response
-interface LogoutResponse {
-  success: boolean;
-  message: string;
-}
+// Create auth context
+const AuthContext = createContext<AuthContextType | null>(null);
 
-// Create the auth context
-export const AuthContext = createContext<AuthContextType | null>(null);
-
-// Auth provider component to wrap the app
+// Auth provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  
-  // Query to get the current user data - used for initial load and after login/register
+
+  // Fetch current user data
   const {
     data: user,
     error,
     isLoading,
-  } = useQuery<UserData | null, Error>({
+  } = useQuery<AdminUser | ConsignorUser | null, Error>({
     queryKey: ["/api/auth/me"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", "/api/auth/me");
+        if (!res.ok) {
+          if (res.status === 401) {
+            return null;
+          }
+          throw new Error("Failed to fetch user data");
+        }
+        return await res.json();
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("401")) {
+          return null;
+        }
+        throw error;
+      }
+    },
   });
 
-  // Login mutation
-  const loginMutation = useMutation<LoginResponse, Error, LoginData>({
-    mutationFn: async (credentials: LoginData) => {
-      const { userType, ...data } = credentials;
-      const endpoint = userType === "admin" 
-        ? "/api/auth/admin/login" 
-        : "/api/auth/consignor/login";
-      
-      const res = await apiRequest("POST", endpoint, data);
-      return await res.json();
-    },
-    onSuccess: (response: LoginResponse) => {
-      // Store token in localStorage for later use
-      if (response.data.token) {
-        localStorage.setItem("authToken", response.data.token);
+  // Helper functions to check user role
+  const isAdmin = () => user?.role === "admin";
+  const isConsignor = () => user?.role === "consignor";
+
+  // Admin login mutation
+  const loginAdmin = useMutation({
+    mutationFn: async (credentials: LoginCredentials) => {
+      const res = await apiRequest("POST", "/api/auth/admin/login", credentials);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Login failed");
       }
-      
-      // Update the user data in the cache
-      queryClient.setQueryData(["/api/auth/me"], response.data.user);
-      
+      const data = await res.json();
+      return data.data.user;
+    },
+    onSuccess: (userData: AdminUser) => {
+      queryClient.setQueryData(["/api/auth/me"], userData);
       toast({
         title: "Login successful",
-        description: `Welcome back, ${response.data.user.name}!`,
-        variant: "default",
+        description: `Welcome back, ${userData.name}!`,
       });
     },
     onError: (error: Error) => {
       toast({
         title: "Login failed",
-        description: error.message || "Invalid email or password",
+        description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  // Register mutation
-  const registerMutation = useMutation<RegisterResponse, Error, RegisterData>({
-    mutationFn: async (userData: RegisterData) => {
-      const res = await apiRequest("POST", "/api/auth/register", userData);
-      return await res.json();
-    },
-    onSuccess: (response: RegisterResponse) => {
-      // Store token in localStorage for later use
-      if (response.data.token) {
-        localStorage.setItem("authToken", response.data.token);
+  // Consignor login mutation
+  const loginConsignor = useMutation({
+    mutationFn: async (credentials: LoginCredentials) => {
+      const res = await apiRequest("POST", "/api/auth/consignor/login", credentials);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Login failed");
       }
-      
-      // Update the user data in the cache
-      queryClient.setQueryData(["/api/auth/me"], response.data.user);
-      
+      const data = await res.json();
+      return data.data.user;
+    },
+    onSuccess: (userData: ConsignorUser) => {
+      queryClient.setQueryData(["/api/auth/me"], userData);
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${userData.name}!`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Registration mutation
+  const register = useMutation({
+    mutationFn: async (registerData: RegisterData) => {
+      const res = await apiRequest("POST", "/api/auth/register", registerData);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Registration failed");
+      }
+      const data = await res.json();
+      return data.data.user;
+    },
+    onSuccess: (userData: ConsignorUser) => {
+      queryClient.setQueryData(["/api/auth/me"], userData);
       toast({
         title: "Registration successful",
-        description: `Welcome, ${response.data.user.name}!`,
-        variant: "default",
+        description: `Welcome, ${userData.name}!`,
       });
     },
     onError: (error: Error) => {
       toast({
         title: "Registration failed",
-        description: error.message || "Could not create account",
+        description: error.message,
         variant: "destructive",
       });
     },
   });
 
   // Logout mutation
-  const logoutMutation = useMutation<LogoutResponse, Error, void>({
+  const logout = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/auth/logout");
-      return await res.json();
+      if (!res.ok) {
+        throw new Error("Logout failed");
+      }
     },
     onSuccess: () => {
-      // Remove token from localStorage
-      localStorage.removeItem("authToken");
-      
-      // Clear user data from cache
       queryClient.setQueryData(["/api/auth/me"], null);
-      
-      // Invalidate all queries to refresh the app state
-      queryClient.invalidateQueries();
-      
       toast({
         title: "Logged out",
-        description: "You have been successfully logged out",
-        variant: "default",
+        description: "You have been successfully logged out.",
       });
     },
     onError: (error: Error) => {
@@ -187,23 +210,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Auth context value
+  const authContextValue: AuthContextType = {
+    user,
+    isLoading,
+    error,
+    isAdmin,
+    isConsignor,
+    loginAdmin,
+    loginConsignor,
+    register,
+    logout,
+  };
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        error,
-        loginMutation,
-        logoutMutation,
-        registerMutation,
-      }}
-    >
+    <AuthContext.Provider value={authContextValue}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Hook to use the auth context
+// Auth hook
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
