@@ -61,6 +61,11 @@ export default function AuthPage() {
       return; // Basic validation
     }
     
+    // Add helper hint for the test admin account
+    if (adminForm.email === 'admin@test.com') {
+      console.log('Using test admin account');
+    }
+    
     loginAdmin.mutate({
       email: adminForm.email,
       password: adminForm.password
@@ -208,7 +213,7 @@ export default function AuthPage() {
                         <Input 
                           id="adminEmail" 
                           type="email" 
-                          placeholder="admin@dutchthrift.com" 
+                          placeholder="admin@test.com" 
                           value={adminForm.email}
                           onChange={(e) => setAdminForm({...adminForm, email: e.target.value})}
                           required
@@ -219,14 +224,14 @@ export default function AuthPage() {
                         <Input 
                           id="adminPassword" 
                           type="password" 
-                          placeholder="••••••••" 
+                          placeholder="adminpass123" 
                           value={adminForm.password}
                           onChange={(e) => setAdminForm({...adminForm, password: e.target.value})}
                           required
                         />
                       </div>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="flex flex-col gap-4">
                       <Button 
                         type="submit" 
                         className="w-full" 
@@ -234,6 +239,9 @@ export default function AuthPage() {
                       >
                         {loginAdmin.isPending ? 'Logging in...' : 'Login'}
                       </Button>
+                      <p className="text-sm text-center text-gray-500 dark:text-gray-400">
+                        Use admin@test.com / adminpass123
+                      </p>
                     </CardFooter>
                   </form>
                 </Card>

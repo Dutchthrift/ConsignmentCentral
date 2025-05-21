@@ -111,25 +111,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginAdmin = useMutation({
     mutationFn: async (credentials: LoginCredentials) => {
       try {
-        // Use the fixed direct login endpoint
-        const res = await apiRequest("POST", "/api/auth/admin/login-direct", credentials);
+        // Use direct fetch instead of apiRequest to have more control over the response
+        const res = await fetch("/api/auth/admin/login-direct", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: credentials.email,
+            password: credentials.password,
+          }),
+          credentials: "include",
+        });
+
         if (!res.ok) {
-          // Check if the response is HTML (common error with express)
-          const contentType = res.headers.get('content-type');
-          if (contentType && contentType.includes('text/html')) {
-            throw new Error("Server error. Please try again.");
+          const errorText = await res.text();
+          let errorMessage = "Login failed";
+          
+          try {
+            // Try to parse as JSON
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || "Invalid credentials";
+          } catch {
+            // If not JSON, use text or default message
+            errorMessage = errorText || "Server error";
           }
-          // Otherwise try to parse as JSON
-          const errorData = await res.json();
-          throw new Error(errorData.message || "Login failed");
+          
+          throw new Error(errorMessage);
         }
-        const data = await res.json();
+        
+        // Parse the successful response
+        const responseText = await res.text();
+        let data;
+        
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          console.error("Failed to parse login response:", e);
+          throw new Error("Server returned invalid data format");
+        }
+        
         return data.data.user;
       } catch (error: any) {
-        // Handle JSON parse errors
-        if (error.name === 'SyntaxError') {
-          throw new Error("Server returned invalid data. Please try again.");
-        }
+        console.error("Admin login error:", error);
         throw error;
       }
     },
