@@ -179,10 +179,14 @@ export default class AuthService {
     try {
       // Get customer from database with all fields
       console.log('Attempting to find consignor with email:', email.toLowerCase());
-      const [customer] = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.email, email.toLowerCase()));
+      
+      // Use a raw SQL query to avoid the column user_id error
+      const { rows } = await db.execute(`
+        SELECT * FROM "customers"
+        WHERE "email" = $1
+      `, [email.toLowerCase()]);
+
+      const customer = rows[0];
 
       if (!customer) {
         console.log('No consignor found with email:', email.toLowerCase());
