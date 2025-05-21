@@ -215,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Auth context value
   const authContextValue: AuthContextType = {
-    user,
+    user: user as AdminUser | ConsignorUser | null,
     isLoading,
     error,
     isAdmin,

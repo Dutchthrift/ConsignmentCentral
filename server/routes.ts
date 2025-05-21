@@ -1,5 +1,6 @@
 import express from 'express';
 import session from 'express-session';
+import { Pool } from '@neondatabase/serverless';
 import { pool } from './db';
 import { configureSession } from './session-config';
 import authRoutes from './routes/auth/auth.routes';

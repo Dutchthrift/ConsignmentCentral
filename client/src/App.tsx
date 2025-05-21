@@ -1,6 +1,7 @@
 import React from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "./hooks/use-auth";
 import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -44,6 +45,8 @@ import AuthPage from "@/pages/auth-page";
 
 function Router() {
   const [location] = useLocation();
+  
+  // Import useAuth directly in the component to avoid build errors
   const { user, isLoading } = useAuth();
   
   // Check path types

@@ -1,7 +1,11 @@
-import { Pool } from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as schema from "@shared/schema";
 import dotenv from 'dotenv';
+import ws from 'ws';
+
+// Required for Neon serverless 
+neonConfig.webSocketConstructor = ws;
 
 dotenv.config();
 
@@ -11,18 +15,11 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-console.log('Using direct Supabase pooler connection');
+console.log('Setting up Neon database connection');
 
-// Create a fresh connection pool with the same settings that worked in our test
+// Create a fresh connection pool for Neon
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // Required for SSL connections to Supabase
-  },
-  max: 1, // Using a single connection to avoid exceeding limits
-  connectionTimeoutMillis: 10000, // 10 seconds connection timeout
-  idleTimeoutMillis: 30000, // 30 seconds idle timeout
-  allowExitOnIdle: true
+  connectionString: process.env.DATABASE_URL
 });
 
 // Add error handler to prevent app crashes on connection issues
@@ -39,17 +36,17 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
-// Create a Drizzle client instance
+// Create a Drizzle client instance for Neon
 export const db = drizzle(pool, { schema });
 
 // Function to execute raw SQL queries directly
 export async function executeRawQuery<T = any>(query: string, params: any[] = []): Promise<T[]> {
-  const client = await pool.connect();
   try {
-    const result = await client.query(query, params);
+    const result = await pool.query(query, params);
     return result.rows as T[];
-  } finally {
-    client.release();
+  } catch (error) {
+    console.error('Error executing raw query:', error);
+    throw error;
   }
 }
 
