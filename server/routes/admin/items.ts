@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { storage } from "../../storage";
+import { ItemStorage } from "../../storage/item-storage";
 import { db, executeRawQuery } from "../../db";
 import { items, pricing, analyses, shipping, customers } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
@@ -329,8 +329,11 @@ router.patch("/:itemId/status", requireAdminAuth, async (req: Request, res: Resp
       });
     }
     
+    // Create a new instance of the ItemStorage class
+    const itemStorage = new ItemStorage();
+    
     // Update the item status
-    const updatedItem = await storage.updateItemStatus(itemId, status);
+    const updatedItem = await itemStorage.updateItemStatus(itemId, status);
     
     if (!updatedItem) {
       return res.status(404).json({
