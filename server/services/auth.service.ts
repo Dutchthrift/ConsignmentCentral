@@ -18,10 +18,27 @@ export async function hashPassword(password: string): Promise<string> {
 export async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
   if (!stored || !supplied) return false;
   
-  const [hashed, salt] = stored.split('.');
-  const hashedBuf = Buffer.from(hashed, 'hex');
-  const suppliedBuf = await scryptAsync(supplied, salt, 64) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  // Check if password uses our format with salt
+  if (!stored.includes('.')) {
+    console.log('Password format incorrect - does not contain salt separator');
+    return false;
+  }
+  
+  try {
+    const [hashed, salt] = stored.split('.');
+    
+    if (!salt) {
+      console.log('Password salt missing');
+      return false;
+    }
+    
+    const hashedBuf = Buffer.from(hashed, 'hex');
+    const suppliedBuf = await scryptAsync(supplied, salt, 64) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
+  } catch (error) {
+    console.error('Error comparing passwords:', error);
+    return false;
+  }
 }
 
 /**
@@ -34,20 +51,27 @@ export default class AuthService {
   async loginAdmin(email: string, password: string): Promise<any> {
     try {
       // Get user from database
+      console.log('Attempting to find admin with email:', email.toLowerCase());
       const [adminUser] = await db
         .select()
         .from(users)
         .where(eq(users.email, email.toLowerCase()));
 
       if (!adminUser) {
+        console.log('No admin found with email:', email.toLowerCase());
         throw new Error('Invalid email or password');
       }
-
+      
+      console.log('Found admin, verifying password...');
+      
       // Verify password
       const passwordValid = await comparePasswords(password, adminUser.password || '');
       if (!passwordValid) {
+        console.log('Password invalid for admin:', email.toLowerCase());
         throw new Error('Invalid email or password');
       }
+      
+      console.log('Password valid, admin login successful');
 
       // Return user data (excluding password)
       const { password: _, ...userData } = adminUser;
@@ -66,34 +90,29 @@ export default class AuthService {
    */
   async loginConsignor(email: string, password: string): Promise<any> {
     try {
-      // Get customer from database
+      // Get customer from database with all fields
+      console.log('Attempting to find consignor with email:', email.toLowerCase());
       const [customer] = await db
-        .select({
-          id: customers.id,
-          email: customers.email,
-          password: customers.password,
-          name: customers.name,
-          phone: customers.phone,
-          address: customers.address,
-          city: customers.city,
-          state: customers.state,
-          postal_code: customers.postal_code,
-          country: customers.country,
-          created_at: customers.created_at
-        })
+        .select()
         .from(customers)
         .where(eq(customers.email, email.toLowerCase()));
 
       if (!customer) {
+        console.log('No consignor found with email:', email.toLowerCase());
         throw new Error('Invalid email or password');
       }
 
+      console.log('Found consignor, verifying password...');
+      
       // Verify password
       const passwordValid = await comparePasswords(password, customer.password || '');
       if (!passwordValid) {
+        console.log('Password invalid for consignor:', email.toLowerCase());
         throw new Error('Invalid email or password');
       }
 
+      console.log('Password valid, login successful');
+      
       // Return customer data (excluding password)
       const { password: _, ...customerData } = customer;
       return {
@@ -111,6 +130,11 @@ export default class AuthService {
    */
   async registerConsignor(userData: any): Promise<any> {
     try {
+      console.log('Registering new consignor with data:', {
+        ...userData,
+        password: '[REDACTED]'
+      });
+      
       // Check if email already exists
       const [existingUser] = await db
         .select()
@@ -118,10 +142,12 @@ export default class AuthService {
         .where(eq(customers.email, userData.email.toLowerCase()));
 
       if (existingUser) {
+        console.log('Email already registered:', userData.email.toLowerCase());
         throw new Error('Email already registered');
       }
 
       // Hash password
+      console.log('Hashing password...');
       const hashedPassword = await hashPassword(userData.password);
 
       // Format user data for database schema
@@ -140,10 +166,13 @@ export default class AuthService {
       };
 
       // Insert new customer
+      console.log('Inserting new consignor into database...');
       const [newCustomer] = await db
         .insert(customers)
         .values(customerData)
         .returning();
+      
+      console.log('Registration successful, consignor created with ID:', newCustomer.id);
 
       return {
         ...newCustomer,

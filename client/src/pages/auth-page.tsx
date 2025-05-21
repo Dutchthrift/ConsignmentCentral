@@ -85,13 +85,24 @@ export default function AuthPage() {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic validation
-    if (
-      !isValidEmail(registerForm.email) || 
-      !registerForm.password ||
-      registerForm.password !== registerForm.confirmPassword ||
-      !registerForm.name
-    ) {
+    // Basic validation with detailed error logging
+    if (!isValidEmail(registerForm.email)) {
+      console.log('Registration validation failed: Invalid email format');
+      return;
+    }
+    
+    if (!registerForm.password) {
+      console.log('Registration validation failed: Password is required');
+      return;
+    }
+    
+    if (registerForm.password !== registerForm.confirmPassword) {
+      console.log('Registration validation failed: Passwords do not match');
+      return;
+    }
+    
+    if (!registerForm.name) {
+      console.log('Registration validation failed: Name is required');
       return;
     }
     

@@ -22,7 +22,10 @@ export function isAuthenticated(req: Request, res: Response, next: NextFunction)
     customerId: req.session.customerId,
     userType: req.session.userType,
     sessionID: req.sessionID,
-    isAuthenticated: req.isAuthenticated?.()
+    cookie: req.session.cookie,
+    isAuthenticated: req.isAuthenticated?.(),
+    path: req.path,
+    method: req.method
   });
   
   // Check if user is authenticated via session
