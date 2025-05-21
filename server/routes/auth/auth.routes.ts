@@ -2,9 +2,7 @@ import express from 'express';
 import AuthService from '../../services/auth.service';
 import { isAuthenticated, attachUserData } from '../../middleware/auth.middleware';
 import { z } from 'zod';
-
-// Define userType as a simple string type to avoid TypeScript errors
-type UserType = string;
+import { UserTypes } from '../../types';
 
 const router = express.Router();
 const authService = new AuthService();
