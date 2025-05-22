@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dutch Thrift - Consignor Dashboard</title>
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2ecc71;
+      --dark: #333;
+      --light: #f8f9fa;
+      --gray: #6c757d;
+      --danger: #e74c3c;
+      --warning: #f39c12;
+      --success: #27ae60;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      background-color: var(--light);
+    }
+    
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    
+    a:hover {
+      text-decoration: underline;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 15px;
+    }
+    
+    .dashboard-header {
+      background-color: white;
+      border-bottom: 1px solid #e1e4e8;
+      padding: 1rem 0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .dashboard-content {
+      padding: 2rem 0;
+    }
+    
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    
+    .nav-items {
+      display: flex;
+      gap: 1rem;
+    }
+    
+    .nav-link {
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+    
+    .nav-link:hover {
+      background-color: #f0f0f0;
+      text-decoration: none;
+    }
+    
+    .nav-link.active {
+      color: var(--primary);
+      font-weight: 500;
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+    
+    .btn {
+      display: inline-block;
+      font-weight: 500;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: middle;
+      user-select: none;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      line-height: 1.5;
+      border-radius: 0.25rem;
+      transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+      cursor: pointer;
+    }
+    
+    .btn-primary {
+      color: #fff;
+      background-color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+      border-color: var(--primary-dark);
+    }
+    
+    .btn-outline {
+      color: var(--dark);
+      background-color: transparent;
+      border: 1px solid #e1e4e8;
+    }
+    
+    .btn-outline:hover {
+      background-color: #f8f9fa;
+    }
+    
+    .btn-danger {
+      color: #fff;
+      background-color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .stat-title {
+      font-size: 0.875rem;
+      color: var(--gray);
+      margin-bottom: 0.5rem;
+    }
+    
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--dark);
+    }
+    
+    .stat-footer {
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--gray);
+    }
+    
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      margin-bottom: 1.5rem;
+    }
+    
+    .card-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid #e1e4e8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    
+    .card-body {
+      padding: 1.5rem;
+    }
+    
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .table th,
+    .table td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #e1e4e8;
+    }
+    
+    .table th {
+      font-weight: 600;
+      color: var(--gray);
+      background-color: #f8f9fa;
+      border-top: 1px solid #e1e4e8;
+    }
+    
+    .table tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .table-responsive {
+      overflow-x: auto;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 0.35em 0.65em;
+      font-size: 0.75em;
+      font-weight: 600;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: baseline;
+      border-radius: 0.25rem;
+    }
+    
+    .badge-success {
+      color: white;
+      background-color: var(--success);
+    }
+    
+    .badge-warning {
+      color: white;
+      background-color: var(--warning);
+    }
+    
+    .badge-danger {
+      color: white;
+      background-color: var(--danger);
+    }
+    
+    .badge-primary {
+      color: white;
+      background-color: var(--primary);
+    }
+    
+    .badge-secondary {
+      color: white;
+      background-color: var(--gray);
+    }
+    
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+    }
+    
+    .loading-spinner {
+      width: 2rem;
+      height: 2rem;
+      border: 0.25rem solid #f3f3f3;
+      border-top: 0.25rem solid var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--gray);
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .welcome-banner {
+      background-color: white;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .welcome-content h1 {
+      font-size: 1.75rem;
+      margin-bottom: 0.5rem;
+      color: var(--dark);
+    }
+    
+    .welcome-content p {
+      color: var(--gray);
+      max-width: 600px;
+    }
+    
+    .price-value {
+      font-weight: 600;
+    }
+    
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      }
+      
+      .welcome-banner {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .welcome-banner .btn {
+        margin-top: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="dashboard-header">
+    <div class="container">
+      <nav class="navbar">
+        <a href="/consignor/dashboard" class="logo">Dutch Thrift</a>
+        
+        <div class="nav-items">
+          <a href="/consignor/dashboard" class="nav-link active">Dashboard</a>
+          <a href="/consignor/items" class="nav-link">My Items</a>
+          <a href="/consignor/orders" class="nav-link">Orders</a>
+          <a href="/consignor/profile" class="nav-link">Profile</a>
+        </div>
+        
+        <div class="user-info">
+          <div class="avatar"><%= consignor.name.charAt(0).toUpperCase() %></div>
+          <a href="/api/auth/logout" class="btn btn-outline">Logout</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+  
+  <main class="dashboard-content">
+    <div class="container">
+      <div class="welcome-banner">
+        <div class="welcome-content">
+          <h1>Welcome, <%= consignor.name %>!</h1>
+          <p>This is your consignment dashboard where you can track your items, orders, and payouts. Get started by adding a new item for consignment.</p>
+        </div>
+        
+        <a href="/consignor/submit-item" class="btn btn-primary">+ Submit New Item</a>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-title">Active Items</div>
+          <div class="stat-value"><%= stats.activeItems %></div>
+          <div class="stat-footer">Items in the sales process</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-title">Completed Sales</div>
+          <div class="stat-value"><%= stats.completedSales %></div>
+          <div class="stat-footer">Successfully sold items</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-title">Total Value</div>
+          <div class="stat-value">€<%= stats.totalValue.toFixed(2) %></div>
+          <div class="stat-footer">Estimated value of all items</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-title">Earned Payouts</div>
+          <div class="stat-value">€<%= stats.earnedPayouts.toFixed(2) %></div>
+          <div class="stat-footer">Your earnings to date</div>
+        </div>
+      </div>
+      
+      <% if (recentOrders.length > 0) { %>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Recent Orders</h2>
+            <a href="/consignor/orders" class="btn btn-outline">View All</a>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Order #</th>
+                    <th>Date</th>
+                    <th>Items</th>
+                    <th>Status</th>
+                    <th>Value</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% recentOrders.forEach(order => { %>
+                    <tr>
+                      <td><%= order.id.substring(0, 8) %></td>
+                      <td><%= new Date(order.created_at).toLocaleDateString() %></td>
+                      <td><%= order.items.length %></td>
+                      <td>
+                        <% if (order.status === 'completed') { %>
+                          <span class="badge badge-success">Completed</span>
+                        <% } else if (order.status === 'processing') { %>
+                          <span class="badge badge-primary">Processing</span>
+                        <% } else if (order.status === 'awaiting_shipment') { %>
+                          <span class="badge badge-warning">Awaiting Shipment</span>
+                        <% } else { %>
+                          <span class="badge badge-secondary"><%= order.status %></span>
+                        <% } %>
+                      </td>
+                      <td class="price-value">€<%= order.total_estimated_value %></td>
+                      <td>
+                        <div class="action-buttons">
+                          <a href="/consignor/orders/<%= order.id %>" class="btn btn-outline">View</a>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      <% } else { %>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Recent Orders</h2>
+          </div>
+          <div class="card-body">
+            <div class="empty-state">
+              <p>You don't have any orders yet.</p>
+              <p>Submit your first item for consignment to get started!</p>
+              <a href="/consignor/submit-item" class="btn btn-primary" style="margin-top: 1rem;">Submit Item</a>
+            </div>
+          </div>
+        </div>
+      <% } %>
+      
+      <% if (recentItems.length > 0) { %>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Recent Items</h2>
+            <a href="/consignor/items" class="btn btn-outline">View All</a>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Date Added</th>
+                    <th>Status</th>
+                    <th>Est. Value</th>
+                    <th>Payout</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% recentItems.forEach(item => { %>
+                    <tr>
+                      <td><%= item.title %></td>
+                      <td><%= new Date(item.created_at).toLocaleDateString() %></td>
+                      <td>
+                        <% if (item.status === 'sold') { %>
+                          <span class="badge badge-success">Sold</span>
+                        <% } else if (item.status === 'listed') { %>
+                          <span class="badge badge-primary">Listed</span>
+                        <% } else if (item.status === 'processing') { %>
+                          <span class="badge badge-warning">Processing</span>
+                        <% } else { %>
+                          <span class="badge badge-secondary"><%= item.status %></span>
+                        <% } %>
+                      </td>
+                      <td class="price-value">€<%= item.estimated_value %></td>
+                      <td class="price-value">€<%= item.payout_value %></td>
+                      <td>
+                        <div class="action-buttons">
+                          <a href="/consignor/items/<%= item.id %>" class="btn btn-outline">View</a>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      <% } else { %>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Recent Items</h2>
+          </div>
+          <div class="card-body">
+            <div class="empty-state">
+              <p>You haven't submitted any items yet.</p>
+              <p>Start your consignment journey by submitting your first item!</p>
+              <a href="/consignor/submit-item" class="btn btn-primary" style="margin-top: 1rem;">Submit Item</a>
+            </div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </main>
+  
+  <script>
+    // Additional JavaScript if needed
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Dashboard loaded successfully');
+    });
+  </script>
+</body>
+</html>

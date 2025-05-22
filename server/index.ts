@@ -524,18 +524,82 @@ app.get('/admin', (req, res) => {
 });
 
 // Protected consignor routes
-app.get('/consignor/dashboard', (req, res) => {
+app.get('/consignor/dashboard', async (req, res) => {
   if (req.session.userType !== 'consignor') {
     return res.redirect('/login?error=Please log in as a consignor to access this page');
   }
   
-  // Render consignor dashboard
-  res.send(`
-    <h1>Consignor Dashboard</h1>
-    <p>Welcome to your consignor dashboard! You are logged in as a consignor.</p>
-    <p>Customer ID: ${req.session.customerId}</p>
-    <p><a href="/api/auth/logout">Logout</a></p>
-  `);
+  try {
+    // Get consignor info
+    const { data: consignor, error: consignorError } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', req.session.customerId)
+      .single();
+    
+    if (consignorError || !consignor) {
+      console.error('Error fetching consignor data:', consignorError);
+      return res.redirect('/login?error=Error loading your account');
+    }
+    
+    // Get orders for this consignor
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('customer_id', req.session.customerId)
+      .order('created_at', { ascending: false });
+    
+    if (ordersError) {
+      console.error('Error fetching orders:', ordersError);
+      return res.status(500).send('Error loading orders');
+    }
+    
+    // Get all items for this consignor
+    const { data: items, error: itemsError } = await supabase
+      .from('items')
+      .select('*')
+      .eq('customer_id', req.session.customerId)
+      .order('created_at', { ascending: false });
+    
+    if (itemsError) {
+      console.error('Error fetching items:', itemsError);
+      return res.status(500).send('Error loading items');
+    }
+    
+    // For each order, get its items
+    const ordersWithItems = await Promise.all((orders || []).map(async (order) => {
+      const { data: orderItems } = await supabase
+        .from('items')
+        .select('*')
+        .eq('order_id', order.id);
+      
+      return {
+        ...order,
+        items: orderItems || []
+      };
+    }));
+    
+    // Calculate dashboard stats
+    const stats = {
+      activeItems: (items || []).filter(item => item.status !== 'sold' && item.status !== 'returned').length,
+      completedSales: (items || []).filter(item => item.status === 'sold').length,
+      totalValue: (items || []).reduce((sum, item) => sum + Number(item.estimated_value || 0), 0),
+      earnedPayouts: (items || []).filter(item => item.status === 'sold')
+        .reduce((sum, item) => sum + Number(item.payout_value || 0), 0)
+    };
+    
+    // Render the dashboard with the data
+    res.render('consignor-dashboard', {
+      consignor,
+      stats,
+      recentOrders: ordersWithItems.slice(0, 5),
+      recentItems: (items || []).slice(0, 5)
+    });
+    
+  } catch (error) {
+    console.error('Unexpected error in consignor dashboard:', error);
+    res.status(500).send('An unexpected error occurred');
+  }
 });
 
 // Default route handler for any other routes
