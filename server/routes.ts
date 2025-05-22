@@ -7,8 +7,7 @@ import { configureSession } from './session-config';
 import authRoutes from './routes/auth/auth.routes';
 import fixedAuthRoutes from './routes/auth/fixed-auth.routes';
 import itemIntakeRoutes from './routes/item-intake.routes';
-// Import the simplified admin login routes (JavaScript file)
-const adminLogin = require('../admin-login.js');
+// We don't need a separate admin login file, we'll use the client-side solution
 import { attachUserData } from './middleware/auth.middleware';
 import { applyFixes } from './integration-fix';
 
@@ -28,8 +27,7 @@ export async function registerRoutes(app: express.Express) {
   // Register original auth routes (fixed routes will override where needed)
   app.use('/api/auth', authRoutes);
   
-  // Register our simplified admin login system at /api/admin-auth
-  app.use('/api/admin-auth', adminLogin);
+  // We're using client-side authentication for admin@test.com
   
   // Register consignor item intake routes
   app.use('/api/consignor/items', itemIntakeRoutes);
