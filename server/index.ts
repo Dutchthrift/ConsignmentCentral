@@ -379,23 +379,16 @@ async function testConnection() {
   }
 }
 
-// Serve static files
-app.use(express.static(path.join(__dirname, '../')));
+// Serve static files from our public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve the data viewer HTML file for the root route
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+// API routes should be listed above this point
+
+// Handle client-side routing for any routes not handled above
+app.get('*', (req, res) => {
+  // Serve our login page
+  res.sendFile(path.join(__dirname, 'public/index.html'));
 });
-
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/dist')));
-  
-  // Handle client-side routing for any routes not handled above
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-  });
-}
 
 // Create HTTP server
 const server = createServer(app);
