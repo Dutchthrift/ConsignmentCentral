@@ -509,18 +509,108 @@ app.get('/login', (req, res) => {
 });
 
 // Protected admin routes
-app.get('/admin', (req, res) => {
+app.get('/admin', async (req, res) => {
   if (req.session.userType !== 'admin') {
     return res.redirect('/login?error=Please log in as an admin to access this page');
   }
   
-  // Render admin dashboard
-  res.send(`
-    <h1>Admin Dashboard</h1>
-    <p>Welcome to the admin dashboard! You are logged in as an admin.</p>
-    <p>User ID: ${req.session.userId}</p>
-    <p><a href="/api/auth/logout">Logout</a></p>
-  `);
+  try {
+    // Get all items
+    const { data: items, error: itemsError } = await supabase
+      .from('items')
+      .select('*');
+    
+    if (itemsError) {
+      console.error('Error fetching items:', itemsError);
+      return res.status(500).send('Error loading inventory data');
+    }
+    
+    // Get all customers (consignors)
+    const { data: consignors, error: consignorsError } = await supabase
+      .from('customers')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (consignorsError) {
+      console.error('Error fetching consignors:', consignorsError);
+      return res.status(500).send('Error loading consignor data');
+    }
+    
+    // Get all orders
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select('*');
+    
+    if (ordersError) {
+      console.error('Error fetching orders:', ordersError);
+      return res.status(500).send('Error loading order data');
+    }
+    
+    // Calculate summary statistics
+    const totalItems = items?.length || 0;
+    
+    // Calculate monthly revenue - items sold in the current month
+    const currentDate = new Date();
+    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    
+    const monthlyRevenue = (items || [])
+      .filter(item => item.status === 'sold' && new Date(item.created_at) >= firstDayOfMonth)
+      .reduce((sum, item) => sum + Number(item.estimated_value || 0), 0);
+    
+    // Calculate total pending payouts
+    const pendingPayouts = (items || [])
+      .filter(item => item.status === 'sold')
+      .reduce((sum, item) => sum + Number(item.payout_value || 0), 0);
+    
+    // Calculate item status breakdowns
+    const approvedItems = (items || []).filter(item => item.status === 'approved' || item.status === 'listed').length;
+    const pendingItems = (items || []).filter(item => item.status === 'quoted' || item.status === 'awaiting_shipment').length;
+    const rejectedItems = (items || []).filter(item => item.status === 'rejected').length;
+    const processingItems = (items || []).filter(item => item.status === 'processing').length;
+    
+    // Prepare recent consignors with their item stats
+    const recentConsignors = (consignors || []).slice(0, 5).map(consignor => {
+      // Find all orders for this consignor
+      const consignorOrders = (orders || []).filter(order => order.customer_id === consignor.id);
+      
+      // Find all items associated with these orders
+      let consignorItems = [];
+      let totalValue = 0;
+      
+      for (const order of consignorOrders) {
+        const orderItems = (items || []).filter(item => item.order_id === order.id);
+        consignorItems = [...consignorItems, ...orderItems];
+        
+        // Sum up item values
+        totalValue += orderItems.reduce((sum, item) => sum + Number(item.estimated_value || 0), 0);
+      }
+      
+      return {
+        ...consignor,
+        itemCount: consignorItems.length,
+        totalValue
+      };
+    });
+    
+    // Render the admin dashboard with all calculated stats
+    res.render('admin-dashboard', {
+      stats: {
+        totalItems,
+        monthlyRevenue,
+        totalConsignors: consignors?.length || 0,
+        pendingPayouts,
+        approvedItems,
+        pendingItems,
+        rejectedItems,
+        processingItems
+      },
+      recentConsignors
+    });
+    
+  } catch (error) {
+    console.error('Unexpected error in admin dashboard:', error);
+    res.status(500).send('An unexpected error occurred');
+  }
 });
 
 // Protected consignor routes
@@ -542,7 +632,7 @@ app.get('/consignor/dashboard', async (req, res) => {
       return res.redirect('/login?error=Error loading your account');
     }
     
-    // Get orders for this consignor
+    // Get orders for this consignor with items
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select('*')
@@ -554,16 +644,17 @@ app.get('/consignor/dashboard', async (req, res) => {
       return res.status(500).send('Error loading orders');
     }
     
-    // Get all items for this consignor
-    const { data: items, error: itemsError } = await supabase
-      .from('items')
-      .select('*')
-      .eq('customer_id', req.session.customerId)
-      .order('created_at', { ascending: false });
-    
-    if (itemsError) {
-      console.error('Error fetching items:', itemsError);
-      return res.status(500).send('Error loading items');
+    // Get all items for this consignor through their orders
+    let allItems = [];
+    for (const order of orders || []) {
+      const { data: items } = await supabase
+        .from('items')
+        .select('*')
+        .eq('order_id', order.id);
+      
+      if (items && items.length > 0) {
+        allItems = [...allItems, ...items];
+      }
     }
     
     // For each order, get its items
@@ -579,21 +670,30 @@ app.get('/consignor/dashboard', async (req, res) => {
       };
     }));
     
-    // Calculate dashboard stats
+    // Calculate dashboard stats according to the design
     const stats = {
-      activeItems: (items || []).filter(item => item.status !== 'sold' && item.status !== 'returned').length,
-      completedSales: (items || []).filter(item => item.status === 'sold').length,
-      totalValue: (items || []).reduce((sum, item) => sum + Number(item.estimated_value || 0), 0),
-      earnedPayouts: (items || []).filter(item => item.status === 'sold')
+      totalItems: allItems.length,
+      totalSales: allItems.filter(item => item.status === 'sold')
+        .reduce((sum, item) => sum + Number(item.estimated_value || 0), 0),
+      soldItems: allItems.filter(item => item.status === 'sold').length,
+      activeItems: allItems.filter(item => item.status === 'listed' || item.status === 'quoted').length,
+      recentlySold: allItems.filter(item => item.status === 'sold').length,
+      pendingPayout: allItems.filter(item => item.status === 'sold')
         .reduce((sum, item) => sum + Number(item.payout_value || 0), 0)
     };
     
+    // Get recently created items
+    const recentItems = [...allItems].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ).slice(0, 5);
+    
     // Render the dashboard with the data
-    res.render('consignor-dashboard', {
+    res.render('consignor-dashboard-new', {
       consignor,
       stats,
       recentOrders: ordersWithItems.slice(0, 5),
-      recentItems: (items || []).slice(0, 5)
+      recentItems: recentItems,
+      loginSuccess: req.query.login_success === 'true'
     });
     
   } catch (error) {

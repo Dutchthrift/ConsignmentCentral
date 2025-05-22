@@ -1,0 +1,99 @@
+Rebuild the full Admin and Consignor dashboards for the Dutch Thrift consignment platform.
+
+💡 Goals:
+Recreate the admin dashboard at /admin
+
+Recreate the consignor dashboard at /consignor/dashboard
+
+Use Supabase as the only source of truth
+
+Use correct user roles from Supabase: "admin" and "consignor"
+
+🧱 Supabase Tables:
+customers
+sql
+Kopiëren
+Bewerken
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+email TEXT UNIQUE NOT NULL,
+password_hash TEXT NOT NULL,
+name TEXT,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+users
+sql
+Kopiëren
+Bewerken
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+email TEXT UNIQUE NOT NULL,
+password_hash TEXT NOT NULL,
+role TEXT DEFAULT 'admin',
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+orders
+sql
+Kopiëren
+Bewerken
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+customer_id UUID REFERENCES customers(id),
+total_estimated_value NUMERIC,
+total_payout_value NUMERIC,
+status TEXT DEFAULT 'awaiting_shipment',
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+items
+sql
+Kopiëren
+Bewerken
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+order_id UUID REFERENCES orders(id),
+title TEXT,
+image_urls TEXT[],
+estimated_value NUMERIC,
+payout_value NUMERIC,
+commission_rate INTEGER,
+status TEXT DEFAULT 'quoted',
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+🖥️ Admin Dashboard (/admin)
+Display:
+
+Total inventory
+
+Monthly revenue
+
+Number of consignors
+
+Pending payouts
+
+Intake breakdown: Approved, Pending, Rejected
+
+Quick actions (stub buttons for now)
+
+Pull data live from Supabase (orders, items, customers)
+
+Protect with session check: req.session.userType === 'admin'
+
+👤 Consignor Dashboard (/consignor/dashboard)
+Display:
+
+Total submitted items
+
+Total sales
+
+Sold items
+
+Pending payouts
+
+Breakdown: Active listings, Recently sold
+
+Include "Submit New Item" button
+
+Pull only data for logged-in consignor (req.session.customerId)
+
+Use Supabase joins to count items per status and get payout totals
+
+🧩 Functional Requirements:
+Use Supabase SDK or REST API to query live dashboard data
+
+Create session on login and route based on userType
+
+Do not use static placeholders — only real data
+
+No index.html or decoupled views
