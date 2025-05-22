@@ -1,0 +1,85 @@
+erform a complete backend reset for the Dutch Thrift platform.
+
+✅ Preserve:
+The UI components for:
+
+/admin dashboard
+
+/consignor/dashboard
+
+🗑️ Remove:
+All existing backend code related to:
+
+Authentication (auth.routes, services, middleware, session types)
+
+Intake logic, item creation, order creation
+
+API routes for items, orders, analysis, shipping
+
+All database logic outside of Supabase
+
+🧱 Rebuild the database in Supabase only
+Drop all existing tables
+
+Recreate the following schema in Supabase:
+
+customers
+sql
+Kopiëren
+Bewerken
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+email TEXT UNIQUE NOT NULL,
+password_hash TEXT NOT NULL,
+name TEXT,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+users
+sql
+Kopiëren
+Bewerken
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+email TEXT UNIQUE NOT NULL,
+password_hash TEXT NOT NULL,
+role TEXT DEFAULT 'admin',
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+orders
+sql
+Kopiëren
+Bewerken
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+customer_id UUID REFERENCES customers(id),
+total_estimated_value NUMERIC,
+total_payout_value NUMERIC,
+status TEXT DEFAULT 'awaiting_shipment',
+shipping_label_url TEXT,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+items
+sql
+Kopiëren
+Bewerken
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+order_id UUID REFERENCES orders(id),
+title TEXT,
+image_urls TEXT[],
+estimated_value NUMERIC,
+payout_value NUMERIC,
+commission_rate INTEGER,
+status TEXT DEFAULT 'quoted',
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+🔄 All data flow must be handled through Supabase
+Use Supabase client for all reads/writes to customers, users, orders, and items
+
+Eliminate all custom Postgres connections or external storage
+
+Ensure session-based access control uses Supabase IDs
+
+🔐 Rebuild authentication
+Consignor login: check customers table
+
+Admin login: check users table
+
+Use bcrypt for password validation
+
+Start express-session with correct role + ID
+
+✅ Result: A clean, minimal backend connected only to Supabase, with stable dashboards and full Supabase-driven data flow
+
