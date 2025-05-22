@@ -1,0 +1,29 @@
+[
+  {
+    "id": "086ca634-144d-4874-acfe-903c747aee63",
+    "customer_id": "80b75db9-a479-4d6e-8331-474e27e9aa7a",
+    "total_estimated_value": 195,
+    "total_payout_value": 129,
+    "status": "awaiting_shipment",
+    "shipping_label_url": null,
+    "created_at": "2025-05-22T07:30:46.256609"
+  },
+  {
+    "id": "a680048f-66b0-4c65-af83-49208713a894",
+    "customer_id": "80b75db9-a479-4d6e-8331-474e27e9aa7a",
+    "total_estimated_value": 195,
+    "total_payout_value": 129,
+    "status": "awaiting_shipment",
+    "shipping_label_url": null,
+    "created_at": "2025-05-22T07:48:49.313074"
+  },
+  {
+    "id": "78b659f0-a9c9-4e22-bf6d-6e04f9fa99f9",
+    "customer_id": "80b75db9-a479-4d6e-8331-474e27e9aa7a",
+    "total_estimated_value": 250,
+    "total_payout_value": 175,
+    "status": "processing",
+    "shipping_label_url": null,
+    "created_at": "2025-05-22T07:48:49.313074"
+  }
+]

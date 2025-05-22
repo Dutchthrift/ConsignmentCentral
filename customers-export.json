@@ -1,0 +1,9 @@
+[
+  {
+    "id": "80b75db9-a479-4d6e-8331-474e27e9aa7a",
+    "email": "consignor@test.com",
+    "password_hash": "[REDACTED]",
+    "name": "Test Consignor",
+    "created_at": "2025-05-22T07:30:45.89813"
+  }
+]

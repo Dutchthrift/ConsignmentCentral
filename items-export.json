@@ -1,0 +1,80 @@
+[
+  {
+    "id": "f1e987aa-a551-4b6d-ab0b-39298abcff06",
+    "order_id": "086ca634-144d-4874-acfe-903c747aee63",
+    "title": "Vintage Denim Jacket",
+    "image_urls": [
+      "https://example.com/jacket.jpg"
+    ],
+    "estimated_value": 75,
+    "payout_value": 45,
+    "commission_rate": 40,
+    "status": "quoted",
+    "created_at": "2025-05-22T07:30:46.669497"
+  },
+  {
+    "id": "88a651b1-b0d4-4a42-ab3a-0aee19521b34",
+    "order_id": "086ca634-144d-4874-acfe-903c747aee63",
+    "title": "Designer Handbag",
+    "image_urls": [
+      "https://example.com/handbag.jpg"
+    ],
+    "estimated_value": 120,
+    "payout_value": 84,
+    "commission_rate": 30,
+    "status": "quoted",
+    "created_at": "2025-05-22T07:30:46.669497"
+  },
+  {
+    "id": "479be7fa-0c8d-40e8-bd3c-d02ab184b725",
+    "order_id": "a680048f-66b0-4c65-af83-49208713a894",
+    "title": "Vintage Denim Jacket",
+    "image_urls": [
+      "https://example.com/jacket.jpg"
+    ],
+    "estimated_value": 75,
+    "payout_value": 45,
+    "commission_rate": 40,
+    "status": "quoted",
+    "created_at": "2025-05-22T07:48:49.683676"
+  },
+  {
+    "id": "383d12c5-6383-451c-84f7-b28575885638",
+    "order_id": "a680048f-66b0-4c65-af83-49208713a894",
+    "title": "Designer Handbag",
+    "image_urls": [
+      "https://example.com/handbag.jpg"
+    ],
+    "estimated_value": 120,
+    "payout_value": 84,
+    "commission_rate": 30,
+    "status": "quoted",
+    "created_at": "2025-05-22T07:48:49.683676"
+  },
+  {
+    "id": "b1e03844-7dba-4a0a-ac76-db9bac03b769",
+    "order_id": "78b659f0-a9c9-4e22-bf6d-6e04f9fa99f9",
+    "title": "Luxury Watch",
+    "image_urls": [
+      "https://example.com/watch.jpg"
+    ],
+    "estimated_value": 150,
+    "payout_value": 105,
+    "commission_rate": 30,
+    "status": "quoted",
+    "created_at": "2025-05-22T07:48:49.683676"
+  },
+  {
+    "id": "5c1c6fe7-0d07-42a8-ba89-5b8610f86c67",
+    "order_id": "78b659f0-a9c9-4e22-bf6d-6e04f9fa99f9",
+    "title": "Designer Shoes",
+    "image_urls": [
+      "https://example.com/shoes.jpg"
+    ],
+    "estimated_value": 100,
+    "payout_value": 70,
+    "commission_rate": 30,
+    "status": "quoted",
+    "created_at": "2025-05-22T07:48:49.683676"
+  }
+]

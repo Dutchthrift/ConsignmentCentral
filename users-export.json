@@ -1,0 +1,9 @@
+[
+  {
+    "id": "8da00702-c9a5-417c-9c23-afddb1fdc37d",
+    "email": "admin@test.com",
+    "password_hash": "[REDACTED]",
+    "role": "admin",
+    "created_at": "2025-05-22T07:30:45.407942"
+  }
+]
