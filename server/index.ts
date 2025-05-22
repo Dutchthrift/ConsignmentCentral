@@ -379,15 +379,15 @@ async function testConnection() {
   }
 }
 
-// Serve static files from our public directory
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files from root directory
+app.use(express.static(path.join(__dirname, '../')));
 
 // API routes should be listed above this point
 
 // Handle client-side routing for any routes not handled above
 app.get('*', (req, res) => {
   // Serve our login page
-  res.sendFile(path.join(__dirname, 'public/index.html'));
+  res.sendFile(path.join(__dirname, '../index.html'));
 });
 
 // Create HTTP server

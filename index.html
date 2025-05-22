@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dutch Thrift Platform</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    header {
+      background-color: #333;
+      color: white;
+      padding: 1rem;
+      border-radius: 5px;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    h1 {
+      margin: 0;
+    }
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .login-form {
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      border-bottom: 2px solid #4CAF50;
+      font-weight: bold;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .card-header {
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .credentials {
+      background-color: #f9f9f9;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    .supabase-info {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f0f8ff;
+      border-radius: 5px;
+      border-left: 4px solid #007bff;
+    }
+    .data-section {
+      margin-top: 30px;
+    }
+    .data-card {
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .data-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    #dataOutput {
+      max-height: 300px;
+      overflow-y: auto;
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 5px;
+      font-family: monospace;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Dutch Thrift Platform</h1>
+      <p>Premium Consignment Service</p>
+    </header>
+    
+    <div class="card">
+      <div class="card-header">
+        <div class="tabs">
+          <div class="tab active" onclick="showTab('consignor-login')">Consignor Login</div>
+          <div class="tab" onclick="showTab('admin-login')">Admin Login</div>
+          <div class="tab" onclick="showTab('data-view')">View Data</div>
+        </div>
+      </div>
+      
+      <div id="consignor-login" class="tab-content active">
+        <h2>Consignor Login</h2>
+        <form id="consignor-form" class="login-form">
+          <div class="form-group">
+            <label for="consignor-email">Email</label>
+            <input type="email" id="consignor-email" name="email" placeholder="consignor@test.com" required>
+          </div>
+          <div class="form-group">
+            <label for="consignor-password">Password</label>
+            <input type="password" id="consignor-password" name="password" placeholder="consignorpass123" required>
+          </div>
+          <button type="submit">Login</button>
+          
+          <div class="credentials">
+            <strong>Test Account:</strong> consignor@test.com / consignorpass123
+          </div>
+        </form>
+      </div>
+      
+      <div id="admin-login" class="tab-content">
+        <h2>Admin Login</h2>
+        <form id="admin-form" class="login-form">
+          <div class="form-group">
+            <label for="admin-email">Email</label>
+            <input type="email" id="admin-email" name="email" placeholder="admin@test.com" required>
+          </div>
+          <div class="form-group">
+            <label for="admin-password">Password</label>
+            <input type="password" id="admin-password" name="password" placeholder="adminpass123" required>
+          </div>
+          <button type="submit">Login</button>
+          
+          <div class="credentials">
+            <strong>Test Account:</strong> admin@test.com / adminpass123
+          </div>
+        </form>
+      </div>
+      
+      <div id="data-view" class="tab-content">
+        <h2>Supabase Data Viewer</h2>
+        <p>This section allows you to view your Supabase data directly.</p>
+        
+        <div class="action-buttons">
+          <button onclick="fetchHealth()">Check API Health</button>
+          <button onclick="fetchOrders()">View Orders</button>
+          <button onclick="fetchItems()">View Items</button>
+          <button onclick="fetchCustomers()">View Customers</button>
+        </div>
+        
+        <div id="dataOutput"></div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>About Dutch Thrift</h2>
+      <p>Dutch Thrift is a premium consignment platform that simplifies and enhances the seller item intake process through intelligent technologies and user-centric design.</p>
+      <p>Our platform features:</p>
+      <ul>
+        <li>AI-powered item analysis</li>
+        <li>Real-time market price estimation</li>
+        <li>Easy consignment tracking</li>
+        <li>Secure payment processing</li>
+      </ul>
+      
+      <div class="supabase-info">
+        <h3>Supabase Integration</h3>
+        <p>This platform is powered by Supabase, providing secure database storage for all consignment data.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showTab(tabId) {
+      // Hide all tab contents
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Remove active class from all tabs
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Show selected tab content
+      document.getElementById(tabId).classList.add('active');
+      
+      // Add active class to selected tab
+      if (tabId === 'admin-login') {
+        document.querySelectorAll('.tab')[1].classList.add('active');
+      } else if (tabId === 'data-view') {
+        document.querySelectorAll('.tab')[2].classList.add('active');
+      } else {
+        document.querySelectorAll('.tab')[0].classList.add('active');
+      }
+    }
+    
+    // Display data in the output element
+    function showData(data, title) {
+      const outputEl = document.getElementById('dataOutput');
+      let html = `<h3>${title}</h3>`;
+      
+      if (typeof data === 'string') {
+        html += `<p>${data}</p>`;
+      } else {
+        html += '<div class="data-cards">';
+        if (Array.isArray(data)) {
+          if (data.length === 0) {
+            html += '<p>No data found.</p>';
+          } else {
+            data.forEach(item => {
+              html += `<div class="data-card">`;
+              for (const [key, value] of Object.entries(item)) {
+                if (key === 'password_hash' || key === 'password') continue; // Skip sensitive fields
+                html += `<div><strong>${key}</strong>: ${value}</div>`;
+              }
+              html += `</div>`;
+            });
+          }
+        } else {
+          html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+        html += '</div>';
+      }
+      
+      outputEl.innerHTML = html;
+    }
+    
+    // Fetch API Health
+    function fetchHealth() {
+      fetch('/api/health')
+        .then(response => response.json())
+        .then(data => {
+          showData(data, 'API Health Status');
+        })
+        .catch(error => {
+          showData('Error checking API health: ' + error.message, 'Error');
+        });
+    }
+    
+    // Fetch Orders
+    function fetchOrders() {
+      document.getElementById('dataOutput').innerHTML = 'Loading orders...';
+      
+      fetch('/api/orders-with-items')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          showData(data, 'Orders with Items');
+        })
+        .catch(error => {
+          showData('Error loading orders: ' + error.message, 'Error');
+        });
+    }
+    
+    // Fetch Items
+    function fetchItems() {
+      document.getElementById('dataOutput').innerHTML = 'Loading items...';
+      
+      fetch('/api/items')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          showData(data, 'Items');
+        })
+        .catch(error => {
+          showData('Error loading items: ' + error.message, 'Error');
+        });
+    }
+    
+    // Fetch Customers
+    function fetchCustomers() {
+      document.getElementById('dataOutput').innerHTML = 'Loading customers...';
+      
+      fetch('/api/customers')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          showData(data, 'Customers');
+        })
+        .catch(error => {
+          showData('Error loading customers: ' + error.message, 'Error');
+        });
+    }
+    
+    // Handle form submissions
+    document.getElementById('consignor-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('consignor-email').value;
+      const password = document.getElementById('consignor-password').value;
+      
+      try {
+        const response = await fetch('/api/auth/consignor/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert(`Login successful! Welcome, ${data.user.name || data.user.email}`);
+          // Show the data view after successful login
+          showTab('data-view');
+          fetchOrders();
+        } else {
+          alert(`Login failed: ${data.message || 'Invalid credentials'}`);
+        }
+      } catch (error) {
+        alert('Server error. Please try again later.');
+        console.error('Login error:', error);
+      }
+    });
+    
+    document.getElementById('admin-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('admin-email').value;
+      const password = document.getElementById('admin-password').value;
+      
+      try {
+        const response = await fetch('/api/auth/admin/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert(`Admin login successful! Welcome, ${data.user.email}`);
+          // Show the data view after successful login
+          showTab('data-view');
+          fetchOrders();
+        } else {
+          alert(`Login failed: ${data.message || 'Invalid credentials'}`);
+        }
+      } catch (error) {
+        alert('Server error. Please try again later.');
+        console.error('Login error:', error);
+      }
+    });
+  </script>
+</body>
+</html>
