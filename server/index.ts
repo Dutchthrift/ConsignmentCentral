@@ -379,11 +379,19 @@ async function testConnection() {
   }
 }
 
+// Serve static files
+app.use(express.static(path.join(__dirname, '../')));
+
+// Serve the data viewer HTML file for the root route
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
   
-  // Handle client-side routing
+  // Handle client-side routing for any routes not handled above
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
   });

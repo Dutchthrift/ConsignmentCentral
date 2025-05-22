@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dutch Thrift Platform</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    header {
+      background-color: #333;
+      color: white;
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+    .subtitle {
+      font-size: 1rem;
+      opacity: 0.8;
+      margin-top: 0.5rem;
+    }
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    h2 {
+      margin-top: 0;
+      color: #2c3e50;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .data-viewer-iframe {
+      width: 100%;
+      height: 700px;
+      border: none;
+      border-radius: 4px;
+      background-color: white;
+    }
+    .button {
+      display: inline-block;
+      background-color: #3498db;
+      color: white;
+      padding: 0.7rem 1.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 500;
+      margin-right: 1rem;
+      transition: background-color 0.3s;
+    }
+    .button:hover {
+      background-color: #2980b9;
+    }
+    .button-secondary {
+      background-color: #7f8c8d;
+    }
+    .button-secondary:hover {
+      background-color: #6d7b7c;
+    }
+    .actions {
+      margin-top: 2rem;
+    }
+    .credentials {
+      margin: 1rem 0;
+      padding: 1rem;
+      background-color: #f7f9fa;
+      border-radius: 4px;
+      border-left: 4px solid #3498db;
+    }
+    .credentials p {
+      margin: 0.5rem 0;
+    }
+    .credentials strong {
+      font-family: monospace;
+      background-color: #eee;
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Dutch Thrift Platform</h1>
+    <div class="subtitle">Supabase-powered Consignment Management</div>
+  </header>
+  
+  <div class="container">
+    <div class="card">
+      <h2>Data Viewer</h2>
+      <p>View your consignment data directly from the Supabase database:</p>
+      
+      <iframe id="viewer" class="data-viewer-iframe" src="/dutch-thrift-viewer.html"></iframe>
+      
+      <div class="actions">
+        <a href="/dutch-thrift-viewer.html" target="_blank" class="button">Open Data Viewer in New Tab</a>
+        <button onclick="refreshViewer()" class="button button-secondary">Refresh Data</button>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>Login Credentials</h2>
+      <p>Use these credentials to access the application:</p>
+      
+      <div class="credentials">
+        <p><strong>Admin Login:</strong></p>
+        <p>Email: <strong>admin@test.com</strong></p>
+        <p>Password: <strong>adminpass123</strong></p>
+      </div>
+      
+      <div class="credentials">
+        <p><strong>Consignor Login:</strong></p>
+        <p>Email: <strong>consignor@test.com</strong></p>
+        <p>Password: <strong>consignorpass123</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function refreshViewer() {
+      const iframe = document.getElementById('viewer');
+      iframe.src = iframe.src;
+    }
+  </script>
+</body>
+</html>
