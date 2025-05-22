@@ -45,7 +45,6 @@ const sessionConfig = {
 
 // Set secure cookie in production
 if (process.env.NODE_ENV === 'production') {
-  // Using the spread operator to avoid type issues
   sessionConfig.cookie = {
     ...sessionConfig.cookie,
     secure: true
@@ -393,7 +392,7 @@ if (process.env.NODE_ENV === 'production') {
 const server = createServer(app);
 
 // Start the server
-const PORT = parseInt(process.env.PORT || '5000', 10);
+const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
