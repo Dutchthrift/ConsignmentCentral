@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dutch Thrift - Login</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f8f9fa;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      min-height: 100vh;
+    }
+    
+    .login-container {
+      display: flex;
+      width: 100%;
+    }
+    
+    .login-form-container {
+      flex: 1;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    
+    .hero-container {
+      flex: 1;
+      background-color: #3498db;
+      color: white;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      background-image: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      display: none; /* Hidden on mobile */
+    }
+    
+    @media (min-width: 768px) {
+      .hero-container {
+        display: flex;
+      }
+    }
+    
+    .form-card {
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    
+    .logo {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .logo h1 {
+      font-size: 2rem;
+      color: #3498db;
+      margin: 0;
+    }
+    
+    .logo p {
+      color: #888;
+      margin: 0;
+    }
+    
+    .tabs {
+      display: flex;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 0.75rem;
+      cursor: pointer;
+      font-weight: 500;
+      color: #888;
+      transition: all 0.3s ease;
+    }
+    
+    .tab.active {
+      color: #3498db;
+      border-bottom: 2px solid #3498db;
+    }
+    
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: #555;
+    }
+    
+    input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+      transition: border 0.3s ease;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+    
+    button {
+      width: 100%;
+      padding: 0.85rem;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    
+    button:hover {
+      background-color: #2980b9;
+    }
+    
+    .form-footer {
+      margin-top: 1.5rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #888;
+    }
+    
+    .form-footer a {
+      color: #3498db;
+      text-decoration: none;
+    }
+    
+    .form-footer a:hover {
+      text-decoration: underline;
+    }
+    
+    .error-message {
+      background-color: #ffebee;
+      color: #d32f2f;
+      padding: 0.75rem;
+      border-radius: 4px;
+      margin-bottom: 1.25rem;
+      display: none;
+    }
+    
+    .hero-content {
+      max-width: 500px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .hero-content h2 {
+      font-size: 2.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .hero-content p {
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+      opacity: 0.9;
+    }
+    
+    .hero-content ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0 0 2rem 0;
+    }
+    
+    .hero-content li {
+      padding: 0.5rem 0;
+      display: flex;
+      align-items: center;
+    }
+    
+    .hero-content li::before {
+      content: "✓";
+      margin-right: 0.5rem;
+      color: white;
+      font-weight: bold;
+    }
+    
+    .form-content {
+      display: none;
+    }
+    
+    .form-content.active {
+      display: block;
+    }
+    
+    .test-account {
+      background-color: #f9f9f9;
+      border-left: 3px solid #3498db;
+      padding: 0.75rem;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-form-container">
+      <div class="form-card">
+        <div class="logo">
+          <h1>Dutch Thrift</h1>
+          <p>Premium Consignment Platform</p>
+        </div>
+        
+        <div class="tabs">
+          <div class="tab active" id="consignor-tab">Consignor Login</div>
+          <div class="tab" id="admin-tab">Admin Login</div>
+        </div>
+        
+        <% if (error) { %>
+        <div class="error-message" style="display: block;">
+          <%= error %>
+        </div>
+        <% } %>
+        
+        <div class="form-content active" id="consignor-form">
+          <form action="/api/auth/consignor/login" method="POST">
+            <div class="form-group">
+              <label for="consignor-email">Email</label>
+              <input type="email" id="consignor-email" name="email" placeholder="your@email.com" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="consignor-password">Password</label>
+              <input type="password" id="consignor-password" name="password" placeholder="••••••••" required>
+            </div>
+            
+            <button type="submit">Login as Consignor</button>
+            
+            <div class="test-account">
+              <strong>Test Account:</strong> consignor@test.com / consignorpass123
+            </div>
+            
+            <div class="form-footer">
+              Don't have an account? <a href="#" id="register-link">Register here</a>
+            </div>
+          </form>
+        </div>
+        
+        <div class="form-content" id="admin-form">
+          <form action="/api/auth/admin/login" method="POST">
+            <div class="form-group">
+              <label for="admin-email">Email</label>
+              <input type="email" id="admin-email" name="email" placeholder="admin@example.com" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="admin-password">Password</label>
+              <input type="password" id="admin-password" name="password" placeholder="••••••••" required>
+            </div>
+            
+            <button type="submit">Login as Admin</button>
+            
+            <div class="test-account">
+              <strong>Test Account:</strong> admin@test.com / adminpass123
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <div class="hero-container">
+      <div class="hero-content">
+        <h2>Your Trusted Partner in Consignment</h2>
+        <p>Dutch Thrift provides a premium platform for managing your consignment business with ease and efficiency.</p>
+        
+        <ul>
+          <li>Intelligent item analysis with AI technology</li>
+          <li>Real-time market price estimations</li>
+          <li>Comprehensive inventory management</li>
+          <li>Secure payment processing</li>
+          <li>Seamless integration with shipping providers</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Tab switching functionality
+    const consignorTab = document.getElementById('consignor-tab');
+    const adminTab = document.getElementById('admin-tab');
+    const consignorForm = document.getElementById('consignor-form');
+    const adminForm = document.getElementById('admin-form');
+    
+    consignorTab.addEventListener('click', () => {
+      consignorTab.classList.add('active');
+      adminTab.classList.remove('active');
+      consignorForm.classList.add('active');
+      adminForm.classList.remove('active');
+    });
+    
+    adminTab.addEventListener('click', () => {
+      adminTab.classList.add('active');
+      consignorTab.classList.remove('active');
+      adminForm.classList.add('active');
+      consignorForm.classList.remove('active');
+    });
+    
+    // Handle form submissions
+    const consignorFormEl = consignorForm.querySelector('form');
+    const adminFormEl = adminForm.querySelector('form');
+    
+    consignorFormEl.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('consignor-email').value;
+      const password = document.getElementById('consignor-password').value;
+      
+      try {
+        const response = await fetch('/api/auth/consignor/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          window.location.href = data.redirect || '/consignor/dashboard';
+        } else {
+          const errorMessage = document.querySelector('.error-message');
+          errorMessage.textContent = data.message || 'Invalid credentials';
+          errorMessage.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        const errorMessage = document.querySelector('.error-message');
+        errorMessage.textContent = 'Server error. Please try again later.';
+        errorMessage.style.display = 'block';
+      }
+    });
+    
+    adminFormEl.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('admin-email').value;
+      const password = document.getElementById('admin-password').value;
+      
+      try {
+        const response = await fetch('/api/auth/admin/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          window.location.href = data.redirect || '/admin';
+        } else {
+          const errorMessage = document.querySelector('.error-message');
+          errorMessage.textContent = data.message || 'Invalid credentials';
+          errorMessage.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        const errorMessage = document.querySelector('.error-message');
+        errorMessage.textContent = 'Server error. Please try again later.';
+        errorMessage.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

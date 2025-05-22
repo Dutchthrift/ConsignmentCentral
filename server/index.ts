@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import session from 'express-session';
 import { createClient } from '@supabase/supabase-js';
 import cors from 'cors';
+import * as bcrypt from 'bcryptjs';
 
 // Load environment variables
 dotenv.config();
@@ -31,25 +32,24 @@ if (!supabaseUrl || !supabaseKey) {
 // Initialize Supabase client
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Configure session
-const sessionConfig = {
+// Configure session with proper typing
+const sessionConfig: session.SessionOptions = {
   secret: process.env.SESSION_SECRET || 'dutchthrift-session-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     httpOnly: true,
-    sameSite: 'lax' as 'lax'
+    sameSite: 'lax'
   }
 };
 
 // Set secure cookie in production
 if (process.env.NODE_ENV === 'production') {
-  // Using the spread operator to avoid type issues
   sessionConfig.cookie = {
-    ...sessionConfig.cookie,
+    ...sessionConfig.cookie as session.CookieOptions,
     secure: true
-  };
+  } as session.CookieOptions;
 }
 
 // Use session middleware
@@ -74,8 +74,10 @@ app.use((req, res, next) => {
 // Setup routes
 console.log('Setting up Supabase-powered Dutch Thrift backend...');
 
-// Auth routes
-app.post('/api/auth/admin/login', async (req, res) => {
+// We already imported bcrypt at the top
+
+// Unified login endpoint
+app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   
   if (!email || !password) {
@@ -83,6 +85,105 @@ app.post('/api/auth/admin/login', async (req, res) => {
   }
   
   try {
+    // First, check if user exists in customers (consignors) table
+    const { data: consignorData, error: consignorError } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('email', email)
+      .single();
+      
+    if (!consignorError && consignorData) {
+      // User found in customers table, validate password
+      const storedPassword = consignorData.password_hash || consignorData.password;
+      
+      // For testing purposes, allow direct comparison with test account
+      const passwordValid = (email === 'consignor@test.com' && password === 'consignorpass123') || 
+                           (storedPassword && await bcrypt.compare(password, storedPassword));
+      
+      if (passwordValid) {
+        // Set session data
+        req.session.userType = 'consignor';
+        req.session.customerId = consignorData.id;
+        
+        console.log('Consignor login successful:', {
+          userType: req.session.userType,
+          customerId: req.session.customerId
+        });
+        
+        return res.json({
+          success: true,
+          user: {
+            id: consignorData.id,
+            email: consignorData.email,
+            name: consignorData.name,
+            role: 'consignor'
+          },
+          redirect: '/consignor/dashboard'
+        });
+      }
+      
+      return res.status(401).json({ success: false, message: 'Invalid password' });
+    }
+    
+    // If not found in customers, check in users (admin) table
+    const { data: adminData, error: adminError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+      
+    if (!adminError && adminData) {
+      // User found in users table, validate password
+      const storedPassword = adminData.password_hash || adminData.password;
+      
+      // For testing purposes, allow direct comparison with test account
+      const passwordValid = (email === 'admin@test.com' && password === 'adminpass123') || 
+                           (storedPassword && await bcrypt.compare(password, storedPassword));
+      
+      if (passwordValid) {
+        // Set session data
+        req.session.userType = 'admin';
+        req.session.userId = adminData.id;
+        
+        console.log('Admin login successful:', {
+          userType: req.session.userType,
+          userId: req.session.userId
+        });
+        
+        return res.json({
+          success: true,
+          user: {
+            id: adminData.id,
+            email: adminData.email,
+            role: 'admin'
+          },
+          redirect: '/admin'
+        });
+      }
+      
+      return res.status(401).json({ success: false, message: 'Invalid password' });
+    }
+    
+    // User not found in either table
+    return res.status(401).json({ success: false, message: 'User not found' });
+    
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ success: false, message: 'Server error during authentication' });
+  }
+});
+
+// Keep legacy endpoints for backward compatibility
+app.post('/api/auth/admin/login', async (req, res) => {
+  console.log('Legacy admin login endpoint called, forwarding to unified login');
+  // Just forward the request to our unified login handler
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password are required' });
+    }
+    
     // Query the users table for admin login
     const { data, error } = await supabase
       .from('users')
@@ -94,9 +195,11 @@ app.post('/api/auth/admin/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
     
-    // For demo purposes, simplified password check
-    // In production, you'd use proper bcrypt comparison
-    if (email === 'admin@test.com' && password === 'adminpass123') {
+    // For testing or with test account, allow direct comparison
+    const passwordValid = (email === 'admin@test.com' && password === 'adminpass123') || 
+                         (data.password_hash && await bcrypt.compare(password, data.password_hash));
+    
+    if (passwordValid) {
       req.session.userType = 'admin';
       req.session.userId = data.id;
       
@@ -106,26 +209,27 @@ app.post('/api/auth/admin/login', async (req, res) => {
           id: data.id,
           email: data.email,
           role: 'admin'
-        }
+        },
+        redirect: '/admin'
       });
     }
     
-    res.status(401).json({ success: false, message: 'Invalid credentials' });
-    
+    return res.status(401).json({ success: false, message: 'Invalid credentials' });
   } catch (err) {
     console.error('Login error:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Server error during authentication' });
   }
 });
 
 app.post('/api/auth/consignor/login', async (req, res) => {
-  const { email, password } = req.body;
-  
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: 'Email and password are required' });
-  }
-  
+  console.log('Legacy consignor login endpoint called, handling directly');
   try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password are required' });
+    }
+    
     // Query the customers table for consignor login
     const { data, error } = await supabase
       .from('customers')
@@ -137,9 +241,11 @@ app.post('/api/auth/consignor/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
     
-    // For demo purposes, simplified password check
-    // In production, you'd use proper bcrypt comparison
-    if (email === 'consignor@test.com' && password === 'consignorpass123') {
+    // For testing or with test account, allow direct comparison
+    const passwordValid = (email === 'consignor@test.com' && password === 'consignorpass123') || 
+                         (data.password_hash && await bcrypt.compare(password, data.password_hash));
+    
+    if (passwordValid) {
       req.session.userType = 'consignor';
       req.session.customerId = data.id;
       
@@ -150,15 +256,15 @@ app.post('/api/auth/consignor/login', async (req, res) => {
           email: data.email,
           name: data.name,
           role: 'consignor'
-        }
+        },
+        redirect: '/consignor/dashboard'
       });
     }
     
-    res.status(401).json({ success: false, message: 'Invalid credentials' });
-    
+    return res.status(401).json({ success: false, message: 'Invalid credentials' });
   } catch (err) {
     console.error('Login error:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Server error during authentication' });
   }
 });
 
@@ -379,15 +485,62 @@ async function testConnection() {
   }
 }
 
-// Serve static files from root directory
-app.use(express.static(path.join(__dirname, '../')));
+// Serve static files from server/public for assets
+app.use(express.static(path.join(__dirname, 'public')));
 
-// API routes should be listed above this point
+// Set up EJS as the view engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 
-// Handle client-side routing for any routes not handled above
+// Root route - redirect to login if not authenticated
+app.get('/', (req, res) => {
+  if (req.session.userType === 'admin') {
+    res.redirect('/admin');
+  } else if (req.session.userType === 'consignor') {
+    res.redirect('/consignor/dashboard');
+  } else {
+    res.redirect('/login');
+  }
+});
+
+// Login route - render the login page with EJS
+app.get('/login', (req, res) => {
+  res.render('login', { error: req.query.error || null });
+});
+
+// Protected admin routes
+app.get('/admin', (req, res) => {
+  if (req.session.userType !== 'admin') {
+    return res.redirect('/login?error=Please log in as an admin to access this page');
+  }
+  
+  // Render admin dashboard
+  res.send(`
+    <h1>Admin Dashboard</h1>
+    <p>Welcome to the admin dashboard! You are logged in as an admin.</p>
+    <p>User ID: ${req.session.userId}</p>
+    <p><a href="/api/auth/logout">Logout</a></p>
+  `);
+});
+
+// Protected consignor routes
+app.get('/consignor/dashboard', (req, res) => {
+  if (req.session.userType !== 'consignor') {
+    return res.redirect('/login?error=Please log in as a consignor to access this page');
+  }
+  
+  // Render consignor dashboard
+  res.send(`
+    <h1>Consignor Dashboard</h1>
+    <p>Welcome to your consignor dashboard! You are logged in as a consignor.</p>
+    <p>Customer ID: ${req.session.customerId}</p>
+    <p><a href="/api/auth/logout">Logout</a></p>
+  `);
+});
+
+// Default route handler for any other routes
 app.get('*', (req, res) => {
-  // Serve our login page
-  res.sendFile(path.join(__dirname, '../index.html'));
+  res.status(404).send('Page not found');
 });
 
 // Create HTTP server
