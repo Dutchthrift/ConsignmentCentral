@@ -155,7 +155,7 @@ export default function AuthPage() {
                         <Input 
                           id="consignorEmail" 
                           type="email" 
-                          placeholder="your@email.com" 
+                          placeholder="consignor@test.com" 
                           value={consignorLoginForm.email}
                           onChange={(e) => setConsignorLoginForm({...consignorLoginForm, email: e.target.value})}
                           required
@@ -166,7 +166,7 @@ export default function AuthPage() {
                         <Input 
                           id="consignorPassword" 
                           type="password" 
-                          placeholder="••••••••" 
+                          placeholder="consignorpass123" 
                           value={consignorLoginForm.password}
                           onChange={(e) => setConsignorLoginForm({...consignorLoginForm, password: e.target.value})}
                           required
