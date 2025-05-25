@@ -15,8 +15,9 @@ dotenv.config();
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Import our Supabase auth routes
+// Import our routes
 import supabaseAuthRoutes from './routes/auth/supabase-auth';
+import storefrontRoutes from './routes/storefront';
 
 // Use JSON middleware
 app.use(express.json());
@@ -494,12 +495,16 @@ async function testConnection() {
 // Create public directory if it doesn't exist
 import fs from 'fs';
 const publicDir = path.join(__dirname, 'public');
+const rootPublicDir = path.join(process.cwd(), 'public');
+
 if (!fs.existsSync(publicDir)) {
   fs.mkdirSync(publicDir, { recursive: true });
 }
 
 // Serve static files from server/public for assets
 app.use(express.static(publicDir));
+// Also serve files from the root public directory
+app.use(express.static(rootPublicDir));
 
 // Set up EJS as the view engine
 app.set('view engine', 'ejs');
