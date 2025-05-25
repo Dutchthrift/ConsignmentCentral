@@ -470,19 +470,13 @@
       const password = document.getElementById('admin-password').value;
       
       try {
-        const response = await fetch('/auth/login', {
+        const response = await fetch('/api/auth/admin/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ email, password, isAdmin: true })
+          body: JSON.stringify({ email, password })
         });
-        
-        if (response.redirected) {
-          // If we were redirected, follow the redirect
-          window.location.href = response.url;
-          return;
-        }
         
         const data = await response.json();
         

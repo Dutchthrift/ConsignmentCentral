@@ -17,6 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Import our routes
 import supabaseAuthRoutes from './routes/auth/supabase-auth';
+import adminAuthRoutes from './routes/admin-auth';
 import storefrontRoutes from './routes/storefront';
 import submitItemRoutes from './routes/submit-item';
 
