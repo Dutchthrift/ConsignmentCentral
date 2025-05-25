@@ -485,8 +485,15 @@ async function testConnection() {
   }
 }
 
+// Create public directory if it doesn't exist
+import fs from 'fs';
+const publicDir = path.join(__dirname, 'public');
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir, { recursive: true });
+}
+
 // Serve static files from server/public for assets
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(publicDir));
 
 // Set up EJS as the view engine
 app.set('view engine', 'ejs');
