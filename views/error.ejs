@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>Dutch Thrift</h1>
+        <p>Premium Consignment Platform</p>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        <% if (user) { %>
+          <a href="/consignor/dashboard">Mijn Dashboard</a>
+          <a href="/logout">Uitloggen</a>
+        <% } else { %>
+          <a href="/login">Inloggen</a>
+          <a href="/login?mode=register">Registreren</a>
+        <% } %>
+      </nav>
+    </header>
+
+    <main>
+      <section class="error-section">
+        <div class="card error-card">
+          <div class="error-icon">⚠️</div>
+          <h1>Er is een fout opgetreden</h1>
+          <p><%= message %></p>
+          
+          <% if (error) { %>
+            <div class="error-details">
+              <p>Technische details:</p>
+              <code><%= error %></code>
+            </div>
+          <% } %>
+          
+          <div class="action-buttons">
+            <a href="/" class="btn primary">Terug naar home</a>
+            <button onclick="window.history.back();" class="btn secondary">Ga terug</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; <%= new Date().getFullYear() %> Dutch Thrift - Premium Consignment Platform</p>
+    </footer>
+  </div>
+</body>
+</html>

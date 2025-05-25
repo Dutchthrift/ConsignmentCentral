@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>Dutch Thrift</h1>
+        <p>Premium Consignment Platform</p>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/storefront/submit-item">Item Aanmelden</a>
+        <a href="/logout">Uitloggen</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="page-header">
+        <div class="user-welcome">
+          <h1>Welkom, <%= user.name %></h1>
+          <p>Hier kun je al je aangemelde items en orders bekijken</p>
+        </div>
+        <div class="quick-actions">
+          <a href="/storefront/submit-item" class="btn primary">Nieuw Item Aanmelden</a>
+        </div>
+      </section>
+
+      <section class="dashboard-stats">
+        <div class="stat-card">
+          <div class="stat-value"><%= items.length %></div>
+          <div class="stat-label">Aangemelde Items</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value"><%= items.filter(item => item.status === 'sold').length %></div>
+          <div class="stat-label">Verkochte Items</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">€<%= items.filter(item => item.status === 'sold' && item.pricing).reduce((sum, item) => sum + parseFloat(item.pricing.payoutAmount), 0).toFixed(2) %></div>
+          <div class="stat-label">Totale Uitbetaling</div>
+        </div>
+      </section>
+
+      <section class="dashboard-content">
+        <div class="tab-navigation">
+          <button class="tab-button active" data-tab="items">Mijn Items</button>
+          <button class="tab-button" data-tab="earnings">Verdiensten</button>
+        </div>
+
+        <div class="tab-content">
+          <div class="tab-pane active" id="items-tab">
+            <div class="item-filters">
+              <select id="status-filter">
+                <option value="all">Alle statussen</option>
+                <option value="pending">In afwachting</option>
+                <option value="received">Ontvangen</option>
+                <option value="for_sale">Te koop</option>
+                <option value="sold">Verkocht</option>
+              </select>
+              <div class="search-box">
+                <input type="text" id="item-search" placeholder="Zoek op titel of referentie...">
+              </div>
+            </div>
+
+            <% if (items.length === 0) { %>
+              <div class="empty-state">
+                <h3>Nog geen items aangemeld</h3>
+                <p>Begin met het aanmelden van je eerste item voor verkoop</p>
+                <a href="/storefront/submit-item" class="btn primary">Item Aanmelden</a>
+              </div>
+            <% } else { %>
+              <div class="items-grid">
+                <% items.forEach(item => { %>
+                  <div class="item-card" data-status="<%= item.status %>">
+                    <div class="item-image">
+                      <img src="<%= item.imageUrl %>" alt="<%= item.title %>">
+                      <div class="status-badge status-<%= item.status %>"><%= item.status %></div>
+                    </div>
+                    <div class="item-details">
+                      <h3><%= item.title %></h3>
+                      <p class="reference-id">Ref: <%= item.referenceId %></p>
+                      <p class="date">Aangemeld op: <%= item.createdAt %></p>
+                      
+                      <% if (item.pricing) { %>
+                        <div class="price-info">
+                          <div class="price-row">
+                            <span class="label">Geschatte verkoopprijs:</span>
+                            <span class="value">€<%= item.pricing.estimatedValue %></span>
+                          </div>
+                          <div class="price-row">
+                            <span class="label">Commissie (<%= item.pricing.commissionRate %>%):</span>
+                            <span class="value">-</span>
+                          </div>
+                          <div class="price-row total">
+                            <span class="label">Jouw uitbetaling:</span>
+                            <span class="value">€<%= item.pricing.payoutAmount %></span>
+                          </div>
+                        </div>
+                      <% } %>
+                      
+                      <% if (item.order) { %>
+                        <div class="order-info">
+                          <p>Order #<%= item.order.id %></p>
+                          <p class="status">Status: <%= item.order.status %></p>
+                        </div>
+                      <% } %>
+                    </div>
+                  </div>
+                <% }); %>
+              </div>
+            <% } %>
+          </div>
+
+          <div class="tab-pane" id="earnings-tab">
+            <div class="earnings-summary">
+              <div class="summary-card">
+                <h3>Totale Verdiensten</h3>
+                <div class="amount">€<%= items.filter(item => item.status === 'sold' && item.pricing).reduce((sum, item) => sum + parseFloat(item.pricing.payoutAmount), 0).toFixed(2) %></div>
+              </div>
+              
+              <div class="summary-card">
+                <h3>Verwachte Verdiensten</h3>
+                <div class="amount">€<%= items.filter(item => item.status !== 'sold' && item.pricing).reduce((sum, item) => sum + parseFloat(item.pricing.payoutAmount), 0).toFixed(2) %></div>
+                <p class="note">Van items die nog niet verkocht zijn</p>
+              </div>
+            </div>
+            
+            <div class="earnings-history">
+              <h3>Uitbetalingsgeschiedenis</h3>
+              
+              <% if (items.filter(item => item.status === 'sold').length === 0) { %>
+                <div class="empty-state">
+                  <p>Je hebt nog geen verkochte items</p>
+                </div>
+              <% } else { %>
+                <table class="earnings-table">
+                  <thead>
+                    <tr>
+                      <th>Datum</th>
+                      <th>Item</th>
+                      <th>Referentie</th>
+                      <th>Verkoopprijs</th>
+                      <th>Commissie</th>
+                      <th>Uitbetaling</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% items.filter(item => item.status === 'sold').forEach(item => { %>
+                      <tr>
+                        <td><%= item.createdAt %></td>
+                        <td><%= item.title %></td>
+                        <td><%= item.referenceId %></td>
+                        <td>€<%= item.pricing ? item.pricing.estimatedValue : '-' %></td>
+                        <td><%= item.pricing ? item.pricing.commissionRate + '%' : '-' %></td>
+                        <td class="payout">€<%= item.pricing ? item.pricing.payoutAmount : '-' %></td>
+                      </tr>
+                    <% }); %>
+                  </tbody>
+                </table>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; <%= new Date().getFullYear() %> Dutch Thrift - Premium Consignment Platform</p>
+    </footer>
+  </div>
+
+  <script>
+    // Tab switching functionality
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        // Remove active class from all buttons and panes
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        tabPanes.forEach(pane => pane.classList.remove('active'));
+        
+        // Add active class to clicked button and corresponding pane
+        button.classList.add('active');
+        const tabId = button.dataset.tab + '-tab';
+        document.getElementById(tabId).classList.add('active');
+      });
+    });
+    
+    // Item filtering functionality
+    const statusFilter = document.getElementById('status-filter');
+    const itemSearch = document.getElementById('item-search');
+    const itemCards = document.querySelectorAll('.item-card');
+    
+    function applyFilters() {
+      const statusValue = statusFilter.value;
+      const searchValue = itemSearch.value.toLowerCase();
+      
+      itemCards.forEach(card => {
+        const status = card.dataset.status;
+        const title = card.querySelector('h3').textContent.toLowerCase();
+        const refId = card.querySelector('.reference-id').textContent.toLowerCase();
+        
+        const statusMatch = statusValue === 'all' || status === statusValue;
+        const searchMatch = searchValue === '' || title.includes(searchValue) || refId.includes(searchValue);
+        
+        if (statusMatch && searchMatch) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+    
+    statusFilter.addEventListener('change', applyFilters);
+    itemSearch.addEventListener('input', applyFilters);
+  </script>
+</body>
+</html>
