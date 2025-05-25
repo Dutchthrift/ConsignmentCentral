@@ -379,27 +379,27 @@
       
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-title">Active Items</div>
-          <div class="stat-value"><%= stats.activeItems %></div>
-          <div class="stat-footer">Items in the sales process</div>
+          <div class="stat-title">Actieve Items</div>
+          <div class="stat-value"><%= stats && stats.activeItems ? stats.activeItems : 0 %></div>
+          <div class="stat-footer">Items in het verkoopproces</div>
         </div>
         
         <div class="stat-card">
-          <div class="stat-title">Completed Sales</div>
-          <div class="stat-value"><%= stats.completedSales %></div>
-          <div class="stat-footer">Successfully sold items</div>
+          <div class="stat-title">Voltooide Verkopen</div>
+          <div class="stat-value"><%= stats && stats.completedSales ? stats.completedSales : 0 %></div>
+          <div class="stat-footer">Succesvol verkochte items</div>
         </div>
         
         <div class="stat-card">
-          <div class="stat-title">Total Value</div>
-          <div class="stat-value">€<%= stats.totalValue.toFixed(2) %></div>
-          <div class="stat-footer">Estimated value of all items</div>
+          <div class="stat-title">Totale Waarde</div>
+          <div class="stat-value">€<%= stats && stats.totalValue ? stats.totalValue.toFixed(2) : '0.00' %></div>
+          <div class="stat-footer">Geschatte waarde van alle items</div>
         </div>
         
         <div class="stat-card">
-          <div class="stat-title">Earned Payouts</div>
-          <div class="stat-value">€<%= stats.earnedPayouts.toFixed(2) %></div>
-          <div class="stat-footer">Your earnings to date</div>
+          <div class="stat-title">Verdiende Uitbetalingen</div>
+          <div class="stat-value">€<%= stats && stats.earnedPayouts ? stats.earnedPayouts.toFixed(2) : '0.00' %></div>
+          <div class="stat-footer">Je verdiensten tot nu toe</div>
         </div>
       </div>
       
