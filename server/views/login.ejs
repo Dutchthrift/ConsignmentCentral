@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dutch Thrift - <%= mode === 'register' ? 'Registreren' : 'Inloggen' %></title>
+  <title>Dutch Thrift - <%= mode === 'register' ? 'Registreren' : mode === 'admin' ? 'Admin Login' : 'Inloggen' %></title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -260,7 +260,8 @@
         </div>
         
         <div class="tabs">
-          <div class="tab <%= mode !== 'register' ? 'active' : '' %>" id="login-tab">Inloggen</div>
+          <div class="tab <%= mode !== 'register' && mode !== 'admin' ? 'active' : '' %>" id="login-tab">Consignor Login</div>
+          <div class="tab <%= mode === 'admin' ? 'active' : '' %>" id="admin-tab">Admin Login</div>
           <div class="tab <%= mode === 'register' ? 'active' : '' %>" id="register-tab">Registreren</div>
         </div>
         
@@ -270,7 +271,7 @@
         </div>
         <% } %>
         
-        <div class="form-content <%= mode !== 'register' ? 'active' : '' %>" id="login-form">
+        <div class="form-content <%= mode !== 'register' && mode !== 'admin' ? 'active' : '' %>" id="login-form">
           <form id="login-form-element">
             <div class="form-group">
               <label for="login-email">Email</label>
@@ -282,7 +283,7 @@
               <input type="password" id="login-password" name="password" placeholder="••••••••" required>
             </div>
             
-            <button type="submit">Inloggen</button>
+            <button type="submit">Inloggen als Consignor</button>
             
             <div class="social-login">
               <p style="text-align: center; margin: 15px 0; color: #888;">of ga verder met</p>
@@ -302,6 +303,28 @@
             
             <div class="form-footer">
               Nog geen account? <a href="/login?mode=register">Registreer hier</a>
+            </div>
+          </form>
+
+          <a href="/" class="back-to-home">Terug naar de homepagina</a>
+        </div>
+        
+        <div class="form-content <%= mode === 'admin' ? 'active' : '' %>" id="admin-form">
+          <form id="admin-form-element">
+            <div class="form-group">
+              <label for="admin-email">Email</label>
+              <input type="email" id="admin-email" name="email" placeholder="admin@example.com" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="admin-password">Wachtwoord</label>
+              <input type="password" id="admin-password" name="password" placeholder="••••••••" required>
+            </div>
+            
+            <button type="submit">Inloggen als Admin</button>
+            
+            <div class="test-account">
+              <strong>Test Account:</strong> admin@test.com / adminpass123
             </div>
           </form>
 
@@ -373,10 +396,13 @@
   <script>
     // Tab switching functionality
     const loginTab = document.getElementById('login-tab');
+    const adminTab = document.getElementById('admin-tab');
     const registerTab = document.getElementById('register-tab');
     const loginForm = document.getElementById('login-form');
+    const adminForm = document.getElementById('admin-form');
     const registerForm = document.getElementById('register-form');
     const loginFormElement = document.getElementById('login-form-element');
+    const adminFormElement = document.getElementById('admin-form-element');
     const registerFormElement = document.getElementById('register-form-element');
     const errorMessage = document.querySelector('.error-message');
 
