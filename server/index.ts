@@ -82,6 +82,7 @@ console.log('Setting up Supabase-powered Dutch Thrift backend...');
 
 // Register Supabase auth routes for social login
 app.use('/auth', supabaseAuthRoutes);
+app.use('/api/auth/admin', adminAuthRoutes);
 
 // We already imported bcrypt at the top
 
