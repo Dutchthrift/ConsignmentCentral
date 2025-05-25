@@ -194,7 +194,7 @@ export class SupabaseStorage {
     // We'll use Supabase's RPC (Remote Procedure Call) feature for this
     try {
       // 1. Find the customer ID associated with the user
-      const customer = await this.getCustomerByEmail(userId.toString());
+      const customer = await this.getCustomerByUserId(userId);
       if (!customer) {
         throw new Error(`No customer found for user ID: ${userId}`);
       }

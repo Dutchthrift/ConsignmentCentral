@@ -79,7 +79,7 @@ router.post('/', async (req: Request, res: Response) => {
       
       // Set default value estimates - fixed at €50.00 for now
       const estimatedValue = 5000; // €50.00
-      const { commissionRate, commissionAmount, payoutAmount } = calculateCommission(estimatedValue);
+      const { commissionRate, commissionAmount, sellerPayout } = calculateCommission(estimatedValue);
       
       // 1. Create the order using Supabase
       const { data: order, error: orderError } = await supabase
@@ -89,7 +89,7 @@ router.post('/', async (req: Request, res: Response) => {
           order_number: orderNumber,
           status: 'awaiting_shipment',
           total_value: estimatedValue,
-          total_payout: payoutAmount,
+          total_payout: sellerPayout,
           submission_date: new Date().toISOString()
         })
         .select()
@@ -150,7 +150,7 @@ router.post('/', async (req: Request, res: Response) => {
           estimated_value: estimatedValue,
           commission_rate: commissionRate,
           commission_amount: commissionAmount,
-          payout_amount: payoutAmount,
+          payout_amount: sellerPayout,
           created_at: new Date().toISOString()
         })
         .select()
