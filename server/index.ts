@@ -510,6 +510,11 @@ app.use(express.static(rootPublicDir));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+// Demo route - show the Dutch Thrift storefront demo
+app.get('/demo', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'storefront-demo.html'));
+});
+
 // Root route - redirect to login if not authenticated
 app.get('/', (req, res) => {
   if (req.session.userType === 'admin') {
