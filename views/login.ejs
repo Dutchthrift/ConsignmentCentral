@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>Dutch Thrift</h1>
+        <p>Premium Consignment Platform</p>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+      </nav>
+    </header>
+
+    <main>
+      <div class="auth-container">
+        <div class="auth-card">
+          <div class="tabs">
+            <a href="/login" class="tab <%= mode === 'login' ? 'active' : '' %>">Inloggen</a>
+            <a href="/login?mode=register" class="tab <%= mode === 'register' ? 'active' : '' %>">Registreren</a>
+          </div>
+
+          <% if (error) { %>
+            <div class="alert alert-error">
+              <%= error %>
+            </div>
+          <% } %>
+
+          <form action="/login" method="POST" class="auth-form">
+            <input type="hidden" name="mode" value="<%= mode %>">
+            
+            <% if (mode === 'register') { %>
+              <div class="form-group">
+                <label for="name">Naam</label>
+                <input type="text" id="name" name="name" placeholder="Jouw volledige naam" required>
+              </div>
+            <% } %>
+            
+            <div class="form-group">
+              <label for="email">E-mailadres</label>
+              <input type="email" id="email" name="email" placeholder="jouw@email.nl" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="password">Wachtwoord</label>
+              <input type="password" id="password" name="password" placeholder="••••••••" required>
+            </div>
+            
+            <button type="submit" class="btn primary">
+              <%= mode === 'register' ? 'Account aanmaken' : 'Inloggen' %>
+            </button>
+          </form>
+
+          <div class="form-footer">
+            <% if (mode === 'login') { %>
+              <p>Nog geen account? <a href="/login?mode=register">Registreer hier</a></p>
+            <% } else { %>
+              <p>Al een account? <a href="/login">Log hier in</a></p>
+            <% } %>
+          </div>
+        </div>
+        
+        <div class="auth-info">
+          <h2>Verkoop je designer items met Dutch Thrift</h2>
+          <p>Bij Dutch Thrift maken we het verkopen van je premium items eenvoudig:</p>
+          <ul>
+            <li>Ontvang een eerlijke prijsinschatting met AI-technologie</li>
+            <li>Krijg 70% van de verkoopprijs</li>
+            <li>Wij regelen alles: fotografie, beschrijving, en verkoop</li>
+            <li>Veilige en snelle betalingen</li>
+            <li>Volg je items via je persoonlijke dashboard</li>
+          </ul>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>&copy; <%= new Date().getFullYear() %> Dutch Thrift - Premium Consignment Platform</p>
+    </footer>
+  </div>
+</body>
+</html>

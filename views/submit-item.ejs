@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>Dutch Thrift</h1>
+        <p>Premium Consignment Platform</p>
+      </div>
+      <nav>
+        <% if (user) { %>
+          <a href="/consignor/dashboard">Mijn Dashboard</a>
+          <a href="/logout">Uitloggen</a>
+        <% } else { %>
+          <a href="/">Home</a>
+          <a href="/login">Inloggen</a>
+          <a href="/login?mode=register">Registreren</a>
+        <% } %>
+      </nav>
+    </header>
+
+    <main>
+      <section class="page-header">
+        <h1>Item Aanmelden</h1>
+        <p>Upload een afbeelding van je item om het aanmeldproces te starten</p>
+      </section>
+
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert-error">
+          <%= error %>
+        </div>
+      <% } %>
+
+      <section class="submit-section">
+        <div class="process-steps">
+          <div class="step active">
+            <div class="step-number">1</div>
+            <div class="step-label">Upload foto</div>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-label">AI Analyse</div>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-label">Prijsvoorstel</div>
+          </div>
+          <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-label">Verzending</div>
+          </div>
+          <div class="step">
+            <div class="step-number">5</div>
+            <div class="step-label">Verkoop</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <form action="/storefront/submit-item" method="POST" enctype="multipart/form-data" class="upload-form">
+            <div class="form-group">
+              <label for="title">Titel (optioneel)</label>
+              <input type="text" id="title" name="title" placeholder="Beschrijf je item kort">
+              <small>Als je dit veld leeg laat, zal onze AI je item automatisch een naam geven</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="image">Afbeelding (verplicht)</label>
+              <div class="dropzone" id="dropzone">
+                <input type="file" id="image" name="image" accept="image/*" required>
+                <p>Sleep je foto hierheen of klik om te uploaden</p>
+                <div class="preview" id="preview"></div>
+              </div>
+              <small>Upload een duidelijke foto van je item op een neutrale achtergrond</small>
+            </div>
+            
+            <div class="form-tips">
+              <h3>Tips voor een goede foto</h3>
+              <ul>
+                <li>Gebruik natuurlijk daglicht</li>
+                <li>Fotografeer je item op een neutrale achtergrond</li>
+                <li>Maak foto's van verschillende hoeken</li>
+                <li>Zorg dat eventuele labels en logo's zichtbaar zijn</li>
+                <li>Als het een kledingstuk is, leg het plat of hang het op</li>
+              </ul>
+            </div>
+            
+            <button type="submit" class="btn primary">Analyseren met AI</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; <%= new Date().getFullYear() %> Dutch Thrift - Premium Consignment Platform</p>
+    </footer>
+  </div>
+
+  <script>
+    // Drag and drop functionality
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('image');
+    const preview = document.getElementById('preview');
+
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Highlight drop area when item is dragged over
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight() {
+      dropzone.classList.add('highlight');
+    }
+
+    function unhighlight() {
+      dropzone.classList.remove('highlight');
+    }
+
+    // Handle dropped files
+    dropzone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      fileInput.files = files;
+      updatePreview();
+    }
+
+    // Update preview when files are selected
+    fileInput.addEventListener('change', updatePreview);
+
+    function updatePreview() {
+      while(preview.firstChild) {
+        preview.removeChild(preview.firstChild);
+      }
+
+      if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          preview.appendChild(img);
+          preview.style.display = 'block';
+        }
+        reader.readAsDataURL(fileInput.files[0]);
+      }
+    }
+  </script>
+</body>
+</html>

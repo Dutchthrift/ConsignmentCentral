@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>Dutch Thrift</h1>
+        <p>Premium Consignment Platform</p>
+      </div>
+      <nav>
+        <% if (user) { %>
+          <a href="/consignor/dashboard">Mijn Dashboard</a>
+          <a href="/logout">Uitloggen</a>
+        <% } else { %>
+          <a href="/">Home</a>
+          <a href="/login">Inloggen</a>
+          <a href="/login?mode=register">Registreren</a>
+        <% } %>
+      </nav>
+    </header>
+
+    <main>
+      <section class="page-header">
+        <h1>Ons Voorstel</h1>
+        <p>Bekijk onze waardebepaling voor je item</p>
+      </section>
+
+      <section class="proposal-section">
+        <div class="process-steps">
+          <div class="step completed">
+            <div class="step-number">1</div>
+            <div class="step-label">Upload foto</div>
+          </div>
+          <div class="step completed">
+            <div class="step-number">2</div>
+            <div class="step-label">AI Analyse</div>
+          </div>
+          <div class="step active">
+            <div class="step-number">3</div>
+            <div class="step-label">Prijsvoorstel</div>
+          </div>
+          <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-label">Verzending</div>
+          </div>
+          <div class="step">
+            <div class="step-number">5</div>
+            <div class="step-label">Verkoop</div>
+          </div>
+        </div>
+
+        <div class="proposal-container">
+          <div class="card item-analysis">
+            <h2>Resultaten van onze AI-analyse</h2>
+            
+            <div class="item-preview">
+              <img src="<%= item.image %>" alt="<%= item.title %>">
+            </div>
+            
+            <div class="item-details">
+              <h3><%= item.title %></h3>
+              <p class="reference-id">Referentienummer: <%= item.referenceId %></p>
+              
+              <div class="analysis-results">
+                <div class="result-item">
+                  <span class="label">Type product:</span>
+                  <span class="value"><%= item.analysis.productType || 'Niet gespecificeerd' %></span>
+                </div>
+                <div class="result-item">
+                  <span class="label">Merk:</span>
+                  <span class="value"><%= item.analysis.brand || 'Niet herkend' %></span>
+                </div>
+                <div class="result-item">
+                  <span class="label">Kleur:</span>
+                  <span class="value"><%= item.analysis.color || 'Niet gespecificeerd' %></span>
+                </div>
+                <div class="result-item">
+                  <span class="label">Conditie:</span>
+                  <span class="value"><%= item.analysis.condition || 'Gebruikt' %></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card pricing-proposal">
+            <h2>Ons aanbod</h2>
+            
+            <div class="price-breakdown">
+              <div class="price-item estimated-price">
+                <span class="label">Geschatte verkoopprijs:</span>
+                <span class="value">€<%= item.estimatedPrice.toFixed(2) %></span>
+              </div>
+              
+              <div class="price-item commission">
+                <span class="label">Onze commissie (<%= item.commissionRate %>%):</span>
+                <span class="value">€<%= item.commissionAmount.toFixed(2) %></span>
+                <span class="info-tooltip" title="Onze commissie dekt kosten voor fotografie, beschrijving, marketing, verzending en klantenservice">ⓘ</span>
+              </div>
+              
+              <div class="price-item payout">
+                <span class="label">Jouw uitbetaling:</span>
+                <span class="value highlight">€<%= item.payoutAmount.toFixed(2) %></span>
+              </div>
+            </div>
+            
+            <div class="benefits">
+              <h4>Voordelen van verkopen via Dutch Thrift:</h4>
+              <ul>
+                <li>Professionele fotografie en beschrijving</li>
+                <li>Brede marketing via onze kanalen</li>
+                <li>Verzending en klantenservice geregeld</li>
+                <li>Veilige en snelle betalingen</li>
+                <li>Volledige transparantie via je dashboard</li>
+              </ul>
+            </div>
+            
+            <div class="decision-buttons">
+              <form action="/storefront/proposal" method="POST">
+                <input type="hidden" name="decision" value="accept">
+                <button type="submit" class="btn primary">Ja, ik wil dit verkopen</button>
+              </form>
+              
+              <form action="/storefront/proposal" method="POST" class="secondary-form">
+                <input type="hidden" name="decision" value="reject">
+                <button type="submit" class="btn secondary">Nee, ik verkoop liever zelf</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; <%= new Date().getFullYear() %> Dutch Thrift - Premium Consignment Platform</p>
+    </footer>
+  </div>
+</body>
+</html>

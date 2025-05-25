@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>Dutch Thrift</h1>
+        <p>Premium Consignment Platform</p>
+      </div>
+      <nav>
+        <a href="/">Home</a>
+        <% if (user) { %>
+          <a href="/consignor/dashboard">Mijn Dashboard</a>
+          <a href="/logout">Uitloggen</a>
+        <% } else { %>
+          <a href="/login">Inloggen</a>
+          <a href="/login?mode=register">Registreren</a>
+        <% } %>
+      </nav>
+    </header>
+
+    <main>
+      <section class="thank-you-section">
+        <div class="card thank-you-card">
+          <div class="thank-you-icon">👍</div>
+          <h1>Bedankt voor je interesse!</h1>
+          <p><%= message %></p>
+          
+          <div class="alternatives">
+            <h3>Andere opties om te overwegen:</h3>
+            <ul>
+              <li>Probeer een ander item aan te melden dat misschien beter bij ons platform past</li>
+              <li>Neem contact op als je vragen hebt over onze prijsinschatting</li>
+              <li>Deel feedback met ons om ons platform te verbeteren</li>
+            </ul>
+          </div>
+          
+          <div class="action-buttons">
+            <a href="/" class="btn primary">Terug naar home</a>
+            <a href="/storefront/submit-item" class="btn secondary">Probeer een ander item</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; <%= new Date().getFullYear() %> Dutch Thrift - Premium Consignment Platform</p>
+    </footer>
+  </div>
+</body>
+</html>

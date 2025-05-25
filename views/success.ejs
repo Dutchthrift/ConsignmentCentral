@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>Dutch Thrift</h1>
+        <p>Premium Consignment Platform</p>
+      </div>
+      <nav>
+        <a href="/consignor/dashboard">Mijn Dashboard</a>
+        <a href="/logout">Uitloggen</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="page-header">
+        <h1>Bestelling Bevestigd!</h1>
+        <p>Je item is succesvol aangemeld voor verkoop</p>
+      </section>
+
+      <section class="success-section">
+        <div class="process-steps">
+          <div class="step completed">
+            <div class="step-number">1</div>
+            <div class="step-label">Upload foto</div>
+          </div>
+          <div class="step completed">
+            <div class="step-number">2</div>
+            <div class="step-label">AI Analyse</div>
+          </div>
+          <div class="step completed">
+            <div class="step-number">3</div>
+            <div class="step-label">Prijsvoorstel</div>
+          </div>
+          <div class="step active">
+            <div class="step-number">4</div>
+            <div class="step-label">Verzending</div>
+          </div>
+          <div class="step">
+            <div class="step-number">5</div>
+            <div class="step-label">Verkoop</div>
+          </div>
+        </div>
+
+        <div class="card confirmation-card">
+          <div class="success-icon">✓</div>
+          <h2>Bedankt voor je aanmelding!</h2>
+          <p>Je bestelling #<%= orderId %> is succesvol aangemaakt. We gaan direct aan de slag met je item.</p>
+          
+          <div class="order-details">
+            <div class="item-summary">
+              <img src="<%= item.image %>" alt="<%= item.title %>">
+              <div class="item-info">
+                <h3><%= item.title %></h3>
+                <p class="reference-id">Referentienummer: <%= item.referenceId %></p>
+                <p class="price">Geschatte verkoopprijs: €<%= item.estimatedPrice.toFixed(2) %></p>
+                <p class="payout">Verwachte uitbetaling: €<%= item.payoutAmount.toFixed(2) %></p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="next-steps">
+            <h3>Volgende stappen:</h3>
+            <ol>
+              <li>
+                <strong>Verzending regelen</strong>
+                <p>Je ontvangt binnen enkele minuten een e-mail met een verzendlabel en instructies om je item naar ons op te sturen.</p>
+              </li>
+              <li>
+                <strong>Ontvangst en inspectie</strong>
+                <p>Zodra we je item ontvangen, controleren we het op kwaliteit en conditie, en maken we professionele foto's.</p>
+              </li>
+              <li>
+                <strong>Te koop aangeboden</strong>
+                <p>Je item wordt daarna op onze website en marketplace partners aangeboden voor verkoop.</p>
+              </li>
+              <li>
+                <strong>Verkoop en uitbetaling</strong>
+                <p>Na verkoop ontvang je 70% van de verkoopprijs op je account.</p>
+              </li>
+            </ol>
+          </div>
+          
+          <div class="action-buttons">
+            <a href="/consignor/dashboard" class="btn primary">Naar mijn dashboard</a>
+            <a href="/storefront/submit-item" class="btn secondary">Nog een item aanmelden</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; <%= new Date().getFullYear() %> Dutch Thrift - Premium Consignment Platform</p>
+    </footer>
+  </div>
+</body>
+</html>

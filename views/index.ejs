@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>Dutch Thrift</h1>
+        <p>Premium Consignment Platform</p>
+      </div>
+      <nav>
+        <% if (user) { %>
+          <a href="/consignor/dashboard">Mijn Dashboard</a>
+          <a href="/logout">Uitloggen</a>
+        <% } else { %>
+          <a href="/login">Inloggen</a>
+          <a href="/login?mode=register">Registreren</a>
+        <% } %>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-content">
+          <h2>Verkoop je designer items eenvoudig via Dutch Thrift</h2>
+          <p>Upload je item, ontvang direct een schatting van de waarde, en laat ons de verkoop regelen.</p>
+        </div>
+      </section>
+
+      <section class="upload-section">
+        <h2>Begin met een item uploaden</h2>
+        <form action="/storefront/submit-item" method="POST" enctype="multipart/form-data" class="upload-form">
+          <div class="form-group">
+            <label for="title">Titel (optioneel)</label>
+            <input type="text" id="title" name="title" placeholder="Beschrijf je item kort">
+          </div>
+          
+          <div class="form-group">
+            <label for="image">Afbeelding (verplicht)</label>
+            <div class="dropzone" id="dropzone">
+              <input type="file" id="image" name="image" accept="image/*" required>
+              <p>Sleep je foto hierheen of klik om te uploaden</p>
+              <div class="preview" id="preview"></div>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn primary">Item Aanmelden</button>
+        </form>
+        
+        <div class="auth-options">
+          <p>Al een account of wil je er een aanmaken?</p>
+          <div class="button-group">
+            <a href="/login?mode=register" class="btn secondary">Registreren</a>
+            <a href="/login" class="btn secondary">Inloggen</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="how-it-works">
+        <h2>Hoe het werkt</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-number">1</div>
+            <h3>Upload je item</h3>
+            <p>Maak een foto van je item en upload deze op onze website.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <h3>Ontvang een prijsschatting</h3>
+            <p>Onze AI analyseert je item en bepaalt de verwachte verkoopprijs.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <h3>Accepteer ons voorstel</h3>
+            <p>Als je tevreden bent met de prijs, accepteer je ons voorstel.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">4</div>
+            <h3>Verstuur je item</h3>
+            <p>Je ontvangt een verzendlabel om je item naar ons te sturen.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">5</div>
+            <h3>Ontvang je betaling</h3>
+            <p>Zodra je item verkocht is, ontvang je 70% van de verkoopprijs.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; <%= new Date().getFullYear() %> Dutch Thrift - Premium Consignment Platform</p>
+    </footer>
+  </div>
+
+  <script>
+    // Drag and drop functionality
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('image');
+    const preview = document.getElementById('preview');
+
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Highlight drop area when item is dragged over
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight() {
+      dropzone.classList.add('highlight');
+    }
+
+    function unhighlight() {
+      dropzone.classList.remove('highlight');
+    }
+
+    // Handle dropped files
+    dropzone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      fileInput.files = files;
+      updatePreview();
+    }
+
+    // Update preview when files are selected
+    fileInput.addEventListener('change', updatePreview);
+
+    function updatePreview() {
+      while(preview.firstChild) {
+        preview.removeChild(preview.firstChild);
+      }
+
+      if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          preview.appendChild(img);
+          preview.style.display = 'block';
+        }
+        reader.readAsDataURL(fileInput.files[0]);
+      }
+    }
+  </script>
+</body>
+</html>
