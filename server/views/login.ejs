@@ -240,7 +240,7 @@
         <% } %>
         
         <div class="form-content active" id="consignor-form">
-          <form action="/api/auth/consignor/login" method="POST">
+          <form action="/auth/login" method="POST">
             <div class="form-group">
               <label for="consignor-email">Email</label>
               <input type="email" id="consignor-email" name="email" placeholder="your@email.com" required>
@@ -253,18 +253,30 @@
             
             <button type="submit">Login as Consignor</button>
             
+            <div class="social-login">
+              <p style="text-align: center; margin: 15px 0; color: #888;">or continue with</p>
+              <div style="display: flex; gap: 10px;">
+                <a href="/auth/github" style="flex: 1; text-align: center; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #333;">
+                  <span style="font-weight: 500;">GitHub</span>
+                </a>
+                <a href="/auth/google" style="flex: 1; text-align: center; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #333;">
+                  <span style="font-weight: 500;">Google</span>
+                </a>
+              </div>
+            </div>
+            
             <div class="test-account">
               <strong>Test Account:</strong> consignor@test.com / consignorpass123
             </div>
             
             <div class="form-footer">
-              Don't have an account? <a href="#" id="register-link">Register here</a>
+              Don't have an account? <a href="/auth/register">Register here</a>
             </div>
           </form>
         </div>
         
         <div class="form-content" id="admin-form">
-          <form action="/api/auth/admin/login" method="POST">
+          <form action="/auth/login" method="POST">
             <div class="form-group">
               <label for="admin-email">Email</label>
               <input type="email" id="admin-email" name="email" placeholder="admin@example.com" required>

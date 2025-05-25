@@ -15,6 +15,9 @@ dotenv.config();
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Import our Supabase auth routes
+import supabaseAuthRoutes from './routes/auth/supabase-auth';
+
 // Use JSON middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
