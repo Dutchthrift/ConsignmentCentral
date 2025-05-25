@@ -405,8 +405,21 @@
     const adminFormElement = document.getElementById('admin-form-element');
     const registerFormElement = document.getElementById('register-form-element');
     const errorMessage = document.querySelector('.error-message');
+    
+    // Handle tab switching
+    loginTab.addEventListener('click', () => {
+      window.location.href = '/login';
+    });
+    
+    adminTab.addEventListener('click', () => {
+      window.location.href = '/login?mode=admin';
+    });
+    
+    registerTab.addEventListener('click', () => {
+      window.location.href = '/login?mode=register';
+    });
 
-    // Handle login form submission
+    // Handle consignor login form submission
     loginFormElement.addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -414,13 +427,19 @@
       const password = document.getElementById('login-password').value;
       
       try {
-        const response = await fetch('/api/auth/consignor/login', {
+        const response = await fetch('/auth/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ email, password })
         });
+        
+        if (response.redirected) {
+          // If we were redirected, follow the redirect
+          window.location.href = response.url;
+          return;
+        }
         
         const data = await response.json();
         
@@ -436,6 +455,49 @@
         }
       } catch (error) {
         console.error('Login error:', error);
+        if (errorMessage) {
+          errorMessage.textContent = 'Er is een fout opgetreden bij het inloggen. Probeer het later opnieuw.';
+          errorMessage.style.display = 'block';
+        }
+      }
+    });
+    
+    // Handle admin login form submission
+    adminFormElement.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('admin-email').value;
+      const password = document.getElementById('admin-password').value;
+      
+      try {
+        const response = await fetch('/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password, isAdmin: true })
+        });
+        
+        if (response.redirected) {
+          // If we were redirected, follow the redirect
+          window.location.href = response.url;
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Redirect to admin dashboard
+          window.location.href = '/admin';
+        } else {
+          // Show error message
+          if (errorMessage) {
+            errorMessage.textContent = data.message || 'Admin login mislukt. Controleer je gegevens.';
+            errorMessage.style.display = 'block';
+          }
+        }
+      } catch (error) {
+        console.error('Admin login error:', error);
         if (errorMessage) {
           errorMessage.textContent = 'Er is een fout opgetreden bij het inloggen. Probeer het later opnieuw.';
           errorMessage.style.display = 'block';

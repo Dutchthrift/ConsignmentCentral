@@ -9,6 +9,7 @@ const router = Router();
 const loginSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  isAdmin: z.boolean().optional(),
 });
 
 // Registration form schema
@@ -36,7 +37,8 @@ router.get('/login', (req, res) => {
 
   res.render('login', { 
     error: null,
-    message: req.query.message || null
+    message: req.query.message || null,
+    mode: req.query.mode || null
   });
 });
 
@@ -47,7 +49,7 @@ router.get('/login', (req, res) => {
 router.post('/login', async (req: Request, res: Response) => {
   try {
     // Validate input
-    const { email, password } = loginSchema.parse(req.body);
+    const { email, password, isAdmin } = loginSchema.parse(req.body);
     
     // Attempt to sign in with Supabase Auth
     const authData = await supabaseAuthService.signInWithEmail(email, password);
@@ -56,14 +58,18 @@ router.post('/login', async (req: Request, res: Response) => {
       throw new Error('Authentication failed');
     }
     
-    // Now, determine if this is an admin or consignor by querying our database
-    const { data: adminUser } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .single();
-    
-    if (adminUser) {
+    // Prioritize admin login if isAdmin flag is set
+    if (isAdmin) {
+      const { data: adminUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .single();
+      
+      if (!adminUser) {
+        throw new Error('Admin account not found');
+      }
+      
       // User exists in admin table
       await supabaseAuthService.setSession(req, {
         userType: 'admin',
@@ -72,29 +78,46 @@ router.post('/login', async (req: Request, res: Response) => {
       });
       
       return res.redirect('/admin');
-    }
-    
-    // Check consignor (customers) table
-    const { data: consignorUser } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .single();
-    
-    if (consignorUser) {
-      // User exists in consignor table
-      await supabaseAuthService.setSession(req, {
-        userType: 'consignor',
-        customerId: consignorUser.id,
-        email: consignorUser.email
-      });
+    } else {
+      // Check for consignor account first
+      const { data: consignorUser } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .single();
       
-      return res.redirect('/consignor/dashboard');
+      if (consignorUser) {
+        // User exists in consignor table
+        await supabaseAuthService.setSession(req, {
+          userType: 'consignor',
+          customerId: consignorUser.id,
+          email: consignorUser.email
+        });
+        
+        return res.redirect('/consignor/dashboard');
+      }
+      
+      // If no consignor account, check for admin account
+      const { data: adminUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .single();
+      
+      if (adminUser) {
+        // User exists in admin table
+        await supabaseAuthService.setSession(req, {
+          userType: 'admin',
+          userId: adminUser.id,
+          email: adminUser.email
+        });
+        
+        return res.redirect('/admin');
+      }
+      
+      // User authenticated with Supabase but not found in our tables
+      throw new Error('User account not found in system');
     }
-    
-    // User authenticated with Supabase but not found in our tables
-    // This could happen if they're new or if the email changed
-    throw new Error('User account not found in system');
     
   } catch (error) {
     console.error('Login error:', error);
@@ -102,7 +125,8 @@ router.post('/login', async (req: Request, res: Response) => {
     // Render login page with error
     return res.render('login', { 
       error: error instanceof Error ? error.message : 'Authentication failed',
-      message: null
+      message: null,
+      mode: req.body.isAdmin ? 'admin' : undefined
     });
   }
 });
