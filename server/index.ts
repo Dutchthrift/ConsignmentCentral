@@ -724,8 +724,8 @@ app.get('/consignor/dashboard', async (req, res) => {
     ).slice(0, 5);
     
     // Render the dashboard with the data
-    res.render('consignor-dashboard', {
-      consignor,
+    res.render('consignor-dashboard-sidebar', {
+      customer: consignor,
       stats,
       recentOrders: ordersWithItems.slice(0, 5),
       recentItems: recentItems,
