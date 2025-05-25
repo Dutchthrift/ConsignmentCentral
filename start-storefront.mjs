@@ -19,7 +19,7 @@ dotenv.config();
 
 // Initialize Express app
 const app = express();
-const port = 5001; // Gebruik een andere poort dan de bestaande server
+const port = process.env.PORT || 3000; // Gebruik de Replit PORT variabele
 
 // Configure Express middleware
 app.use(bodyParser.json());
