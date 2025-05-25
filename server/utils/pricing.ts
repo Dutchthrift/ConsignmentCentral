@@ -25,7 +25,7 @@ export function checkEligibility(itemValue: number): {
   eligible: boolean;
   reason?: string;
 } {
-  // Minimum item value for consignment is €20
+  // Minimum item value for consignment is €20 (2000 cents)
   if (itemValue < 2000) { // €20.00 in cents
     return {
       eligible: false,

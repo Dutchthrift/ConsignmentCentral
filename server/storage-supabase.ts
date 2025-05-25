@@ -35,6 +35,49 @@ export class SupabaseStorage {
     return data;
   }
   
+  async getCustomerByUserId(userId: number) {
+    // First, check if there's a direct user-customer relationship in the users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('customer_id')
+      .eq('id', userId)
+      .single();
+    
+    if (userError) {
+      console.error('Error getting user customer relationship:', userError);
+    }
+    
+    // If we found a customer_id in the users table, fetch that customer
+    if (userData && userData.customer_id) {
+      const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', userData.customer_id)
+        .single();
+      
+      if (customerError) {
+        console.error('Error getting customer by ID:', customerError);
+        return undefined;
+      }
+      
+      return customerData;
+    }
+    
+    // Fallback: Check if there's a customer with matching user_id
+    const { data: customerByUserId, error: customerUserIdError } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    
+    if (customerUserIdError) {
+      console.error('Error getting customer by user ID:', customerUserIdError);
+      return undefined;
+    }
+    
+    return customerByUserId;
+  }
+  
   async updateCustomerByEmail(email: string, updates: any) {
     const { data, error } = await supabase
       .from('customers')
@@ -242,7 +285,7 @@ export class SupabaseStorage {
           estimated_value: itemData.estimatedValue,
           commission_rate: commissionData.commissionRate,
           commission_amount: commissionData.commissionAmount,
-          payout_amount: commissionData.payoutAmount,
+          payout_amount: commissionData.sellerPayout,
           created_at: new Date()
         };
         
