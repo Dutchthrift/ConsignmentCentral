@@ -20,6 +20,7 @@ import supabaseAuthRoutes from './routes/auth/supabase-auth';
 import adminAuthRoutes from './routes/admin-auth';
 import storefrontRoutes from './routes/storefront';
 import submitItemRoutes from './routes/submit-item';
+import adminLoginFix from './admin-login-fix.js';
 
 // Use JSON middleware
 app.use(express.json());
@@ -83,6 +84,13 @@ console.log('Setting up Supabase-powered Dutch Thrift backend...');
 // Register Supabase auth routes for social login
 app.use('/auth', supabaseAuthRoutes);
 app.use('/api/auth/admin', adminAuthRoutes);
+
+// Register direct admin login fix route
+app.use('/admin-api', adminLoginFix);
+
+// Import the direct admin login route
+import directAdminLogin from './direct-admin-login.js';
+app.use('/direct-admin', directAdminLogin);
 
 // We already imported bcrypt at the top
 
