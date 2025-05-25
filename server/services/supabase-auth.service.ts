@@ -83,7 +83,7 @@ export class SupabaseAuthService {
       throw error;
     }
     
-    return data;
+    return data as unknown as { url: string };
   }
   
   /**
@@ -149,10 +149,15 @@ export class SupabaseAuthService {
    * Set the session in Express
    */
   async setSession(req: Request, session: any) {
-    req.session.userType = session.userType;
-    req.session.userId = session.userId;
-    req.session.customerId = session.customerId;
-    req.session.email = session.email;
+    if (session.userType) req.session.userType = session.userType;
+    if (session.userId) req.session.userId = session.userId;
+    if (session.customerId) req.session.customerId = session.customerId;
+    
+    // Store email in session data object
+    if (session.email) {
+      const sessionData = req.session as any;
+      sessionData.email = session.email;
+    }
     
     return new Promise((resolve, reject) => {
       req.session.save((err) => {

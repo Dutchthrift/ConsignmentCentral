@@ -233,11 +233,11 @@ router.get('/logout', async (req: Request, res: Response) => {
  */
 router.get('/github', async (req: Request, res: Response) => {
   try {
-    const { data } = await supabaseAuthService.signInWithOAuth('github');
+    const result = await supabaseAuthService.signInWithOAuth('github');
     
     // Redirect to the URL provided by Supabase
-    if (data.url) {
-      return res.redirect(data.url);
+    if (result && result.url) {
+      return res.redirect(result.url);
     }
     
     throw new Error('Failed to initiate GitHub login');
@@ -253,11 +253,11 @@ router.get('/github', async (req: Request, res: Response) => {
  */
 router.get('/google', async (req: Request, res: Response) => {
   try {
-    const { data } = await supabaseAuthService.signInWithOAuth('google');
+    const result = await supabaseAuthService.signInWithOAuth('google');
     
     // Redirect to the URL provided by Supabase
-    if (data.url) {
-      return res.redirect(data.url);
+    if (result && result.url) {
+      return res.redirect(result.url);
     }
     
     throw new Error('Failed to initiate Google login');
