@@ -18,6 +18,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Import our routes
 import supabaseAuthRoutes from './routes/auth/supabase-auth';
 import storefrontRoutes from './routes/storefront';
+import submitItemRoutes from './routes/submit-item';
 
 // Use JSON middleware
 app.use(express.json());
@@ -517,6 +518,9 @@ app.get('/', (req, res) => {
     error: req.query.error || null
   });
 });
+
+// Item submission route
+app.use('/submit-item', submitItemRoutes);
 
 // Login route - render the login page with EJS
 app.get('/login', (req, res) => {
