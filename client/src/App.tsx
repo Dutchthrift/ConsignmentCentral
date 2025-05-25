@@ -232,7 +232,7 @@ function Router() {
           component={ConsignorItemDetail}
         />
         <ProtectedRoute 
-          path="/consignor/history" 
+          path="/consignor/sales" 
           component={ConsignorHistory}
         />
         <ProtectedRoute 

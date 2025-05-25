@@ -77,12 +77,12 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
         
         <nav className="space-y-1 flex-1">
           <Button
-            variant={location === "/consignor" ? "default" : "ghost"}
+            variant={location === "/consignor/dashboard" ? "default" : "ghost"}
             size="sm"
             className="w-full justify-start"
             asChild
           >
-            <Link to="/consignor">
+            <Link to="/consignor/dashboard">
               <BarChart3 className="mr-2 h-4 w-4" />
               Dashboard
             </Link>
@@ -125,12 +125,12 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
           </Button>
           
           <Button
-            variant={location === "/consignor/history" ? "default" : "ghost"}
+            variant={location === "/consignor/sales" ? "default" : "ghost"}
             size="sm"
             className="w-full justify-start"
             asChild
           >
-            <Link to="/consignor/history">
+            <Link to="/consignor/sales">
               <History className="mr-2 h-4 w-4" />
               Sales History
             </Link>
@@ -176,6 +176,21 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
         </nav>
         
         <div className="mt-auto pt-4">
+          {/* Gebruikersbadge */}
+          <div className="mb-3 p-3 bg-neutral-100 rounded-md">
+            <div className="flex items-center gap-2">
+              <Avatar className="h-6 w-6">
+                <AvatarFallback className="bg-primary text-white text-xs">
+                  {user?.name?.charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-medium">{user?.name}</p>
+                <p className="text-xs text-neutral-500">Consignor</p>
+              </div>
+            </div>
+          </div>
+          
           <Button
             variant="ghost"
             size="sm"
@@ -225,12 +240,12 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
         {isMenuOpen && (
           <nav className="p-4 bg-white border-b border-neutral-200 space-y-2">
             <Button
-              variant={location === "/consignor" ? "default" : "ghost"}
+              variant={location === "/consignor/dashboard" ? "default" : "ghost"}
               size="sm"
               className="w-full justify-start"
               asChild
             >
-              <Link to="/consignor" onClick={() => setIsMenuOpen(false)}>
+              <Link to="/consignor/dashboard" onClick={() => setIsMenuOpen(false)}>
                 <BarChart3 className="mr-2 h-4 w-4" />
                 Dashboard
               </Link>
@@ -273,12 +288,12 @@ export default function ConsignorLayout({ children }: ConsignorLayoutProps) {
             </Button>
             
             <Button
-              variant={location === "/consignor/history" ? "default" : "ghost"}
+              variant={location === "/consignor/sales" ? "default" : "ghost"}
               size="sm"
               className="w-full justify-start"
               asChild
             >
-              <Link to="/consignor/history" onClick={() => setIsMenuOpen(false)}>
+              <Link to="/consignor/sales" onClick={() => setIsMenuOpen(false)}>
                 <History className="mr-2 h-4 w-4" />
                 Sales History
               </Link>
