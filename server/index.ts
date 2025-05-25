@@ -510,25 +510,20 @@ app.use(express.static(rootPublicDir));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Demo route - show the Dutch Thrift storefront demo
-app.get('/demo', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'public', 'storefront-demo.html'));
-});
-
-// Root route - redirect to login if not authenticated
+// Root route - Main storefront page
 app.get('/', (req, res) => {
-  if (req.session.userType === 'admin') {
-    res.redirect('/admin');
-  } else if (req.session.userType === 'consignor') {
-    res.redirect('/consignor/dashboard');
-  } else {
-    res.redirect('/login');
-  }
+  res.render('storefront', {
+    title: 'Dutch Thrift - Premium Consignment',
+    error: req.query.error || null
+  });
 });
 
 // Login route - render the login page with EJS
 app.get('/login', (req, res) => {
-  res.render('login', { error: req.query.error || null });
+  res.render('login', { 
+    error: req.query.error || null,
+    mode: req.query.mode || 'login'
+  });
 });
 
 // Protected admin routes

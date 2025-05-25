@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dutch Thrift - Login</title>
+  <title>Dutch Thrift - <%= mode === 'register' ? 'Registreren' : 'Inloggen' %></title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -217,6 +217,37 @@
       margin-top: 1rem;
       font-size: 0.9rem;
     }
+
+    .action-button {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background-color: #fff;
+      color: #3498db;
+      text-decoration: none;
+      border-radius: 4px;
+      border: 1px solid #3498db;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      text-align: center;
+      margin-top: 1rem;
+    }
+    
+    .action-button:hover {
+      background-color: #3498db;
+      color: #fff;
+    }
+
+    .back-to-home {
+      display: block;
+      text-align: center;
+      margin-top: 1rem;
+      color: #888;
+      text-decoration: none;
+    }
+
+    .back-to-home:hover {
+      color: #3498db;
+    }
   </style>
 </head>
 <body>
@@ -229,8 +260,8 @@
         </div>
         
         <div class="tabs">
-          <div class="tab active" id="consignor-tab">Consignor Login</div>
-          <div class="tab" id="admin-tab">Admin Login</div>
+          <div class="tab <%= mode !== 'register' ? 'active' : '' %>" id="login-tab">Inloggen</div>
+          <div class="tab <%= mode === 'register' ? 'active' : '' %>" id="register-tab">Registreren</div>
         </div>
         
         <% if (error) { %>
@@ -239,22 +270,22 @@
         </div>
         <% } %>
         
-        <div class="form-content active" id="consignor-form">
-          <form action="/auth/login" method="POST">
+        <div class="form-content <%= mode !== 'register' ? 'active' : '' %>" id="login-form">
+          <form action="/api/auth/consignor/login" method="POST">
             <div class="form-group">
-              <label for="consignor-email">Email</label>
-              <input type="email" id="consignor-email" name="email" placeholder="your@email.com" required>
+              <label for="login-email">Email</label>
+              <input type="email" id="login-email" name="email" placeholder="jouw@email.com" required>
             </div>
             
             <div class="form-group">
-              <label for="consignor-password">Password</label>
-              <input type="password" id="consignor-password" name="password" placeholder="••••••••" required>
+              <label for="login-password">Wachtwoord</label>
+              <input type="password" id="login-password" name="password" placeholder="••••••••" required>
             </div>
             
-            <button type="submit">Login as Consignor</button>
+            <button type="submit">Inloggen</button>
             
             <div class="social-login">
-              <p style="text-align: center; margin: 15px 0; color: #888;">or continue with</p>
+              <p style="text-align: center; margin: 15px 0; color: #888;">of ga verder met</p>
               <div style="display: flex; gap: 10px;">
                 <a href="/auth/github" style="flex: 1; text-align: center; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #333;">
                   <span style="font-weight: 500;">GitHub</span>
@@ -270,44 +301,70 @@
             </div>
             
             <div class="form-footer">
-              Don't have an account? <a href="/auth/register">Register here</a>
+              Nog geen account? <a href="/login?mode=register">Registreer hier</a>
             </div>
           </form>
+
+          <a href="/" class="back-to-home">Terug naar de homepagina</a>
         </div>
         
-        <div class="form-content" id="admin-form">
-          <form action="/auth/login" method="POST">
+        <div class="form-content <%= mode === 'register' ? 'active' : '' %>" id="register-form">
+          <form action="/api/auth/consignor/register" method="POST">
             <div class="form-group">
-              <label for="admin-email">Email</label>
-              <input type="email" id="admin-email" name="email" placeholder="admin@example.com" required>
+              <label for="register-name">Naam</label>
+              <input type="text" id="register-name" name="name" placeholder="Volledige naam" required>
             </div>
             
             <div class="form-group">
-              <label for="admin-password">Password</label>
-              <input type="password" id="admin-password" name="password" placeholder="••••••••" required>
+              <label for="register-email">Email</label>
+              <input type="email" id="register-email" name="email" placeholder="jouw@email.com" required>
             </div>
             
-            <button type="submit">Login as Admin</button>
+            <div class="form-group">
+              <label for="register-password">Wachtwoord</label>
+              <input type="password" id="register-password" name="password" placeholder="••••••••" required>
+            </div>
             
-            <div class="test-account">
-              <strong>Test Account:</strong> admin@test.com / adminpass123
+            <div class="form-group">
+              <label for="register-password-confirm">Bevestig wachtwoord</label>
+              <input type="password" id="register-password-confirm" name="passwordConfirm" placeholder="••••••••" required>
+            </div>
+            
+            <button type="submit">Registreren</button>
+            
+            <div class="social-login">
+              <p style="text-align: center; margin: 15px 0; color: #888;">of registreer met</p>
+              <div style="display: flex; gap: 10px;">
+                <a href="/auth/github" style="flex: 1; text-align: center; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #333;">
+                  <span style="font-weight: 500;">GitHub</span>
+                </a>
+                <a href="/auth/google" style="flex: 1; text-align: center; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #333;">
+                  <span style="font-weight: 500;">Google</span>
+                </a>
+              </div>
+            </div>
+            
+            <div class="form-footer">
+              Heb je al een account? <a href="/login">Log hier in</a>
             </div>
           </form>
+
+          <a href="/" class="back-to-home">Terug naar de homepagina</a>
         </div>
       </div>
     </div>
     
     <div class="hero-container">
       <div class="hero-content">
-        <h2>Your Trusted Partner in Consignment</h2>
-        <p>Dutch Thrift provides a premium platform for managing your consignment business with ease and efficiency.</p>
+        <h2>Jouw betrouwbare partner in consignatie</h2>
+        <p>Dutch Thrift biedt een premium platform voor het beheren van je consignatie met gemak en efficiëntie.</p>
         
         <ul>
-          <li>Intelligent item analysis with AI technology</li>
-          <li>Real-time market price estimations</li>
-          <li>Comprehensive inventory management</li>
-          <li>Secure payment processing</li>
-          <li>Seamless integration with shipping providers</li>
+          <li>Intelligente item-analyse met AI-technologie</li>
+          <li>Realtime marktprijsschattingen</li>
+          <li>Uitgebreid voorraadbeheer</li>
+          <li>Veilige betalingsverwerking</li>
+          <li>Naadloze integratie met verzendproviders</li>
         </ul>
       </div>
     </div>
@@ -315,91 +372,25 @@
   
   <script>
     // Tab switching functionality
-    const consignorTab = document.getElementById('consignor-tab');
-    const adminTab = document.getElementById('admin-tab');
-    const consignorForm = document.getElementById('consignor-form');
-    const adminForm = document.getElementById('admin-form');
+    const loginTab = document.getElementById('login-tab');
+    const registerTab = document.getElementById('register-tab');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
     
-    consignorTab.addEventListener('click', () => {
-      consignorTab.classList.add('active');
-      adminTab.classList.remove('active');
-      consignorForm.classList.add('active');
-      adminForm.classList.remove('active');
+    loginTab.addEventListener('click', () => {
+      loginTab.classList.add('active');
+      registerTab.classList.remove('active');
+      loginForm.classList.add('active');
+      registerForm.classList.remove('active');
+      window.history.replaceState({}, document.title, '/login');
     });
     
-    adminTab.addEventListener('click', () => {
-      adminTab.classList.add('active');
-      consignorTab.classList.remove('active');
-      adminForm.classList.add('active');
-      consignorForm.classList.remove('active');
-    });
-    
-    // Handle form submissions
-    const consignorFormEl = consignorForm.querySelector('form');
-    const adminFormEl = adminForm.querySelector('form');
-    
-    consignorFormEl.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const email = document.getElementById('consignor-email').value;
-      const password = document.getElementById('consignor-password').value;
-      
-      try {
-        const response = await fetch('/api/auth/consignor/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ email, password })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          window.location.href = data.redirect || '/consignor/dashboard';
-        } else {
-          const errorMessage = document.querySelector('.error-message');
-          errorMessage.textContent = data.message || 'Invalid credentials';
-          errorMessage.style.display = 'block';
-        }
-      } catch (error) {
-        console.error('Login error:', error);
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.textContent = 'Server error. Please try again later.';
-        errorMessage.style.display = 'block';
-      }
-    });
-    
-    adminFormEl.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const email = document.getElementById('admin-email').value;
-      const password = document.getElementById('admin-password').value;
-      
-      try {
-        const response = await fetch('/api/auth/admin/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ email, password })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          window.location.href = data.redirect || '/admin';
-        } else {
-          const errorMessage = document.querySelector('.error-message');
-          errorMessage.textContent = data.message || 'Invalid credentials';
-          errorMessage.style.display = 'block';
-        }
-      } catch (error) {
-        console.error('Login error:', error);
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.textContent = 'Server error. Please try again later.';
-        errorMessage.style.display = 'block';
-      }
+    registerTab.addEventListener('click', () => {
+      registerTab.classList.add('active');
+      loginTab.classList.remove('active');
+      registerForm.classList.add('active');
+      loginForm.classList.remove('active');
+      window.history.replaceState({}, document.title, '/login?mode=register');
     });
   </script>
 </body>

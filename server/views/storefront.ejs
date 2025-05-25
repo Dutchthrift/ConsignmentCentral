@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <style>
+    :root {
+      --primary-color: #3a7bd5;
+      --primary-light: #6fa3e0;
+      --primary-dark: #2c5da3;
+      --secondary-color: #f7f9fc;
+      --accent-color: #ff6b6b;
+      --success-color: #47c479;
+      --warning-color: #ffbb33;
+      --danger-color: #ff4444;
+      --text-color: #333;
+      --text-light: #888;
+      --border-color: #e1e5eb;
+      --gray-100: #f8f9fa;
+      --gray-200: #e9ecef;
+      --gray-300: #dee2e6;
+      --gray-400: #ced4da;
+      --gray-500: #adb5bd;
+      --gray-600: #6c757d;
+      --gray-700: #495057;
+      --gray-800: #343a40;
+      --gray-900: #212529;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+      --border-radius: 8px;
+      --spacing-xs: 0.25rem;
+      --spacing-sm: 0.5rem;
+      --spacing-md: 1rem;
+      --spacing-lg: 1.5rem;
+      --spacing-xl: 2rem;
+      --spacing-xxl: 3rem;
+      --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 16px;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-family);
+      color: var(--text-color);
+      line-height: 1.6;
+      background-color: var(--secondary-color);
+    }
+
+    a {
+      color: var(--primary-color);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    a:hover {
+      color: var(--primary-dark);
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-weight: 600;
+      line-height: 1.3;
+      margin-bottom: var(--spacing-md);
+      color: var(--gray-900);
+    }
+
+    h1 {
+      font-size: 2.25rem;
+    }
+
+    h2 {
+      font-size: 1.75rem;
+    }
+
+    h3 {
+      font-size: 1.25rem;
+    }
+
+    p {
+      margin-bottom: var(--spacing-md);
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--spacing-md);
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-lg) 0;
+      margin-bottom: var(--spacing-xl);
+    }
+
+    .logo h1 {
+      font-size: 1.75rem;
+      margin-bottom: 0;
+      color: var(--primary-color);
+    }
+
+    .logo p {
+      font-size: 0.875rem;
+      margin-bottom: 0;
+      color: var(--text-light);
+    }
+
+    nav {
+      display: flex;
+      gap: var(--spacing-md);
+    }
+
+    nav a {
+      font-weight: 500;
+      padding: var(--spacing-sm) var(--spacing-md);
+      border-radius: var(--border-radius);
+      transition: all 0.2s ease;
+    }
+
+    nav a:hover {
+      background-color: var(--gray-100);
+    }
+
+    .btn {
+      display: inline-block;
+      font-weight: 500;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: middle;
+      cursor: pointer;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      line-height: 1.5;
+      border-radius: var(--border-radius);
+      transition: all 0.15s ease-in-out;
+      border: none;
+    }
+
+    .btn.primary {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .btn.primary:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .btn.secondary {
+      background-color: white;
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+    }
+
+    .btn.secondary:hover {
+      background-color: var(--gray-100);
+    }
+
+    .button-group {
+      display: flex;
+      gap: var(--spacing-md);
+      margin-top: var(--spacing-md);
+    }
+
+    .hero {
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: var(--spacing-xxl) 0;
+      border-radius: var(--border-radius);
+      margin-bottom: var(--spacing-xl);
+    }
+
+    .hero-content {
+      max-width: 600px;
+      padding: 0 var(--spacing-lg);
+    }
+
+    .hero h2 {
+      color: white;
+      margin-bottom: var(--spacing-md);
+      font-size: 2.5rem;
+    }
+
+    .upload-section {
+      margin-bottom: var(--spacing-xxl);
+    }
+
+    .upload-form {
+      background-color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow-md);
+      padding: var(--spacing-xl);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .form-group {
+      margin-bottom: var(--spacing-lg);
+    }
+
+    label {
+      display: block;
+      margin-bottom: var(--spacing-sm);
+      font-weight: 500;
+      color: var(--gray-700);
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      background-color: white;
+      transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    .dropzone {
+      border: 2px dashed var(--border-color);
+      border-radius: var(--border-radius);
+      padding: var(--spacing-xl);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background-color: white;
+      position: relative;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    .dropzone.highlight {
+      border-color: var(--primary-color);
+      background-color: rgba(58, 123, 213, 0.05);
+    }
+
+    .preview {
+      margin-top: var(--spacing-md);
+      display: none;
+    }
+
+    .preview img {
+      max-height: 200px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .auth-options {
+      text-align: center;
+      margin-top: var(--spacing-xl);
+    }
+
+    .how-it-works {
+      margin-bottom: var(--spacing-xxl);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-lg);
+      margin-top: var(--spacing-lg);
+    }
+
+    .step {
+      text-align: center;
+      padding: var(--spacing-lg);
+      background-color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .step:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .step-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 50px;
+      margin: 0 auto var(--spacing-md);
+      background-color: var(--primary-color);
+      color: white;
+      border-radius: 50%;
+      font-weight: bold;
+      font-size: 1.25rem;
+    }
+
+    .step h3 {
+      margin-bottom: var(--spacing-sm);
+    }
+
+    footer {
+      padding: var(--spacing-xl) 0;
+      text-align: center;
+      color: var(--text-light);
+      border-top: 1px solid var(--gray-200);
+      margin-top: var(--spacing-xxl);
+    }
+
+    .error-message {
+      color: var(--danger-color);
+      background-color: rgba(255, 68, 68, 0.1);
+      padding: var(--spacing-sm) var(--spacing-md);
+      border-radius: var(--border-radius);
+      margin-bottom: var(--spacing-md);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>Dutch Thrift</h1>
+        <p>Premium Consignment Platform</p>
+      </div>
+      <nav>
+        <a href="/login">Inloggen</a>
+        <a href="/login?mode=register">Registreren</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-content">
+          <h2>Verkoop je designer items eenvoudig via Dutch Thrift</h2>
+          <p>Upload je item, ontvang direct een schatting van de waarde, en laat ons de verkoop regelen.</p>
+        </div>
+      </section>
+
+      <section class="upload-section">
+        <h2>Begin met een item uploaden</h2>
+        <% if (error) { %>
+          <div class="error-message"><%= error %></div>
+        <% } %>
+        <div class="upload-form">
+          <form action="/submit-item" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+              <label for="title">Titel (optioneel)</label>
+              <input type="text" id="title" name="title" placeholder="Beschrijf je item kort">
+            </div>
+            
+            <div class="form-group">
+              <label for="image">Afbeelding (verplicht)</label>
+              <div class="dropzone" id="dropzone">
+                <p>Sleep je foto hierheen of klik om te uploaden</p>
+                <input type="file" id="image" name="image" accept="image/*" style="display: none;" required>
+                <div class="preview" id="preview"></div>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn primary">Item Analyseren</button>
+          </form>
+        </div>
+        
+        <div class="auth-options">
+          <p>Al een account of wil je er een aanmaken?</p>
+          <div class="button-group">
+            <a href="/login?mode=register" class="btn secondary">Registreren</a>
+            <a href="/login" class="btn secondary">Inloggen</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="how-it-works">
+        <h2>Hoe het werkt</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-number">1</div>
+            <h3>Upload je item</h3>
+            <p>Maak een foto van je item en upload deze op onze website.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <h3>Ontvang een prijsschatting</h3>
+            <p>Onze AI analyseert je item en bepaalt de verwachte verkoopprijs.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <h3>Accepteer ons voorstel</h3>
+            <p>Als je tevreden bent met de prijs, accepteer je ons voorstel.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">4</div>
+            <h3>Verstuur je item</h3>
+            <p>Je ontvangt een verzendlabel om je item naar ons te sturen.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">5</div>
+            <h3>Ontvang je betaling</h3>
+            <p>Zodra je item verkocht is, ontvang je 70% van de verkoopprijs.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2025 Dutch Thrift - Premium Consignment Platform</p>
+    </footer>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Dropzone functionality
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('image');
+      const preview = document.getElementById('preview');
+
+      dropzone.addEventListener('click', function() {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener('change', function() {
+        showPreview(this.files[0]);
+      });
+
+      dropzone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropzone.classList.add('highlight');
+      });
+
+      dropzone.addEventListener('dragleave', function() {
+        dropzone.classList.remove('highlight');
+      });
+
+      dropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropzone.classList.remove('highlight');
+        
+        if (e.dataTransfer.files.length) {
+          fileInput.files = e.dataTransfer.files;
+          showPreview(e.dataTransfer.files[0]);
+        }
+      });
+
+      function showPreview(file) {
+        if (!file || !file.type.match('image.*')) return;
+        
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+          preview.innerHTML = '';
+          preview.style.display = 'block';
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          preview.appendChild(img);
+        };
+        
+        reader.readAsDataURL(file);
+      }
+    });
+  </script>
+</body>
+</html>
