@@ -738,6 +738,220 @@ app.get('/consignor/dashboard', async (req, res) => {
   }
 });
 
+// Logout route
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/login');
+  });
+});
+
+// Consignor Routes
+
+// /consignor/new-item - Item submission form
+app.get('/consignor/new-item', async (req, res) => {
+  if (req.session.userType !== 'consignor') {
+    return res.redirect('/login?error=Please log in as a consignor to access this page');
+  }
+  
+  try {
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', req.session.customerId)
+      .single();
+    
+    res.render('consignor-new-item', { customer });
+  } catch (error) {
+    console.error('Error loading new item page:', error);
+    res.status(500).send('Error loading page');
+  }
+});
+
+// /consignor/items - List all items
+app.get('/consignor/items', async (req, res) => {
+  if (req.session.userType !== 'consignor') {
+    return res.redirect('/login?error=Please log in as a consignor to access this page');
+  }
+  
+  try {
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', req.session.customerId)
+      .single();
+    
+    // Get all orders for this customer
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('customer_id', req.session.customerId);
+    
+    // Get all items for these orders
+    const { data: items } = await supabase
+      .from('items')
+      .select('*')
+      .in('order_id', orders?.map(o => o.id) || [])
+      .order('created_at', { ascending: false });
+    
+    res.render('consignor-items', { customer, items: items || [] });
+  } catch (error) {
+    console.error('Error loading items page:', error);
+    res.status(500).send('Error loading page');
+  }
+});
+
+// /consignor/orders - List all orders
+app.get('/consignor/orders', async (req, res) => {
+  if (req.session.userType !== 'consignor') {
+    return res.redirect('/login?error=Please log in as a consignor to access this page');
+  }
+  
+  try {
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', req.session.customerId)
+      .single();
+    
+    // Get all orders with item counts
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('customer_id', req.session.customerId)
+      .order('created_at', { ascending: false });
+    
+    // Get item counts for each order
+    const ordersWithItems = await Promise.all(orders?.map(async (order) => {
+      const { data: orderItems } = await supabase
+        .from('items')
+        .select('*')
+        .eq('order_id', order.id);
+      
+      return {
+        ...order,
+        itemCount: orderItems?.length || 0,
+        items: orderItems || []
+      };
+    }) || []);
+    
+    res.render('consignor-orders', { customer, orders: ordersWithItems });
+  } catch (error) {
+    console.error('Error loading orders page:', error);
+    res.status(500).send('Error loading page');
+  }
+});
+
+// /consignor/sales - Show sold items only
+app.get('/consignor/sales', async (req, res) => {
+  if (req.session.userType !== 'consignor') {
+    return res.redirect('/login?error=Please log in as a consignor to access this page');
+  }
+  
+  try {
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', req.session.customerId)
+      .single();
+    
+    // Get all orders for this customer
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('customer_id', req.session.customerId);
+    
+    // Get only sold items
+    const { data: soldItems } = await supabase
+      .from('items')
+      .select('*')
+      .in('order_id', orders?.map(o => o.id) || [])
+      .eq('status', 'sold')
+      .order('created_at', { ascending: false });
+    
+    res.render('consignor-sales', { customer, soldItems: soldItems || [] });
+  } catch (error) {
+    console.error('Error loading sales page:', error);
+    res.status(500).send('Error loading page');
+  }
+});
+
+// /consignor/payouts - List payouts
+app.get('/consignor/payouts', async (req, res) => {
+  if (req.session.userType !== 'consignor') {
+    return res.redirect('/login?error=Please log in as a consignor to access this page');
+  }
+  
+  try {
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', req.session.customerId)
+      .single();
+    
+    // Get all orders for this customer
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('customer_id', req.session.customerId);
+    
+    // Get sold items with payout values
+    const { data: soldItems } = await supabase
+      .from('items')
+      .select('*')
+      .in('order_id', orders?.map(o => o.id) || [])
+      .eq('status', 'sold')
+      .order('created_at', { ascending: false });
+    
+    // Calculate total payouts
+    const totalPayout = soldItems?.reduce((sum, item) => sum + (parseFloat(item.payout_value) || 0), 0) || 0;
+    
+    res.render('consignor-payouts', { customer, soldItems: soldItems || [], totalPayout });
+  } catch (error) {
+    console.error('Error loading payouts page:', error);
+    res.status(500).send('Error loading page');
+  }
+});
+
+// /consignor/profile - Account information
+app.get('/consignor/profile', async (req, res) => {
+  if (req.session.userType !== 'consignor') {
+    return res.redirect('/login?error=Please log in as a consignor to access this page');
+  }
+  
+  try {
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', req.session.customerId)
+      .single();
+    
+    res.render('consignor-profile', { customer });
+  } catch (error) {
+    console.error('Error loading profile page:', error);
+    res.status(500).send('Error loading page');
+  }
+});
+
+// /consignor/settings - Settings page
+app.get('/consignor/settings', async (req, res) => {
+  if (req.session.userType !== 'consignor') {
+    return res.redirect('/login?error=Please log in as a consignor to access this page');
+  }
+  
+  try {
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', req.session.customerId)
+      .single();
+    
+    res.render('consignor-settings', { customer });
+  } catch (error) {
+    console.error('Error loading settings page:', error);
+    res.status(500).send('Error loading page');
+  }
+});
+
 // Default route handler for any other routes
 app.get('*', (req, res) => {
   res.status(404).send('Page not found');

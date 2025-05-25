@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales History - Dutch Thrift</title>
+  <style>
+    :root {
+      --primary: #3498db;
+      --primary-dark: #2980b9;
+      --secondary: #2ecc71;
+      --dark: #333;
+      --light: #f8f9fa;
+      --gray: #6c757d;
+      --danger: #e74c3c;
+      --warning: #f39c12;
+      --success: #27ae60;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      background-color: var(--light);
+    }
+    
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+    
+    .sidebar {
+      width: 256px;
+      background-color: white;
+      border-right: 1px solid #e1e4e8;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+      padding: 0 0.5rem;
+    }
+    
+    .logo {
+      font-size: 1.125rem;
+      font-weight: bold;
+      color: var(--dark);
+    }
+    
+    .nav-menu {
+      display: flex;
+      flex-direction: column;
+      list-style: none;
+      gap: 0.25rem;
+    }
+    
+    .nav-link {
+      color: var(--dark);
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background-color 0.3s;
+      font-size: 0.875rem;
+      text-decoration: none;
+    }
+    
+    .nav-link:hover {
+      background-color: #f8f9fa;
+      text-decoration: none;
+    }
+    
+    .nav-link.active {
+      background-color: var(--primary);
+      color: white;
+      font-weight: 500;
+    }
+    
+    .nav-icon {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+    
+    .user-badge {
+      margin-top: auto;
+      padding: 0.75rem;
+      background-color: #f1f3f4;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .user-badge-content {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .user-badge-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background-color: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+    
+    .user-badge-info .name {
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    
+    .user-badge-info .role {
+      font-size: 0.75rem;
+      color: var(--gray);
+    }
+    
+    .logout-btn {
+      padding: 0.75rem;
+      border: none;
+      background: none;
+      color: var(--gray);
+      font-size: 0.875rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+      border-radius: 0.375rem;
+      transition: background-color 0.3s;
+    }
+    
+    .logout-btn:hover {
+      background-color: #f8f9fa;
+    }
+    
+    .main-content {
+      flex: 1;
+      padding: 2rem;
+      max-width: calc(100vw - 256px);
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .sales-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid #e1e4e8;
+    }
+    
+    .stat-title {
+      font-size: 0.875rem;
+      color: var(--gray);
+      margin-bottom: 0.5rem;
+    }
+    
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--success);
+    }
+    
+    .sales-table {
+      background: white;
+      border-radius: 0.5rem;
+      border: 1px solid #e1e4e8;
+      overflow: hidden;
+    }
+    
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .table th,
+    .table td {
+      padding: 1rem 1.5rem;
+      text-align: left;
+      border-bottom: 1px solid #e1e4e8;
+    }
+    
+    .table th {
+      background-color: #f8f9fa;
+      font-weight: 600;
+      color: var(--gray);
+      font-size: 0.875rem;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--gray);
+    }
+    
+    .btn {
+      display: inline-block;
+      font-weight: 500;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: middle;
+      user-select: none;
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      border-radius: 0.375rem;
+      transition: all 0.15s ease-in-out;
+      cursor: pointer;
+      text-decoration: none;
+      border: none;
+    }
+    
+    .btn-primary {
+      color: #fff;
+      background-color: var(--primary);
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">Dutch Thrift</div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <ul class="nav-menu">
+          <li>
+            <a href="/consignor/dashboard" class="nav-link">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="9" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="15" x2="21" y2="15"/>
+                <line x1="3" y1="9" x2="7" y2="9"/>
+                <line x1="3" y1="15" x2="7" y2="15"/>
+              </svg>
+              Dashboard
+            </a>
+          </li>
+          <li>
+            <a href="/consignor/new-item" class="nav-link">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+              </svg>
+              Submit New Item
+            </a>
+          </li>
+          <li>
+            <a href="/consignor/items" class="nav-link">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              </svg>
+              My Items
+            </a>
+          </li>
+          <li>
+            <a href="/consignor/orders" class="nav-link">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+              Orders
+            </a>
+          </li>
+          <li>
+            <a href="/consignor/sales" class="nav-link active">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+              </svg>
+              Sales History
+            </a>
+          </li>
+          <li>
+            <a href="/consignor/payouts" class="nav-link">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                <line x1="1" y1="10" x2="23" y2="10"/>
+              </svg>
+              Payouts
+            </a>
+          </li>
+          <li>
+            <a href="/consignor/profile" class="nav-link">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Profile
+            </a>
+          </li>
+          <li>
+            <a href="/consignor/settings" class="nav-link">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2 2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              Settings
+            </a>
+          </li>
+        </ul>
+      </nav>
+      
+      <!-- User Badge -->
+      <div class="user-badge">
+        <div class="user-badge-content">
+          <div class="user-badge-avatar">
+            <%= customer.name ? customer.name.charAt(0).toUpperCase() : 'U' %>
+          </div>
+          <div class="user-badge-info">
+            <div class="name"><%= customer.name %></div>
+            <div class="role">Consignor</div>
+          </div>
+        </div>
+      </div>
+      
+      <button onclick="window.location.href='/logout'" class="logout-btn">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16,17 21,12 16,7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Logout
+      </button>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="container">
+        <div style="margin-bottom: 2rem;">
+          <h1 style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">Sales History</h1>
+          <p style="color: var(--gray);">Track all your successfully sold items and earnings.</p>
+        </div>
+        
+        <!-- Sales Stats -->
+        <div class="sales-stats">
+          <div class="stat-card">
+            <div class="stat-title">Items Sold</div>
+            <div class="stat-value"><%= soldItems ? soldItems.length : 0 %></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">Total Earnings</div>
+            <div class="stat-value">
+              €<%= soldItems ? soldItems.reduce((sum, item) => sum + (parseFloat(item.payout_value) || 0), 0).toFixed(2) : '0.00' %>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sales Table -->
+        <% if (soldItems && soldItems.length > 0) { %>
+          <div class="sales-table">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Date Sold</th>
+                  <th>Sale Price</th>
+                  <th>Your Payout</th>
+                  <th>Commission</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% soldItems.forEach(item => { %>
+                  <tr>
+                    <td>
+                      <div style="font-weight: 500;"><%= item.title || 'Untitled Item' %></div>
+                      <div style="font-size: 0.875rem; color: var(--gray);">Ref: <%= item.reference_id %></div>
+                    </td>
+                    <td><%= new Date(item.updated_at || item.created_at).toLocaleDateString() %></td>
+                    <td>€<%= parseFloat(item.estimated_value || 0).toFixed(2) %></td>
+                    <td style="font-weight: 600; color: var(--success);">€<%= parseFloat(item.payout_value || 0).toFixed(2) %></td>
+                    <td>€<%= (parseFloat(item.estimated_value || 0) - parseFloat(item.payout_value || 0)).toFixed(2) %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <div class="empty-state">
+            <svg style="width: 64px; height: 64px; margin-bottom: 1rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+            </svg>
+            <h3 style="margin-bottom: 0.5rem;">No sales yet</h3>
+            <p style="margin-bottom: 1.5rem;">Your sold items will appear here once they're purchased.</p>
+            <a href="/consignor/new-item" class="btn btn-primary">Submit New Item</a>
+          </div>
+        <% } %>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
