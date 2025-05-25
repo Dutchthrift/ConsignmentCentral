@@ -92,6 +92,10 @@ app.use('/admin-api', adminLoginFix);
 import directAdminLogin from './direct-admin-login.js';
 app.use('/direct-admin', directAdminLogin);
 
+// Import direct access routes
+import directRoutes from './direct-routes.js';
+app.use('/direct', directRoutes);
+
 // We already imported bcrypt at the top
 
 // Unified login endpoint
