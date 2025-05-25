@@ -271,7 +271,7 @@
         <% } %>
         
         <div class="form-content <%= mode !== 'register' ? 'active' : '' %>" id="login-form">
-          <form action="/api/auth/consignor/login" method="POST">
+          <form id="login-form-element">
             <div class="form-group">
               <label for="login-email">Email</label>
               <input type="email" id="login-email" name="email" placeholder="jouw@email.com" required>
@@ -309,7 +309,7 @@
         </div>
         
         <div class="form-content <%= mode === 'register' ? 'active' : '' %>" id="register-form">
-          <form action="/api/auth/consignor/register" method="POST">
+          <form id="register-form-element">
             <div class="form-group">
               <label for="register-name">Naam</label>
               <input type="text" id="register-name" name="name" placeholder="Volledige naam" required>
@@ -376,6 +376,114 @@
     const registerTab = document.getElementById('register-tab');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
+    const loginFormElement = document.getElementById('login-form-element');
+    const registerFormElement = document.getElementById('register-form-element');
+    const errorMessage = document.querySelector('.error-message');
+
+    // Handle login form submission
+    loginFormElement.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      
+      try {
+        const response = await fetch('/api/auth/consignor/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Redirect to dashboard
+          window.location.href = '/consignor/dashboard';
+        } else {
+          // Show error message
+          if (errorMessage) {
+            errorMessage.textContent = data.message || 'Login mislukt. Controleer je gegevens.';
+            errorMessage.style.display = 'block';
+          }
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        if (errorMessage) {
+          errorMessage.textContent = 'Er is een fout opgetreden bij het inloggen. Probeer het later opnieuw.';
+          errorMessage.style.display = 'block';
+        }
+      }
+    });
+    
+    // Handle registration form submission
+    registerFormElement.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById('register-name').value;
+      const email = document.getElementById('register-email').value;
+      const password = document.getElementById('register-password').value;
+      const passwordConfirm = document.getElementById('register-password-confirm').value;
+      
+      // Basic validation
+      if (password !== passwordConfirm) {
+        if (errorMessage) {
+          errorMessage.textContent = 'Wachtwoorden komen niet overeen';
+          errorMessage.style.display = 'block';
+        }
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/auth/consignor/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // After successful registration, login the user
+          const loginResponse = await fetch('/api/auth/consignor/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+          });
+          
+          const loginData = await loginResponse.json();
+          
+          if (loginData.success) {
+            // Redirect to dashboard
+            window.location.href = '/consignor/dashboard';
+          } else {
+            // Show success message and redirect to login tab
+            if (errorMessage) {
+              errorMessage.textContent = 'Registratie succesvol! Je kunt nu inloggen.';
+              errorMessage.style.display = 'block';
+            }
+            loginTab.click();
+          }
+        } else {
+          // Show error message
+          if (errorMessage) {
+            errorMessage.textContent = data.message || 'Registratie mislukt. Probeer het opnieuw.';
+            errorMessage.style.display = 'block';
+          }
+        }
+      } catch (error) {
+        console.error('Registration error:', error);
+        if (errorMessage) {
+          errorMessage.textContent = 'Er is een fout opgetreden bij het registreren. Probeer het later opnieuw.';
+          errorMessage.style.display = 'block';
+        }
+      }
+    });
     
     loginTab.addEventListener('click', () => {
       loginTab.classList.add('active');
