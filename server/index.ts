@@ -195,6 +195,63 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Registration endpoint for consignors
+app.post('/api/auth/register', async (req, res) => {
+  const { name, email, password } = req.body;
+  
+  if (!name || !email || !password) {
+    return res.status(400).json({ success: false, message: 'Name, email and password are required' });
+  }
+  
+  try {
+    // Check if user already exists
+    const { data: existingUser } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('email', email)
+      .single();
+    
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'User with this email already exists' });
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Create new customer
+    const { data: newCustomer, error } = await supabase
+      .from('customers')
+      .insert({
+        name,
+        email,
+        password: hashedPassword,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Registration error:', error);
+      return res.status(500).json({ success: false, message: 'Failed to create account' });
+    }
+    
+    return res.json({
+      success: true,
+      user: {
+        id: newCustomer.id,
+        email: newCustomer.email,
+        name: newCustomer.name,
+        role: 'consignor'
+      },
+      message: 'Account created successfully'
+    });
+    
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ success: false, message: 'Server error during registration' });
+  }
+});
+
 // Keep legacy endpoints for backward compatibility
 app.post('/api/auth/admin/login', async (req, res) => {
   console.log('Legacy admin login endpoint called, forwarding to unified login');

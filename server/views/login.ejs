@@ -518,7 +518,7 @@
       }
       
       try {
-        const response = await fetch('/api/auth/consignor/register', {
+        const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -530,7 +530,7 @@
         
         if (data.success) {
           // After successful registration, login the user
-          const loginResponse = await fetch('/api/auth/consignor/login', {
+          const loginResponse = await fetch('/api/auth/login', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
