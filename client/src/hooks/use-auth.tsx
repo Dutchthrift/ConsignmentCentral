@@ -185,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
         const data = await res.json();
-        return data.data.user;
+        return data.data?.user ?? data.user;
       } catch (error: any) {
         console.error("Admin login error:", error);
         throw error;
@@ -246,7 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(errorData.message || "Login failed");
       }
       const data = await res.json();
-      return data.data.user;
+      return data.data?.user ?? data.user;
     },
     onSuccess: (userData: ConsignorUser) => {
       queryClient.setQueryData(["/api/auth/me"], userData);
@@ -273,7 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(errorData.message || "Registration failed");
       }
       const data = await res.json();
-      return data.data.user;
+      return data.data?.user ?? data.user;
     },
     onSuccess: (userData: ConsignorUser) => {
       queryClient.setQueryData(["/api/auth/me"], userData);
